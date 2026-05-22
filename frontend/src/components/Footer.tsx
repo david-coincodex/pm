@@ -77,9 +77,9 @@ export default async function Footer() {
               </h3>
               <ul className="space-y-2.5">
                 {[
-                  { href: '/about/', label: t('about') },
-                  { href: '/advertise/', label: t('advertise') },
-                  { href: '/contact/', label: t('contact') },
+                  { href: routes.page('about'), label: t('about') },
+                  { href: routes.page('advertise'), label: t('advertise') },
+                  { href: routes.page('contact'), label: t('contact') },
                   { href: routes.blog(), label: t('blog') },
                 ].map((l) => (
                   <li key={l.href}>
@@ -96,10 +96,11 @@ export default async function Footer() {
               </h3>
               <ul className="space-y-2.5">
                 {[
-                  { href: '/terms/', label: t('terms') },
-                  { href: '/privacy/', label: t('privacy') },
-                  { href: '/cookies/', label: t('cookies') },
-                  { href: '/disclaimer/', label: t('disclaimer') },
+                  { href: routes.page('terms'), label: t('terms') },
+                  { href: routes.page('privacy'), label: t('privacy') },
+                  { href: routes.page('cookies'), label: t('cookies') },
+                  { href: routes.page('disclaimer'), label: t('disclaimer') },
+                  { href: routes.page('affiliate-disclaimer'), label: t('affiliateDisclaimer') },
                 ].map((l) => (
                   <li key={l.href}>
                     <Link href={l.href} className="text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">

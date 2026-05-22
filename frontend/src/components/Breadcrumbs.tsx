@@ -20,7 +20,10 @@ export default function Breadcrumbs() {
 
   const segments = pathname.split('/').filter(Boolean);
 
-  // Build crumbs: Home + one per segment
+  // Segments that are structural path prefixes without their own page
+  const nonLinkableSegments = new Set(['page']);
+
+  // Build crumbs: Home + one per segment (skip non-linkable prefixes)
   const crumbs: { label: string; href: string }[] = [
     { label: t('home'), href: '/' },
   ];
@@ -28,18 +31,16 @@ export default function Breadcrumbs() {
   let accumulated = '';
   for (const segment of segments) {
     accumulated += `/${segment}`;
+    if (nonLinkableSegments.has(segment)) continue;
     // Use translated label for known top-level segments, humanize the rest
     const label = t.has(segment) ? t(segment) : humanize(segment);
     crumbs.push({ label, href: accumulated });
   }
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className="border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950"
-    >
+    <nav aria-label="Breadcrumb">
       <Container>
-        <ol className="flex items-center gap-1.5 py-2.5 text-sm">
+        <ol className="flex items-center gap-1.5 pt-3 pb-1 text-sm">
           {crumbs.map((crumb, i) => {
             const isLast = i === crumbs.length - 1;
             return (

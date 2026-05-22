@@ -530,3 +530,23 @@ export async function getArticleById(id: number, locale: string): Promise<Articl
   );
   return res.data[0] ?? null;
 }
+
+export type Page = {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  h1: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  content: Record<string, unknown>[] | null;
+};
+
+/** Fetch a published CMS page by slug. Returns null if not found. */
+export async function getPageBySlug(slug: string): Promise<Page | null> {
+  const res = await strapiGet<Page[]>(
+    `/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true`,
+    { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data[0] ?? null;
+}
