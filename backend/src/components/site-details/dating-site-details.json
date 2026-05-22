@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_site_details_dating_site_details",
+  "info": {
+    "displayName": "DatingSiteDetails",
+    "description": "Fields specific to dating sites"
+  },
+  "options": {},
+  "attributes": {
+    "freeMessages": {
+      "type": "boolean",
+      "default": false
+    },
+    "hasApp": {
+      "type": "boolean",
+      "default": false
+    },
+    "targetAudience": {
+      "type": "enumeration",
+      "enum": ["straight", "gay", "lesbian", "bisexual", "all"],
+      "default": "all"
+    },
+    "verifiedProfiles": {
+      "type": "boolean",
+      "default": false
+    },
+    "monthlyPrice": {
+      "type": "decimal"
+    }
+  }
+}

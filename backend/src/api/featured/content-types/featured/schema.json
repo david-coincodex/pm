@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "featureds",
+  "info": {
+    "singularName": "featured",
+    "pluralName": "featureds",
+    "displayName": "Featured",
+    "description": "Featured deals shown in the homepage carousel"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "site": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::site.site"
+    },
+    "validFrom": {
+      "type": "datetime"
+    },
+    "validTo": {
+      "type": "datetime"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "priority": {
+      "type": "integer",
+      "default": 10
+    }
+  }
+}

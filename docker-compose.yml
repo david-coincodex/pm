@@ -1,0 +1,50 @@
+services:
+
+  # ── Strapi CMS ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: development
+    ports:
+      - "1339:1339"
+    volumes:
+      # source hot-reload
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+      # persist SQLite database and uploads
+      - strapi_tmp:/app/.tmp
+      - ./backend/public/uploads:/app/public/uploads
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:1339/_health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Next.js frontend ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    ports:
+      - "3002:3002"
+    volumes:
+      # source hot-reload (node_modules stay in the image)
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/messages:/app/messages
+    environment:
+      # Public URL — used in the browser (must be reachable from the user's machine)
+      NEXT_PUBLIC_STRAPI_URL: http://localhost:1339
+      # Internal URL — used by Next.js server components inside Docker network
+      STRAPI_INTERNAL_URL: http://backend:1339
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  strapi_tmp:

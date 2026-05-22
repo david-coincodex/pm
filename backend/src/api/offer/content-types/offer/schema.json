@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "offers",
+  "info": {
+    "singularName": "offer",
+    "pluralName": "offers",
+    "displayName": "Offer",
+    "description": "A concrete offer for a deal, with affiliate link and optional schedule",
+    "mainField": "offerType"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "site": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::site.site",
+      "inversedBy": "offers"
+    },
+    "bundle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::bundle.bundle",
+      "inversedBy": "offers"
+    },
+    "offerKind": {
+      "type": "enumeration",
+      "enum": ["subscription", "credits"],
+      "default": "subscription",
+      "required": true
+    },
+    "offerType": {
+      "type": "enumeration",
+      "enum": ["trial", "monthly", "quarterly", "yearly", "lifetime", "credits"]
+    },
+    "credits": {
+      "type": "integer"
+    },
+    "price": {
+      "type": "decimal",
+      "required": true
+    },
+    "full_price": {
+      "type": "decimal"
+    },
+    "affiliateLink": {
+      "type": "string",
+      "required": true
+    },
+    "allowsDownloads": {
+      "type": "boolean",
+      "default": false
+    },
+    "priority": {
+      "type": "integer",
+      "default": 10,
+      "required": true
+    },
+    "validFrom": {
+      "type": "datetime"
+    },
+    "validTo": {
+      "type": "datetime"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    }
+  }
+}

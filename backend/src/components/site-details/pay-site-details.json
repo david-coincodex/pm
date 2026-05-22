@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_site_details_pay_site_details",
+  "info": {
+    "displayName": "PaySiteDetails",
+    "description": "Fields specific to pay/membership sites"
+  },
+  "options": {},
+  "attributes": {
+    "trialPrice": {
+      "type": "decimal"
+    },
+    "trialDays": {
+      "type": "integer"
+    },
+    "monthlyPrice": {
+      "type": "decimal"
+    },
+    "yearlyPrice": {
+      "type": "decimal"
+    },
+    "networkName": {
+      "type": "string"
+    },
+    "niche": {
+      "type": "string"
+    },
+    "exclusive": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

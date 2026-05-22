@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_site_details_tube_site_details",
+  "info": {
+    "displayName": "TubeSiteDetails",
+    "description": "Fields specific to tube sites"
+  },
+  "options": {},
+  "attributes": {
+    "videoCount": {
+      "type": "integer"
+    },
+    "hasHD": {
+      "type": "boolean",
+      "default": false
+    },
+    "has4K": {
+      "type": "boolean",
+      "default": false
+    },
+    "hasPremium": {
+      "type": "boolean",
+      "default": false
+    },
+    "adsSupported": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

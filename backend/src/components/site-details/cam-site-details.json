@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_site_details_cam_site_details",
+  "info": {
+    "displayName": "CamSiteDetails",
+    "description": "Fields specific to cam sites"
+  },
+  "options": {},
+  "attributes": {
+    "freeCams": {
+      "type": "boolean",
+      "default": false
+    },
+    "tokenBased": {
+      "type": "boolean",
+      "default": false
+    },
+    "privateShows": {
+      "type": "boolean",
+      "default": true
+    },
+    "modelCount": {
+      "type": "integer"
+    },
+    "hasApp": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
