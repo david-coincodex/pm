@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { routing } from "@/i18n/routing";
-import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getCamSiteDeals, getPublishedBundles, strapiMediaUrl } from "@/lib/strapi";
+import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getCamSiteDeals, getPublishedBundles, strapiMediaUrl, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
+import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from "@/lib/pagination";
 import Container from "@/components/Container";
 import SiteCardGrid from "@/components/site/SiteCardGrid";
 import Pagination from "@/components/Pagination";
@@ -19,37 +19,15 @@ type Props = {
   searchParams: Promise<{ page?: string }>;
 };
 
-function parsePage(pageStr: string | undefined): number {
-  const n = parseInt(pageStr ?? '1', 10);
-  return Number.isFinite(n) && n > 0 ? n : 1;
-}
-
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const t = await getTranslations({ locale, namespace: "metadata" });
-
   const page = parsePage(pageStr);
-  const pageQuery = page > 1 ? `?page=${page}` : '';
-  const localePath = locale === routing.defaultLocale ? '' : `/${locale}`;
-  const canonical = `${localePath}/${pageQuery}`;
-
-  const localeAlternates = Object.fromEntries(
-    routing.locales.map((loc) => {
-      const prefix = loc === routing.defaultLocale ? '' : `/${loc}`;
-      return [loc, `${prefix}/${pageQuery}`];
-    })
-  );
 
   return {
-    title: t("sitesTitle"),
-    alternates: {
-      canonical,
-      languages: {
-        ...localeAlternates,
-        "x-default": `/${pageQuery}`,
-      },
-    },
+    title: paginatedTitle(t("sitesTitle"), page),
+    alternates: paginatedAlternates('/', page, locale),
   };
 }
 
@@ -59,7 +37,7 @@ export default async function Home({ params, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: "sites" });
 
   const page = parsePage(pageStr);
-  const basePath = locale === routing.defaultLocale ? '/' : `/${locale}/`;
+  const basePath = locale === 'en' ? '/' : `/${locale}/`;
 
   const { sites, pagination } = await getSitesWithDealsPaginated(page, PAGE_SIZE).catch(() => ({
     sites: [],
@@ -90,10 +68,7 @@ export default async function Home({ params, searchParams }: Props) {
               bestPrice: bestOffer?.price,
               currency: 'USD',
               bestOfferId: bestOffer?.id,
-              discountPercent:
-                bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-                  ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-                  : undefined,
+              discountPercent: bestOffer ? getDiscountPercent(bestOffer) ?? undefined : undefined,
             };
           })
       ).catch(() => [])
@@ -106,15 +81,11 @@ export default async function Home({ params, searchParams }: Props) {
     const bestPrice = bestOffer?.price;
     const bestOfferId = bestOffer?.id;
     const currency = "USD";
-    const discountPercent =
-      bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-        ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-        : undefined;
+    const discountPercent = getMaxDiscountPercent(activeOffers) ?? undefined;
     return { site, bestPrice, currency, bestOfferId, discountPercent };
   });
 
-  const prevHref = page > 1 ? (page === 2 ? basePath : `${basePath}?page=${page - 1}`) : null;
-  const nextHref = page < pagination.pageCount ? `${basePath}?page=${page + 1}` : null;
+  const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   // Lifetime deals — only on page 1
   const lifetimeDeals = page === 1
@@ -126,10 +97,7 @@ export default async function Home({ params, searchParams }: Props) {
           const bestPrice = bestOffer?.price;
           const bestOfferId = bestOffer?.id;
           const currency = "USD";
-          const discountPercent =
-            bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-              ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-              : undefined;
+          const discountPercent = getMaxDiscountPercent(lifetimeOffers) ?? undefined;
           return { site, bestPrice, currency, bestOfferId, discountPercent };
         })
       ).catch(() => [])
@@ -164,14 +132,25 @@ export default async function Home({ params, searchParams }: Props) {
         )}
       </Container>
 
-      {page === 1 && <CategorySpotlight categorySlug="ai-porn" theme="purple" />}
+      {page === 1 && <CategorySpotlight categorySlug="ai-porn" eyebrow={t('aiSpotlightEyebrow')} theme="purple" />}
 
       {(lifetimeDeals.length > 0 || camSites.length > 0) && (
         <Container className="pb-14">
           {camSites.length > 0 && (
             <>
               <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} className="mt-12" />
-              <SiteCardGrid items={camSites.map((site) => ({ site }))} />
+              <SiteCardGrid items={camSites.map((site) => {
+                const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
+                const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
+                const bestOffer = sorted[0];
+                return {
+                  site,
+                  bestPrice: bestOffer?.price,
+                  currency: 'USD',
+                  bestOfferId: bestOffer?.id,
+                  discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
+                };
+              })} />
             </>
           )}
         </Container>
@@ -186,7 +165,7 @@ export default async function Home({ params, searchParams }: Props) {
         </Container>
       )}
 
-      {page === 1 && <CategorySpotlight categorySlug="vr-porn" theme="cyan" />}
+      {page === 1 && <CategorySpotlight categorySlug="vr-porn" eyebrow={t('vrSpotlightEyebrow')} theme="cyan" />}
 
       {page === 1 && <CategoryGrid />}
 

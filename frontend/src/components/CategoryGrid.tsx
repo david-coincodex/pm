@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCategoriesGrid, strapiMediaUrl } from '@/lib/strapi';
 import Container from '@/components/Container';
+import SectionTitle from '@/components/SectionTitle';
 import { routes } from '@/lib/routes';
 
 export default async function CategoryGrid() {
@@ -14,15 +15,10 @@ export default async function CategoryGrid() {
   return (
     <section className="py-14">
       <Container>
-        {/* Header */}
-        <div className="mb-8">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-rose-600 dark:text-rose-400">
-            {t('eyebrow')}
-          </p>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-            {t('title')}
-          </h2>
-        </div>
+        <SectionTitle
+          title={t('title')}
+          tag={t('eyebrow')}
+        />
 
         {/* Grid */}
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

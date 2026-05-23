@@ -1,50 +1,20 @@
 import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { getCategoryWithSites, strapiMediaUrl } from '@/lib/strapi';
+import { getCategoryWithSites, strapiMediaUrl, getDiscountPercent } from '@/lib/strapi';
 import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
+import { themes, type SpotlightTheme } from '@/lib/themes';
 
-type SpotlightTheme = 'purple' | 'cyan';
-
-const themes: Record<SpotlightTheme, {
-  section: string;
-  orb1: string;
-  orb2: string;
-  badge: string;
-  button: string;
-  cardHover: string;
-  discountBadge: string;
-  accentText: string;
-}> = {
-  purple: {
-    section: 'bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900',
-    orb1: 'bg-purple-600/20',
-    orb2: 'bg-fuchsia-700/15',
-    badge: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
-    button: 'bg-purple-600 shadow-purple-900/40 hover:bg-purple-500 focus-visible:outline-purple-400',
-    cardHover: 'hover:border-purple-400/50',
-    discountBadge: 'bg-fuchsia-600',
-    accentText: 'text-fuchsia-400',
-  },
-  cyan: {
-    section: 'bg-gradient-to-br from-slate-900 via-cyan-950 to-slate-900',
-    orb1: 'bg-cyan-500/20',
-    orb2: 'bg-teal-600/15',
-    badge: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
-    button: 'bg-cyan-600 shadow-cyan-900/40 hover:bg-cyan-500 focus-visible:outline-cyan-400',
-    cardHover: 'hover:border-cyan-400/50',
-    discountBadge: 'bg-teal-500',
-    accentText: 'text-cyan-400',
-  },
-};
+export type { SpotlightTheme };
 
 interface CategorySpotlightProps {
   categorySlug: string;
+  eyebrow: string;
   theme?: SpotlightTheme;
 }
 
-export default async function CategorySpotlight({ categorySlug, theme = 'purple' }: CategorySpotlightProps) {
+export default async function CategorySpotlight({ categorySlug, eyebrow, theme = 'purple' }: CategorySpotlightProps) {
   const t = await getTranslations('categorySpotlight');
   const category = await getCategoryWithSites(categorySlug, 3).catch(() => null);
 
@@ -53,24 +23,14 @@ export default async function CategorySpotlight({ categorySlug, theme = 'purple'
   const c = themes[theme];
 
   return (
-    <section className={`relative overflow-hidden ${c.section} py-14`}>
-      {/* Decorative orbs */}
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full ${c.orb1} blur-3xl`}
-      />
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute -bottom-32 -left-32 h-[400px] w-[400px] rounded-full ${c.orb2} blur-3xl`}
-      />
-
+    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-14">
       <Container>
         <div className="relative flex flex-col gap-10 lg:flex-row lg:items-center">
           {/* Left: category info */}
           <div className="flex flex-col gap-5 lg:w-2/5">
             <div>
-              <span className={`mb-3 inline-block rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest ${c.badge}`}>
-                {t('badge')}
+              <span className={`mb-3 inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${c.badge}`}>
+                {eyebrow}
               </span>
               <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                 {category.name}
@@ -84,7 +44,7 @@ export default async function CategorySpotlight({ categorySlug, theme = 'purple'
             <div>
               <Link
                   href={routes.category(categorySlug)}
-                className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-lg transition focus-visible:outline focus-visible:outline-2 ${c.button}`}
+                className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-lg transition focus-visible:outline focus-visible:outline-2 ${c.solidButton}`}
               >
                 {t('viewAll', { name: category.name })}
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -100,10 +60,7 @@ export default async function CategorySpotlight({ categorySlug, theme = 'purple'
               const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
               const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
               const bestOffer = sorted[0];
-              const discountPercent =
-                bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-                  ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-                  : null;
+              const discountPercent = bestOffer ? getDiscountPercent(bestOffer) : null;
               const image = site.cover_image ?? site.logo;
 
               return (
@@ -131,7 +88,7 @@ export default async function CategorySpotlight({ categorySlug, theme = 'purple'
                     )}
                     {discountPercent !== null && (
                       <span className={`absolute right-2 top-2 rounded-full ${c.discountBadge} px-2 py-1 text-xs font-bold text-white shadow`}>
-                        -{discountPercent}%
+                        {discountPercent}%
                       </span>
                     )}
                   </div>

@@ -44,4 +44,10 @@ export const routes = {
 
   /** Static CMS page — e.g. /page/about/ */
   page: (slug: string) => `/page/${slug}/` as const,
+
+  /** Reviews listing */
+  reviews: () => '/reviews/' as const,
+
+  /** Review detail page — e.g. /reviews/brazzers/ */
+  review: (siteSlug: string) => `/reviews/${siteSlug}/` as const,
 };

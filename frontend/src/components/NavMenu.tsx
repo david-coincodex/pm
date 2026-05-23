@@ -122,6 +122,7 @@ export default function NavMenu() {
           <NavLink href={routes.home()} label={t('pornDeals')} />
           <NavLink href={routes.bundles()} label={t('bundles')} />
           <NavLink href={routes.category('cam-sites')} label={t('liveSex')} />
+          <NavLink href={routes.reviews()} label={t('reviews')} />
           <CategoriesDropdown />
           <NavLink href={routes.blog()} label={t('blog')} />
         </nav>
@@ -208,6 +209,7 @@ export default function NavMenu() {
             { href: routes.home(), label: t('pornDeals') },
             { href: routes.bundles(), label: t('bundles') },
             { href: routes.category('cam-sites'), label: t('liveSex') },
+            { href: routes.reviews(), label: t('reviews') },
             { href: routes.blog(), label: t('blog') },
           ].map(({ href, label }) => (
             <Link

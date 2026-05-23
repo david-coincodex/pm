@@ -1,11 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useState, useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
+import { getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import PaymentMethodPills from './PaymentMethodPills';
+import UpsellPopup from './UpsellPopup';
+import ReviewTeaser from './ReviewTeaser';
+
+/** Daily verification update time: 1 PM UTC */
+const UPDATE_HOUR_UTC = 13;
+
+function getVerifiedDate(): Date {
+  const now = new Date();
+  const today1pm = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), UPDATE_HOUR_UTC));
+  if (now >= today1pm) {
+    return today1pm;
+  }
+  // Before 1 PM UTC → yesterday's 1 PM
+  return new Date(today1pm.getTime() - 24 * 60 * 60 * 1000);
+}
 
 const TYPE_ORDER: NonNullable<Offer['offerType']>[] = [
   'trial',
@@ -27,10 +43,12 @@ interface DealBuyProps {
   offers: Offer[];
   dealIncludes?: string | null;
   paymentMethods?: string[] | null;
+  review?: { slug: string; score: number | null } | null;
 }
 
-export default function DealBuy({ offers, dealIncludes, paymentMethods }: DealBuyProps) {
+export default function DealBuy({ offers, dealIncludes, paymentMethods, review }: DealBuyProps) {
   const t = useTranslations('discount');
+  const locale = useLocale();
 
   // Separate by kind
   const subscriptionOffers = offers.filter((o) => o.offerKind === 'subscription');
@@ -48,26 +66,26 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods }: DealBu
   const allSorted = [...sortedSubs, ...sortedCredits];
 
   const [selectedId, setSelectedId] = useState<number>(allSorted[0]?.id ?? 0);
+  const [showUpsell, setShowUpsell] = useState(false);
   const selected = allSorted.find((s) => s.id === selectedId) ?? allSorted[0];
 
   if (!selected) return null;
 
+  const verifiedDate = useMemo(() => {
+    const d = getVerifiedDate();
+    return d.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+  }, [locale]);
+
   const fullPrice = selected.full_price ?? 0;
-  const discount = fullPrice > selected.price
-    ? Math.round(((fullPrice - selected.price) / fullPrice) * 100)
-    : null;
+  const discount = getDiscountPercent(selected);
 
   const isCredits = selected.offerKind === 'credits';
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-      <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-        {t('bestPrice')}
-      </h2>
-
       {/* Offer selector */}
       {allSorted.length > 1 && (
-        <div className="mb-5 flex flex-wrap gap-2">
+        <div className="mb-5 flex flex-wrap justify-center gap-2">
           {allSorted.map((offer) => (
             <button
               key={offer.id}
@@ -104,7 +122,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods }: DealBu
         )}
         {discount !== null && discount > 0 && (
           <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            -{discount}% off
+            {discount}% off
           </div>
         )}
       </div>
@@ -114,10 +132,19 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods }: DealBu
         href={routes.offer(selected.id)}
         target="_blank"
         rel="nofollow noopener noreferrer"
+        onClick={() => setShowUpsell(true)}
         className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
       >
         {t('buyNow')}
       </Link>
+
+      {/* Verified badge */}
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M16.403 12.652a3 3 0 0 0 0-5.304 3 3 0 0 0-3.75-3.751 3 3 0 0 0-5.305 0 3 3 0 0 0-3.751 3.75 3 3 0 0 0 0 5.305 3 3 0 0 0 3.75 3.751 3 3 0 0 0 5.305 0 3 3 0 0 0 3.751-3.75Zm-2.546-4.46a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+        </svg>
+        <span className="font-medium">{t('verifiedOn', { date: verifiedDate })}</span>
+      </p>
 
       {paymentMethods && paymentMethods.length > 0 && (
         <PaymentMethodPills methods={paymentMethods} />
@@ -136,6 +163,10 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods }: DealBu
           ))}
         </ul>
       )}
+
+      <UpsellPopup open={showUpsell} onClose={() => setShowUpsell(false)} />
+
+      {review && <ReviewTeaser slug={review.slug} score={review.score} />}
     </div>
   );
 }

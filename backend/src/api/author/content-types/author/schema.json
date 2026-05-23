@@ -49,6 +49,18 @@
       "relation": "manyToMany",
       "target": "api::article.article",
       "mappedBy": "editors"
+    },
+    "authoredReviews": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::review.review",
+      "mappedBy": "authors"
+    },
+    "editedReviews": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::review.review",
+      "mappedBy": "editors"
     }
   }
 }

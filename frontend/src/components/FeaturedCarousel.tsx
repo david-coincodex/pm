@@ -69,7 +69,7 @@ export default async function FeaturedCarousel({ items, locale = 'en' }: Feature
                 )}
                 {item.discountPercent !== undefined && (
                   <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-3 py-1 text-sm font-bold text-white shadow">
-                    -{item.discountPercent}%
+                    {item.discountPercent}%
                   </span>
                 )}
               </div>

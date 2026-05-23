@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
+import { getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 
 const TYPE_ORDER: NonNullable<Offer['offerType']>[] = [
@@ -51,9 +52,7 @@ export default function DealBuy({ offers, dealIncludes }: DealBuyProps) {
   if (!selected) return null;
 
   const fullPrice = selected.full_price ?? 0;
-  const discount = fullPrice > selected.price
-    ? Math.round(((fullPrice - selected.price) / fullPrice) * 100)
-    : null;
+  const discount = getDiscountPercent(selected);
 
   const isCredits = selected.offerKind === 'credits';
 
@@ -102,7 +101,7 @@ export default function DealBuy({ offers, dealIncludes }: DealBuyProps) {
         )}
         {discount !== null && discount > 0 && (
           <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            -{discount}% off
+            {discount}% off
           </div>
         )}
       </div>

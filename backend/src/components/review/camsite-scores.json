@@ -1,0 +1,51 @@
+{
+  "collectionName": "components_review_camsite_scores",
+  "info": {
+    "displayName": "Cam Site Scores",
+    "icon": "star",
+    "description": "Score breakdown for cam site reviews (each field 1-10)"
+  },
+  "options": {},
+  "attributes": {
+    "modelVariety": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "streamQuality": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "features": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "value": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "interactivity": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "mobileExperience": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "privacy": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "privateShows": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    }
+  }
+}

@@ -267,6 +267,22 @@ export type Offer = {
   isActive: boolean;
 };
 
+/** Returns discount percentage (0–100) or null if no discount applies. */
+export function getDiscountPercent(offer: Pick<Offer, 'price' | 'full_price'>): number | null {
+  if (!offer.full_price || offer.full_price <= offer.price) return null;
+  return Math.round(((offer.full_price - offer.price) / offer.full_price) * 100);
+}
+
+/** Returns the highest discount percentage across a list of offers, or null if none. */
+export function getMaxDiscountPercent(offers: Pick<Offer, 'price' | 'full_price'>[]): number | null {
+  let max: number | null = null;
+  for (const offer of offers) {
+    const d = getDiscountPercent(offer);
+    if (d !== null && (max === null || d > max)) max = d;
+  }
+  return max;
+}
+
 export type Featured = {
   id: number;
   documentId: string;
@@ -513,6 +529,20 @@ export async function getArticles(locale: string): Promise<Article[]> {
   return res.data;
 }
 
+/** Fetch a paginated list of published articles for a locale, newest first. */
+export async function getArticlesPaginated(
+  locale: string,
+  page = 1,
+  pageSize = 12
+): Promise<{ data: Article[]; pagination: NonNullable<StrapiResponse<Article[]>['meta']['pagination']> }> {
+  const res = await strapiGet<Article[]>(
+    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
+  return { data: res.data, pagination };
+}
+
 /** Fetch the latest N published articles for a locale. */
 export async function getLatestArticles(locale: string, limit = 8): Promise<Article[]> {
   const res = await strapiGet<Article[]>(
@@ -542,11 +572,106 @@ export type Page = {
   content: Record<string, unknown>[] | null;
 };
 
-/** Fetch a published CMS page by slug. Returns null if not found. */
-export async function getPageBySlug(slug: string): Promise<Page | null> {
+/** Fetch a published CMS page by slug and locale. Falls back to default locale if no translation exists. */
+export async function getPageBySlug(slug: string, locale = 'en'): Promise<Page | null> {
   const res = await strapiGet<Page[]>(
-    `/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true`,
+    `/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data[0] ?? null;
+  if (res.data[0]) return res.data[0];
+  // Fall back to default locale if no translation found
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Page[]>(
+      `/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&locale=en`,
+      { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
+}
+
+export type PaysiteScores = {
+  contentQuality: number | null;
+  contentAmount: number | null;
+  value: number | null;
+  updates: number | null;
+  exclusivity: number | null;
+  features: number | null;
+  downloads: number | null;
+  streaming: number | null;
+  mobileExperience: number | null;
+};
+
+export type CamsiteScores = {
+  modelVariety: number | null;
+  streamQuality: number | null;
+  features: number | null;
+  value: number | null;
+  interactivity: number | null;
+  mobileExperience: number | null;
+  privacy: number | null;
+  privateShows: number | null;
+};
+
+export type Review = {
+  id: number;
+  documentId: string;
+  metaTitle: string | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  content: Record<string, unknown>[] | null;
+  pros: string | null;
+  cons: string | null;
+  paysiteScores: PaysiteScores | null;
+  camsiteScores: CamsiteScores | null;
+  site: Site;
+  authors: ArticleAuthor[];
+  editors: ArticleAuthor[];
+  publishDate: string | null;
+  publishedAt: string | null;
+  locale: string;
+};
+
+const REVIEW_POPULATE =
+  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=authors&populate[4]=authors.avatar&populate[5]=editors&populate[6]=editors.avatar&populate[7]=paysiteScores&populate[8]=camsiteScores';
+
+/** Fetch all published reviews for a locale, newest first. */
+export async function getReviews(locale: string, limit = 100): Promise<Review[]> {
+  const res = await strapiGet<Review[]>(
+    `/reviews?${REVIEW_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[pageSize]=${limit}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data;
+}
+
+/** Fetch a paginated list of published reviews for a locale, newest first. */
+export async function getReviewsPaginated(
+  locale: string,
+  page = 1,
+  pageSize = 12
+): Promise<{ data: Review[]; pagination: NonNullable<StrapiResponse<Review[]>['meta']['pagination']> }> {
+  const res = await strapiGet<Review[]>(
+    `/reviews?${REVIEW_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
+  return { data: res.data, pagination };
+}
+
+/** Fetch a single published review by site slug + locale. Falls back to 'en' if no translation. */
+export async function getReviewBySiteSlug(siteSlug: string, locale: string): Promise<Review | null> {
+  const res = await strapiGet<Review[]>(
+    `/reviews?${REVIEW_POPULATE}&filters[site][slug][$eq]=${encodeURIComponent(siteSlug)}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  if (res.data[0]) return res.data[0];
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Review[]>(
+      `/reviews?${REVIEW_POPULATE}&filters[site][slug][$eq]=${encodeURIComponent(siteSlug)}&filters[publishedAt][$notNull]=true&locale=en`,
+      { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
 }

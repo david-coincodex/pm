@@ -11,31 +11,53 @@
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {},
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
   "attributes": {
     "title": {
       "type": "string",
       "required": true,
-      "comment": "Internal title / identifier"
+      "comment": "Internal title / identifier",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     },
     "slug": {
       "type": "uid",
       "targetField": "title",
-      "required": true
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     },
     "h1": {
       "type": "string",
-      "required": true
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     },
     "metaTitle": {
       "type": "string",
-      "required": true
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     },
     "metaDescription": {
-      "type": "text"
+      "type": "text",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     },
     "content": {
-      "type": "blocks"
+      "type": "blocks",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
     }
   }
 }

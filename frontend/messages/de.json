@@ -16,6 +16,7 @@
     "liveSex": "Live-Sex",
     "categories": "Kategorien",
     "blog": "Blog",
+    "reviews": "Bewertungen",
     "openMenu": "Menü öffnen",
     "closeMenu": "Menü schließen",
     "search": "Suchen"
@@ -38,6 +39,8 @@
     "lifetimeSubtitle": "Einmalige Zahlung, unbegrenzter Zugang — keine wiederkehrenden Kosten.",
     "camTitle": "Credits für Live-Sex-Seiten kaufen",
     "camSubtitle": "Kaufe Credits und verbinde dich mit echten Performern, die jetzt live streamen.",
+    "aiSpotlightEyebrow": "KI-Porno-Angebote",
+    "vrSpotlightEyebrow": "VR-Porno-Angebote",
     "empty": "Keine Webseiten gefunden.",
     "bonusSitesDescription": "Dein {siteName}-Abo beinhaltet {count} Bonus-Seiten, darunter {siteList} – alles im Preis eines einzigen Abonnements enthalten."
   },
@@ -60,6 +63,7 @@
     "advertise": "Werbung schalten",
     "contact": "Kontakt",
     "blog": "Blog",
+    "reviews": "Bewertungen",
     "legal": "Rechtliches",
     "terms": "Nutzungsbedingungen",
     "privacy": "Datenschutzrichtlinie",
@@ -150,7 +154,8 @@
     "discount": "Rabatte",
     "sites": "Webseiten",
     "blog": "Blog",
-    "offer": "Angebot"
+    "offer": "Angebot",
+    "reviews": "Bewertungen"
   },
   "discounts": {
     "pageTitle": "Rabatte",
@@ -179,7 +184,11 @@
     "liveBadge": "LIVE",
     "credits": "Credits",
     "peopleAlsoBought": "Andere kauften auch",
-    "whatsIncluded": "Was ist enthalten"
+    "whatsIncluded": "Was ist enthalten",
+    "verifiedOn": "Verifiziert am {date}",
+    "ourReview": "Unser Test",
+    "readReview": "Vollständigen Test lesen",
+    "reviewTitle": "{name} Test"
   },
   "blog": {
     "pageTitle": "Blog",
@@ -209,7 +218,6 @@
     "viewDeal": "Zum Angebot"
   },
   "categorySpotlight": {
-    "badge": "Kategorie-Highlight",
     "viewAll": "Alle {name}-Seiten ansehen",
     "from": "Ab"
   },
@@ -241,5 +249,49 @@
   "categoryGrid": {
     "eyebrow": "Nach Kategorie stöbern",
     "title": "Dein Bereich",
-    "sites": "{count, plural, one {# Seite} other {# Seiten}}"  }
+    "sites": "{count, plural, one {# Seite} other {# Seiten}}"
+  },
+  "reviews": {
+    "pageTitle": "Bewertungen von Erwachsenenwebseiten",
+    "pageMetaTitle": "Bewertungen von Erwachsenenwebseiten — PornMode",
+    "pageDescription": "Ausführliche Rezensionen der besten Erwachsenenwebseiten mit detaillierten Bewertungsübersichten.",
+    "overallScore": "Gesamtpunktzahl",
+    "pros": "Vorteile",
+    "cons": "Nachteile",
+    "readReview": "Rezension lesen",
+    "by": "Von",
+    "editedBy": "Bearbeitet von",
+    "publishedOn": "Veröffentlicht",
+    "empty": "Noch keine Bewertungen veröffentlicht."
+  },
+  "scores": {
+    "contentQuality": "Inhaltsqualität",
+    "contentAmount": "Inhaltsmenge",
+    "value": "Preis-Leistung",
+    "updates": "Updates",
+    "exclusivity": "Exklusivität",
+    "features": "Funktionen",
+    "downloads": "Downloads",
+    "streaming": "Streaming",
+    "mobileExperience": "Mobile-Erfahrung",
+    "modelVariety": "Model-Vielfalt",
+    "streamQuality": "Stream-Qualität",
+    "interactivity": "Interaktivität",
+    "privacy": "Privatsphäre",
+    "privateShows": "Private Shows"
+  },
+  "upsell": {
+    "description": "Mitglieder, die dies gekauft haben, haben auch zugegriffen:",
+    "dealName": "Adult Time – Voller Netzwerkzugang",
+    "dealPrice": "7,95 €/Monat",
+    "dealOriginalPrice": "19,95 €/Monat",
+    "dealDiscount": "-60%",
+    "claimDeal": "Angebot sichern",
+    "feedbackTitle": "Hat der Rabatt funktioniert?",
+    "feedbackYes": "Ja",
+    "feedbackNo": "Nein",
+    "feedbackThanks": "Danke für dein Feedback!",
+    "feedbackSorry": "Das tut uns leid. Unser Team kann helfen:",
+    "contactSupport": "Support kontaktieren"
+  }
 }

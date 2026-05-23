@@ -1,0 +1,56 @@
+{
+  "collectionName": "components_review_paysite_scores",
+  "info": {
+    "displayName": "Paysite Scores",
+    "icon": "star",
+    "description": "Score breakdown for paysite reviews (each field 1-10)"
+  },
+  "options": {},
+  "attributes": {
+    "contentQuality": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "contentAmount": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "value": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "updates": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "exclusivity": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "features": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "downloads": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "streaming": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    },
+    "mobileExperience": {
+      "type": "integer",
+      "min": 1,
+      "max": 10
+    }
+  }
+}

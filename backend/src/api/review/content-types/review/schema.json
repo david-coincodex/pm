@@ -1,0 +1,98 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reviews",
+  "info": {
+    "singularName": "review",
+    "pluralName": "reviews",
+    "displayName": "Review",
+    "description": "Site reviews with score breakdown",
+    "mainField": "title"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "metaTitle": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true,
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "description": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "content": {
+      "type": "blocks",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "pros": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "cons": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": { "localized": true }
+      }
+    },
+    "paysiteScores": {
+      "type": "component",
+      "repeatable": false,
+      "component": "review.paysite-scores"
+    },
+    "camsiteScores": {
+      "type": "component",
+      "repeatable": false,
+      "component": "review.camsite-scores"
+    },
+    "site": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::site.site",
+      "required": true
+    },
+    "authors": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::author.author",
+      "inversedBy": "authoredReviews"
+    },
+    "editors": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::author.author",
+      "inversedBy": "editedReviews"
+    },
+    "publishDate": {
+      "type": "datetime"
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { type RecentItem } from '@/hooks/useRecentlyViewed';
-import { type Featured } from '@/lib/strapi';
+import { type Featured, getDiscountPercent } from '@/lib/strapi';
 import { type SearchResult } from '@/app/api/search/route';
 import { routes } from '@/lib/routes';
 
@@ -43,15 +43,13 @@ function getBestOffer(site: any) {
 
 function PriceTag({ price, fullPrice }: { price?: number; fullPrice?: number | null }) {
   if (price == null) return null;
-  const discount = fullPrice && fullPrice > price
-    ? Math.round(((fullPrice - price) / fullPrice) * 100)
-    : null;
+  const discount = getDiscountPercent({ price, full_price: fullPrice ?? null });
 
   return (
     <div className="flex items-center gap-2">
       {discount && (
         <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-          -{discount}%
+          {discount}%
         </span>
       )}
       <span className="text-sm font-semibold text-slate-900 dark:text-white">

@@ -10,8 +10,7 @@ type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const page = await getPageBySlug(slug);
-  if (!page) return {};
+  const page = await getPageBySlug(slug, locale);
 
   const canonical =
     locale === routing.defaultLocale ? `/page/${slug}/` : `/${locale}/page/${slug}/`;
@@ -32,8 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CmsPage({ params }: Props) {
-  const { slug } = await params;
-  const page = await getPageBySlug(slug);
+  const { locale, slug } = await params;
+  const page = await getPageBySlug(slug, locale);
 
   if (!page) notFound();
 

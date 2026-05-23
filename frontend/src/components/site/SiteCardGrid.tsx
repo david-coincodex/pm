@@ -8,6 +8,8 @@ interface SiteWithDealMeta {
   currency?: string;
   bestOfferId?: number;
   discountPercent?: number;
+  /** When provided, the card renders in review mode */
+  review?: { score: number | null };
 }
 
 interface SiteCardGridProps {
@@ -25,8 +27,8 @@ export default async function SiteCardGrid({ items, emptyMessage }: SiteCardGrid
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {items.map(({ site, bestPrice, currency, bestOfferId, discountPercent }) => (
-        <SiteCard key={site.id} site={site} bestPrice={bestPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} />
+      {items.map(({ site, bestPrice, currency, bestOfferId, discountPercent, review }) => (
+        <SiteCard key={site.id} site={site} bestPrice={bestPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} />
       ))}
     </div>
   );

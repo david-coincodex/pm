@@ -16,6 +16,7 @@
     "liveSex": "Live Sex",
     "categories": "Categories",
     "blog": "Blog",
+    "reviews": "Reviews",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "search": "Search"
@@ -38,6 +39,8 @@
     "lifetimeSubtitle": "One-time payment, unlimited access — no recurring charges.",
     "camTitle": "Get Credits on Live Sex Sites",
     "camSubtitle": "Top up and connect with real performers streaming live right now.",
+    "aiSpotlightEyebrow": "AI Porn Deals",
+    "vrSpotlightEyebrow": "VR Porn Deals",
     "empty": "No sites found.",
     "bonusSitesDescription": "Your {siteName} membership unlocks {count} bonus sites including {siteList} — all covered by the same subscription."
   },
@@ -60,6 +63,7 @@
     "advertise": "Advertise",
     "contact": "Contact",
     "blog": "Blog",
+    "reviews": "Reviews",
     "legal": "Legal",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
@@ -150,7 +154,8 @@
     "discount": "Discounts",
     "sites": "Sites",
     "blog": "Blog",
-    "offer": "Offer"
+    "offer": "Offer",
+    "reviews": "Reviews"
   },
   "discounts": {
     "pageTitle": "Discounts",
@@ -179,7 +184,11 @@
     "liveBadge": "LIVE",
     "credits": "Credits",
     "peopleAlsoBought": "People also bought",
-    "whatsIncluded": "What's Included"
+    "whatsIncluded": "What's Included",
+    "verifiedOn": "Verified on {date}",
+    "ourReview": "Our Review",
+    "readReview": "Read full review",
+    "reviewTitle": "{name} Review"
   },
   "blog": {
     "pageTitle": "Blog",
@@ -209,7 +218,6 @@
     "viewDeal": "View Deal"
   },
   "categorySpotlight": {
-    "badge": "Category Spotlight",
     "viewAll": "Browse all {name} sites",
     "from": "From"
   },
@@ -243,5 +251,48 @@
     "eyebrow": "Browse by Category",
     "title": "Find Your Niche",
     "sites": "{count, plural, one {# site} other {# sites}}"
+  },
+  "reviews": {
+    "pageTitle": "Adult Site Reviews",
+    "pageMetaTitle": "Adult Site Reviews — PornMode",
+    "pageDescription": "In-depth reviews of the best adult sites, with expert score breakdowns.",
+    "overallScore": "Overall Score",
+    "pros": "Pros",
+    "cons": "Cons",
+    "readReview": "Read Review",
+    "by": "By",
+    "editedBy": "Edited by",
+    "publishedOn": "Published",
+    "empty": "No reviews published yet."
+  },
+  "scores": {
+    "contentQuality": "Content Quality",
+    "contentAmount": "Content Amount",
+    "value": "Value",
+    "updates": "Updates",
+    "exclusivity": "Exclusivity",
+    "features": "Features",
+    "downloads": "Downloads",
+    "streaming": "Streaming",
+    "mobileExperience": "Mobile Experience",
+    "modelVariety": "Model Variety",
+    "streamQuality": "Stream Quality",
+    "interactivity": "Interactivity",
+    "privacy": "Privacy",
+    "privateShows": "Private Shows"
+  },
+  "upsell": {
+    "description": "Members who bought this also grabbed:",
+    "dealName": "Adult Time – Full Network Access",
+    "dealPrice": "$7.95/mo",
+    "dealOriginalPrice": "$19.95/mo",
+    "dealDiscount": "-60%",
+    "claimDeal": "Claim This Deal",
+    "feedbackTitle": "Did the discount work?",
+    "feedbackYes": "Yes",
+    "feedbackNo": "No",
+    "feedbackThanks": "Thanks for your feedback!",
+    "feedbackSorry": "Sorry about that. Our team can help:",
+    "contactSupport": "Contact Support"
   }
 }

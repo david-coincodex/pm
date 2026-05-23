@@ -2,9 +2,10 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { getDealBySiteSlug, getSiteBySlug, getTopDeals, getBundlesForSite, getPublishedBundles, strapiMediaUrl, getCategoryBySlug, getSitesByCategorySlug, getAllCategories, type Platform } from '@/lib/strapi';
+import { getDealBySiteSlug, getSiteBySlug, getTopDeals, getBundlesForSite, getPublishedBundles, strapiMediaUrl, getCategoryBySlug, getSitesByCategorySlug, getAllCategories, getReviewBySiteSlug, getDiscountPercent, getMaxDiscountPercent, type Platform, type PaysiteScores, type CamsiteScores } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
 import { Link } from '@/i18n/navigation';
+import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
 import SidebarLayout from '@/components/SidebarLayout';
@@ -34,8 +35,9 @@ export async function generateStaticParams() {
   );
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
+  const { page: pageStr } = await searchParams;
 
   const categorySlug = parseCategorySlug(slug);
   if (categorySlug) {
@@ -44,16 +46,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       getTranslations({ locale, namespace: 'category' }),
     ]);
     if (!category) return {};
-    const path = locale === routing.defaultLocale ? `/${slug}/` : `/${locale}/${slug}/`;
+    const page = parsePage(pageStr);
     return {
-      title: t('pageMetaTitle', { name: category.name }),
+      title: paginatedTitle(t('pageMetaTitle', { name: category.name }), page),
       description: category.description ?? undefined,
-      alternates: {
-        canonical: path,
-        languages: Object.fromEntries(
-          routing.locales.map((loc) => [loc, loc === routing.defaultLocale ? `/${slug}/` : `/${loc}/${slug}/`])
-        ),
-      },
+      alternates: paginatedAlternates(`/${slug}/`, page, locale),
     };
   }
 
@@ -68,6 +65,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const now = new Date();
   const month = now.toLocaleString('en-US', { month: 'short' });
   const year = now.getFullYear();
+
+  // Verified date: today at 1 PM UTC if past, otherwise yesterday 1 PM UTC
+  const today1pm = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 13));
+  // Verified date object for lastModified
+  const verifiedDate = now >= today1pm ? today1pm : new Date(today1pm.getTime() - 86400000);
+  const verifiedIso = verifiedDate.toISOString();
+
   const discountedOffers = (site.offers ?? []).filter(
     (o) => o.isActive && o.full_price != null && o.full_price > o.price
   );
@@ -83,6 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: metaTitle,
     description: site.short_description ?? undefined,
+    other: { 'article:modified_time': verifiedIso, 'last-modified': verifiedIso },
     alternates: {
       canonical,
       languages: Object.fromEntries(
@@ -105,15 +110,28 @@ const OFFER_TYPE_LABEL: Record<string, string> = {
   lifetime: 'lifetime',
 };
 
+/** Average all non-null numeric scores → 0–10 rounded to 1 decimal, or null if no scores. */
+function computeOverallScore(
+  paysite: PaysiteScores | null,
+  camsite: CamsiteScores | null,
+): number | null {
+  const scores = [...Object.entries(paysite ?? {}), ...Object.entries(camsite ?? {})]
+    .filter(([key]) => key !== 'id')
+    .map(([, v]) => v)
+    .filter((v): v is number => typeof v === 'number');
+  if (scores.length === 0) return null;
+  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+}
+
 export default async function DiscountDetailPage({ params, searchParams }: Props) {
   const { locale, slug } = await params;
   const { page: pageStr } = await searchParams;
 
   const categorySlug = parseCategorySlug(slug);
   if (categorySlug) {
-    const page = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
+    const page = parsePage(pageStr);
     const PAGE_SIZE = 12;
-    const basePath = locale === routing.defaultLocale ? `/${slug}/` : `/${locale}/${slug}/`;
+    const basePath = locale === 'en' ? `/${slug}/` : `/${locale}/${slug}/`;
 
     const [category, { sites, pagination }, t] = await Promise.all([
       getCategoryBySlug(categorySlug),
@@ -132,25 +150,28 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         bestPrice: bestOffer?.price,
         currency: 'USD',
         bestOfferId: bestOffer?.id,
-        discountPercent:
-          bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-            ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-            : undefined,
+        discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
       };
     });
 
+    const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
+
     return (
-      <Container className="py-10">
-        <SectionTitle
-          as="h1"
-          title={t('heading', { name: category.name })}
-          subtitle={category.description ?? t('defaultSubtitle', { name: category.name })}
-        />
-        <SiteCardGrid items={items} />
-        {pagination.pageCount > 1 && (
-          <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
-        )}
-      </Container>
+      <>
+        {prevHref && <link rel="prev" href={prevHref} />}
+        {nextHref && <link rel="next" href={nextHref} />}
+        <Container className="py-10">
+          <SectionTitle
+            as="h1"
+            title={t('heading', { name: category.name })}
+            subtitle={category.description ?? t('defaultSubtitle', { name: category.name })}
+          />
+          <SiteCardGrid items={items} />
+          {pagination.pageCount > 1 && (
+            <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
+          )}
+        </Container>
+      </>
     );
   }
 
@@ -163,9 +184,10 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
   if (!site) notFound();
 
-  const [relatedDeals, siteBundles] = await Promise.all([
+  const [relatedDeals, siteBundles, review] = await Promise.all([
     getTopDeals(4, slug),
     getBundlesForSite(slug, 3),
+    getReviewBySiteSlug(slug, locale),
   ]);
   const bundlesToShow = siteBundles.length > 0 ? siteBundles : await getPublishedBundles(3);
 
@@ -212,6 +234,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
             offers={activeOffers}
             dealIncludes={site.included}
             paymentMethods={site.platform?.paymentMethods?.map((pm) => pm.method) ?? null}
+            review={review ? { slug: site.slug, score: computeOverallScore(review.paysiteScores, review.camsiteScores) } : null}
           />
         }
       >
@@ -310,10 +333,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
                 bestPrice: bestOffer?.price,
                 currency: 'USD',
                 bestOfferId: bestOffer?.id,
-                discountPercent:
-                  bestOffer?.full_price && bestOffer.full_price > bestOffer.price
-                    ? Math.round(((bestOffer.full_price - bestOffer.price) / bestOffer.full_price) * 100)
-                    : undefined,
+                discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
               };
             })}
           />

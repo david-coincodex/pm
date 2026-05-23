@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getLatestArticles, strapiMediaUrl } from '@/lib/strapi';
 import Container from '@/components/Container';
+import SectionTitle from '@/components/SectionTitle';
 
 interface LatestArticlesProps {
   locale: string;
@@ -30,23 +31,12 @@ export default async function LatestArticles({ locale, limit = 8 }: LatestArticl
   return (
     <section className="py-14">
       <Container>
-        {/* Header */}
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-              {t('eyebrow')}
-            </p>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              {t('title')}
-            </h2>
-          </div>
-          <Link
-            href={blogBase}
-            className="shrink-0 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-          >
-            {t('viewAll')} →
-          </Link>
-        </div>
+        <SectionTitle
+          title={t('title')}
+          tag={t('eyebrow')}
+          link={blogBase}
+          linkLabel={t('viewAll')}
+        />
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Featured article — spans 2 columns on lg */}

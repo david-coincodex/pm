@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
 import { getBundlesPaginated } from '@/lib/strapi';
+import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import Container from '@/components/Container';
 import BundleGrid from '@/components/bundle/BundleGrid';
 import Pagination from '@/components/Pagination';
@@ -14,28 +14,16 @@ type Props = {
   searchParams: Promise<{ page?: string }>;
 };
 
-function parsePage(s: string | undefined) {
-  const n = parseInt(s ?? '1', 10);
-  return Number.isFinite(n) && n > 0 ? n : 1;
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const { page: pageStr } = await searchParams;
   const t = await getTranslations({ locale, namespace: 'bundles' });
-  const canonical = locale === routing.defaultLocale ? '/bundles/' : `/${locale}/bundles/`;
+  const page = parsePage(pageStr);
 
   return {
-    title: t('pageTitle'),
+    title: paginatedTitle(t('pageTitle'), page),
     description: t('pageSubtitle'),
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale ? '/bundles/' : `/${loc}/bundles/`,
-        ])
-      ),
-    },
+    alternates: paginatedAlternates('/bundles/', page, locale),
   };
 }
 
@@ -43,7 +31,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
-  const basePath = locale === routing.defaultLocale ? '/bundles/' : `/${locale}/bundles/`;
+  const basePath = locale === 'en' ? '/bundles/' : `/${locale}/bundles/`;
 
   const [{ bundles, pagination }, t] = await Promise.all([
     getBundlesPaginated(page, PAGE_SIZE).catch(() => ({
@@ -53,8 +41,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
     getTranslations({ locale, namespace: 'bundles' }),
   ]);
 
-  const prevHref = page > 1 ? (page === 2 ? basePath : `${basePath}?page=${page - 1}`) : null;
-  const nextHref = page < pagination.pageCount ? `${basePath}?page=${page + 1}` : null;
+  const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   return (
     <>

@@ -6,16 +6,20 @@ import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 import { useTranslations } from 'next-intl';
 import type { Bundle } from '@/lib/strapi';
+import { getDiscountPercent } from '@/lib/strapi';
 import { strapiMediaUrl } from '@/lib/strapi';
+import { themes, type SpotlightTheme } from '@/lib/themes';
 
 const MAX_VISIBLE_SITES = 3;
 
 interface BundleShowcaseProps {
   bundles: Bundle[];
+  theme?: SpotlightTheme;
 }
 
-export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
+export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowcaseProps) {
   const t = useTranslations('bundles');
+  const c = themes[theme];
   const [activeIndex, setActiveIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pausedRef = useRef(false);
@@ -41,18 +45,15 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
 
   return (
     <section
-      className="relative overflow-hidden bg-gradient-to-br from-amber-950 via-orange-950 to-slate-900 py-14"
+      className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-14"
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
     >
-      {/* Decorative orbs */}
-      <div aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/4 h-[400px] w-[400px] rounded-full bg-orange-500/15 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-1/4 h-[350px] w-[350px] rounded-full bg-amber-600/10 blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex flex-col gap-1 text-center">
-          <span className="mb-1 inline-block text-xs font-semibold uppercase tracking-widest text-amber-400">
+          <span className={`mb-1 inline-block text-xs font-semibold uppercase tracking-widest ${c.eyebrow}`}>
             {t('eyebrow')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
@@ -71,7 +72,7 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                 onClick={() => setActiveIndex(idx)}
                 className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition ${
                   idx === activeIndex
-                    ? 'bg-amber-500 text-white shadow-md shadow-amber-900/40'
+                    ? c.tabActive
                     : 'bg-white/10 text-slate-300 hover:bg-white/20'
                 }`}
               >
@@ -96,12 +97,10 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
             const best = activeOffers.length > 0
               ? [...activeOffers].sort((a, b) => a.price - b.price)[0]
               : null;
-            const discount = best?.full_price && best.full_price > best.price
-              ? Math.round(((best.full_price - best.price) / best.full_price) * 100)
-              : null;
+            const discount = best ? getDiscountPercent(best) : null;
             return best ? (
               <div className="mb-6 flex items-center justify-center gap-3">
-                <span className="text-2xl font-extrabold text-amber-400">
+                <span className={`text-2xl font-extrabold ${c.accentText}`}>
                   ${best.price.toFixed(2)}
                 </span>
                 {best.full_price && best.full_price > best.price && (
@@ -110,8 +109,8 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                   </span>
                 )}
                 {discount !== null && (
-                  <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">
-                    -{discount}%
+                  <span className={`rounded-full ${c.discountBadge} px-2.5 py-0.5 text-xs font-bold text-white`}>
+                    {discount}%
                   </span>
                 )}
               </div>
@@ -131,11 +130,11 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                   return (
                     <div key={site.id} className="flex items-center gap-3">
                       {idx > 0 && (
-                        <span className="text-2xl font-bold text-amber-400/70">+</span>
+                        <span className={`text-2xl font-bold ${c.accentMuted}`}>+</span>
                       )}
                       <Link
                         href={routes.site(site.slug)}
-                        className="group flex w-48 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition hover:border-amber-400/50 hover:bg-white/10"
+                        className={`group flex w-48 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition ${c.cardHover} hover:bg-white/10`}
                       >
                         <div className="relative aspect-video w-full overflow-hidden bg-slate-800">
                           {image ? (
@@ -155,7 +154,7 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                           )}
                         </div>
                         <div className="p-3">
-                          <p className="truncate text-sm font-semibold text-white transition-colors group-hover:text-amber-300">
+                          <p className={`truncate text-sm font-semibold text-white transition-colors ${c.cardNameHover}`}>
                             {site.name}
                           </p>
                         </div>
@@ -165,7 +164,7 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                 })}
                 {remaining > 0 && (
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold text-amber-400/70">+</span>
+                    <span className={`text-2xl font-bold ${c.accentMuted}`}>+</span>
                     <span className="text-sm font-semibold text-slate-300">
                       {remaining} {t('sites')}
                     </span>
@@ -184,7 +183,7 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
                 <span
                   key={idx}
                   className={`block h-1 rounded-full transition-all duration-300 ${
-                    idx === activeIndex ? 'w-8 bg-amber-400' : 'w-3 bg-white/20'
+                    idx === activeIndex ? `w-8 ${c.progressBar}` : 'w-3 bg-white/20'
                   }`}
                 />
               ))}
@@ -192,7 +191,7 @@ export default function BundleShowcase({ bundles }: BundleShowcaseProps) {
           )}
           <Link
             href={routes.bundles()}
-            className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-6 py-3 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
+            className={`inline-flex items-center gap-2 rounded-xl border px-6 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 ${c.outlineButton}`}
           >
             {t('viewAll')}
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

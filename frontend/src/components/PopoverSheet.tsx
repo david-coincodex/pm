@@ -5,23 +5,36 @@ import { createPortal } from 'react-dom';
 
 interface PopoverSheetProps {
   /** Trigger element. Pass a render function to receive the `open` state (e.g. for chevron rotation). */
-  trigger: ReactNode | ((open: boolean) => ReactNode);
+  trigger?: ReactNode | ((open: boolean) => ReactNode);
   /** Optional heading shown in the sheet/popup header */
   title?: string;
   children: ReactNode;
+  /** Controlled open state — when provided, the sheet is controlled externally */
+  forceOpen?: boolean;
+  /** Called when the sheet requests to close (controlled mode) */
+  onClose?: () => void;
 }
 
-export default function PopoverSheet({ trigger, title, children }: PopoverSheetProps) {
-  const [open, setOpen] = useState(false);
+export default function PopoverSheet({ trigger, title, children, forceOpen, onClose }: PopoverSheetProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = forceOpen !== undefined;
+  const open = isControlled ? forceOpen : internalOpen;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    if (isControlled) {
+      onClose?.();
+    } else {
+      setInternalOpen(false);
+    }
+  }, [isControlled, onClose]);
 
   function toggle() {
-    setOpen((v) => !v);
+    if (isControlled) return;
+    setInternalOpen((v) => !v);
   }
 
   // Close on Escape
@@ -39,11 +52,13 @@ export default function PopoverSheet({ trigger, title, children }: PopoverSheetP
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
-  const triggerNode = typeof trigger === 'function' ? trigger(open) : trigger;
+  const triggerNode = trigger
+    ? (typeof trigger === 'function' ? trigger(open) : trigger)
+    : null;
 
   return (
-    <div ref={wrapRef} className="relative inline-block">
-      <div className="h-full" onClick={toggle}>{triggerNode}</div>
+    <div ref={wrapRef} className={triggerNode ? 'relative inline-block' : ''}>
+      {triggerNode && <div className="h-full" onClick={toggle}>{triggerNode}</div>}
 
       {open && mounted && createPortal(
         <>
