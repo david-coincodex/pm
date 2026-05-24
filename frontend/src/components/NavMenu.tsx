@@ -84,7 +84,7 @@ function CategoriesDropdown() {
   );
 }
 
-export default function NavMenu() {
+export default function NavMenu({ activeSale }: { activeSale?: { slug: string; navLabel: string; themeColor: string } | null }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
@@ -125,6 +125,15 @@ export default function NavMenu() {
           <NavLink href={routes.reviews()} label={t('reviews')} />
           <CategoriesDropdown />
           <NavLink href={routes.blog()} label={t('blog')} />
+          {activeSale && (
+            <Link
+              href={routes.sale(activeSale.slug)}
+              className="rounded-full px-3 py-1 text-sm font-bold text-white transition hover:opacity-90"
+              style={{ backgroundColor: activeSale.themeColor }}
+            >
+              {activeSale.navLabel}
+            </Link>
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
@@ -221,6 +230,16 @@ export default function NavMenu() {
               {label}
             </Link>
           ))}
+          {activeSale && (
+            <Link
+              href={routes.sale(activeSale.slug)}
+              onClick={() => setDrawerOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm font-bold text-white transition-colors"
+              style={{ backgroundColor: activeSale.themeColor }}
+            >
+              {activeSale.navLabel}
+            </Link>
+          )}
 
           {/* Categories accordion */}
           <button

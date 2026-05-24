@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
+import { getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 
 const OFFER_TYPE_LABEL: Record<string, string> = {
@@ -25,10 +26,10 @@ export default function OffersTable({ offers }: OffersTableProps) {
 
   if (offers.length === 0) return null;
 
-  const discountLabel = (offer: Offer) =>
-    offer.full_price && offer.full_price > offer.price
-      ? `-${(((offer.full_price - offer.price) / offer.full_price) * 100).toFixed(0)}%`
-      : null;
+  const discountLabel = (offer: Offer) => {
+    const pct = getDiscountPercent(offer);
+    return pct ? `${pct}%` : null;
+  };
 
   return (
     <div className="space-y-6 mt-8">
@@ -66,8 +67,12 @@ export default function OffersTable({ offers }: OffersTableProps) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                      {offer.allowsDownloads ? t('yes') : t('no')}
+                    <td className="px-4 py-3">
+                      {offer.allowsDownloads === true && (
+                        <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                        </svg>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link

@@ -9,6 +9,8 @@ import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
 import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/site/DealBuy';
+import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
+import SectionTitle from '@/components/SectionTitle';
 
 type Props = { params: Promise<{ locale: string; slug: string; subslug: string }> };
 
@@ -74,33 +76,12 @@ export default async function SubsiteDetailPage({ params }: Props) {
             dealIncludes={site.included}
           />
         }
+        header={
+          <SidebarLayoutHeader
+            title={t('pageTitle', { name: subsite.name })}
+          />
+        }
       >
-        {/* Subsite header */}
-        <div className="mb-8 flex flex-wrap items-center gap-4">
-          {subsiteImage && (
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
-              <Image
-                src={strapiMediaUrl(subsiteImage)}
-                alt={subsiteImage.alternativeText ?? subsite.name}
-                width={subsiteImage.width}
-                height={subsiteImage.height}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {t('pageTitle', { name: subsite.name })}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Part of{' '}
-              <Link href={routes.site(site.slug)} className="underline hover:text-slate-700 dark:hover:text-slate-300">
-                {site.name}
-              </Link>
-            </p>
-          </div>
-        </div>
-
         {/* Deal offers */}
         <div className="space-y-6">
           {activeOffers.length > 0 && (() => {
@@ -221,9 +202,7 @@ export default async function SubsiteDetailPage({ params }: Props) {
       {/* People also bought */}
       {relatedDeals.length > 0 && (
         <div className="mt-16">
-          <h2 className="mb-6 text-xl font-bold text-slate-900 dark:text-white">
-            {t('peopleAlsoBought')}
-          </h2>
+          <SectionTitle title={t('peopleAlsoBought')} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {relatedDeals.map((related) => {
               const relatedImage = related.cover_image ?? related.logo;

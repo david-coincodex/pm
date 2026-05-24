@@ -21,12 +21,6 @@ export const routes = {
   /** Offer redirect page — e.g. /offer/42/ */
   offer: (id: number | string) => `/offer/${id}/` as const,
 
-  /** Discount detail page (legacy /discount/ route) — e.g. /discount/brazzers/ */
-  discount: (slug: string) => `/discount/${slug}/` as const,
-
-  /** All discounts listing */
-  discounts: () => '/discount/' as const,
-
   /** Bundles listing */
   bundles: () => '/bundles/' as const,
 
@@ -50,4 +44,7 @@ export const routes = {
 
   /** Review detail page — e.g. /reviews/brazzers/ */
   review: (siteSlug: string) => `/reviews/${siteSlug}/` as const,
+
+  /** Sale landing page — e.g. /sale/black-friday/ */
+  sale: (slug: string) => `/sale/${slug}/` as const,
 };

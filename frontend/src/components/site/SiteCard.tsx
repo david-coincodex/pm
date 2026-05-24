@@ -1,8 +1,9 @@
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Site, strapiMediaUrl } from '@/lib/strapi';
+import { Site, strapiMediaUrl, getActiveSale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import SaleBadgeOverlay from '@/components/sale/SaleBadgeOverlay';
 
 interface SiteCardProps {
   site: Site;
@@ -24,10 +25,14 @@ function scoreColor(score: number): string {
 }
 
 export default async function SiteCard({ site, bestPrice, currency = 'USD', bestOfferId, discountPercent, review }: SiteCardProps) {
-  const t = await getTranslations('discount');
+  const [t, activeSale] = await Promise.all([
+    getTranslations('discount'),
+    getActiveSale(),
+  ]);
   const tReviews = review ? await getTranslations('reviews') : null;
   const href = review ? routes.review(site.slug) : `/${site.slug}/`;
   const image = site.cover_image ?? site.logo;
+  const saleBadge = activeSale?.siteIds.includes(site.id) ? activeSale : null;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
@@ -53,11 +58,18 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
             {discountPercent}%
           </span>
         )}
-        {!review && site.siteType === 'camsite' && (
+        {!review && saleBadge ? (
+          <SaleBadgeOverlay
+            badgeImage={saleBadge.badgeImage}
+            badgeLabel={saleBadge.badgeLabel}
+            badgeIcon={saleBadge.badgeIcon}
+            themeColor={saleBadge.themeColor}
+          />
+        ) : (!review && site.siteType === 'camsite' && (
           <span className="absolute left-2 top-2 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
             {t('liveBadge')}
           </span>
-        )}
+        ))}
         {review?.score !== null && review?.score !== undefined && (
           <span className={`absolute right-2 top-2 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm ${scoreColor(review.score)}`}>
             <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

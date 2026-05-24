@@ -165,7 +165,7 @@
     "pageTitle": "{name} Discount",
     "pageMetaTitle": "{percentage}% {name} Discount: Only ${price} in {month} {year}",
     "offerType": "Plan",
-    "price": "Price",
+    "price": "Our Price",
     "regularPrice": "Regular Price",
     "discount": "Discount",
     "getDiscount": "Get Discount",
@@ -202,7 +202,8 @@
     "saving": "You're saving {amount} {currency} with this offer!",
     "goNow": "Go now",
     "notFound": "Offer not found.",
-    "credits": "credits"
+    "credits": "credits",
+    "disclaimer": "We may earn a commission if you sign up through our links. This does not affect the price you pay."
   },
   "featured": {
     "eyebrow": "We Recommend",
@@ -256,14 +257,21 @@
     "pageTitle": "Adult Site Reviews",
     "pageMetaTitle": "Adult Site Reviews — PornMode",
     "pageDescription": "In-depth reviews of the best adult sites, with expert score breakdowns.",
-    "overallScore": "Overall Score",
+    "overallScore": "Our score",
     "pros": "Pros",
     "cons": "Cons",
+    "showMore": "+{count} more",
+    "showLess": "Show less",
     "readReview": "Read Review",
     "by": "By",
     "editedBy": "Edited by",
     "publishedOn": "Published",
-    "empty": "No reviews published yet."
+    "empty": "No reviews published yet.",
+    "alsoRead": "People also read",
+    "pricingTitle": "Pricing & Payment Methods",
+    "pricingDescription": "Below you'll find all available subscription plans for {siteName}, along with the payment methods accepted at checkout.",
+    "buyNow": "Buy Now",
+    "viewDeal": "View Deal"
   },
   "scores": {
     "contentQuality": "Content Quality",
@@ -294,5 +302,17 @@
     "feedbackThanks": "Thanks for your feedback!",
     "feedbackSorry": "Sorry about that. Our team can help:",
     "contactSupport": "Contact Support"
+  },
+  "sale": {
+    "endsIn": "Sale ends in",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "hours": "{count}h",
+    "minutes": "{count}m",
+    "seconds": "{count}s",
+    "expired": "This sale has ended.",
+    "featuredDeals": "Featured Deals",
+    "allDeals": "All Deals",
+    "bundleDeals": "Bundle Deals",
+    "notFound": "Sale not found."
   }
 }

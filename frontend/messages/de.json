@@ -165,7 +165,7 @@
     "pageTitle": "{name} Rabatt",
     "pageMetaTitle": "{percentage}% {name} Rabatt: Nur ${price} im {month} {year}",
     "offerType": "Plan",
-    "price": "Preis",
+    "price": "Unser Preis",
     "regularPrice": "Normalpreis",
     "discount": "Rabatt",
     "getDiscount": "Rabatt erhalten",
@@ -202,7 +202,8 @@
     "saving": "Du sparst {amount} {currency} mit diesem Angebot!",
     "goNow": "Jetzt weiter",
     "notFound": "Angebot nicht gefunden.",
-    "credits": "Credits"
+    "credits": "Credits",
+    "disclaimer": "Wir erhalten möglicherweise eine Provision, wenn du dich über unsere Links anmeldest. Dies beeinflusst nicht den Preis, den du zahlst."
   },
   "featured": {
     "eyebrow": "Unsere Empfehlungen",
@@ -255,14 +256,21 @@
     "pageTitle": "Bewertungen von Erwachsenenwebseiten",
     "pageMetaTitle": "Bewertungen von Erwachsenenwebseiten — PornMode",
     "pageDescription": "Ausführliche Rezensionen der besten Erwachsenenwebseiten mit detaillierten Bewertungsübersichten.",
-    "overallScore": "Gesamtpunktzahl",
+    "overallScore": "Unser Urteil",
     "pros": "Vorteile",
     "cons": "Nachteile",
+    "showMore": "+{count} mehr",
+    "showLess": "Weniger anzeigen",
     "readReview": "Rezension lesen",
     "by": "Von",
     "editedBy": "Bearbeitet von",
     "publishedOn": "Veröffentlicht",
-    "empty": "Noch keine Bewertungen veröffentlicht."
+    "empty": "Noch keine Bewertungen veröffentlicht.",
+    "alsoRead": "Andere lesen auch",
+    "pricingTitle": "Preise & Zahlungsmethoden",
+    "pricingDescription": "Hier findest du alle verfügbaren Abonnementpläne für {siteName} sowie die akzeptierten Zahlungsmethoden.",
+    "buyNow": "Jetzt kaufen",
+    "viewDeal": "Angebot ansehen"
   },
   "scores": {
     "contentQuality": "Inhaltsqualität",
@@ -293,5 +301,17 @@
     "feedbackThanks": "Danke für dein Feedback!",
     "feedbackSorry": "Das tut uns leid. Unser Team kann helfen:",
     "contactSupport": "Support kontaktieren"
+  },
+  "sale": {
+    "endsIn": "Angebot endet in",
+    "days": "{count, plural, one {# Tag} other {# Tage}}",
+    "hours": "{count}h",
+    "minutes": "{count}m",
+    "seconds": "{count}s",
+    "expired": "Dieses Angebot ist abgelaufen.",
+    "featuredDeals": "Top-Angebote",
+    "allDeals": "Alle Angebote",
+    "bundleDeals": "Bundle-Angebote",
+    "notFound": "Verkauf nicht gefunden."
   }
 }

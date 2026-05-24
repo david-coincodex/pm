@@ -1,0 +1,83 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sales",
+  "info": {
+    "singularName": "sale",
+    "pluralName": "sales",
+    "displayName": "Sale",
+    "description": "Timed sale landing pages (e.g. Black Friday, Memorial Day)",
+    "mainField": "title"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "description": {
+      "type": "string"
+    },
+    "startsAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "endsAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "navLabel": {
+      "type": "string",
+      "required": true
+    },
+    "themeColor": {
+      "type": "string",
+      "default": "#ef4444"
+    },
+    "badgeLabel": {
+      "type": "string"
+    },
+    "badgeIcon": {
+      "type": "enumeration",
+      "enum": ["fire", "tag", "bolt", "star", "gift", "percent"],
+      "default": "fire"
+    },
+    "badgeImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "featuredSites": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::site.site"
+    },
+    "sites": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::site.site"
+    },
+    "bundles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::bundle.bundle"
+    },
+    "content": {
+      "type": "blocks"
+    },
+    "metaTitle": {
+      "type": "string"
+    },
+    "metaDescription": {
+      "type": "text"
+    }
+  }
+}

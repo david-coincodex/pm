@@ -116,6 +116,11 @@ export default function OfferRedirect({ offer }: OfferRedirectProps) {
           {t('goNow')}
         </a>
       )}
+
+      {/* Affiliate disclaimer */}
+      <p className="max-w-sm text-xs text-slate-400 dark:text-slate-500">
+        {t('disclaimer')}
+      </p>
     </div>
   );
 }

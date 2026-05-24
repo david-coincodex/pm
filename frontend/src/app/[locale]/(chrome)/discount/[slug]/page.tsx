@@ -10,6 +10,7 @@ import { routes } from '@/lib/routes';
 import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/discount/DealBuy';
 import SubsiteGrid from '@/components/site/SubsiteGrid';
+import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -74,32 +75,14 @@ export default async function DiscountDetailPage({ params }: Props) {
             dealIncludes={site.included}
           />
         }
+        header={
+          <SidebarLayoutHeader
+            title={t('pageTitle', { name: site.name })}
+            description={site.short_description}
+            image={image}
+          />
+        }
       >
-        {/* Site header */}
-        <div className="mb-8 flex flex-wrap items-center gap-4">
-          {image && (
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
-              <Image
-                src={strapiMediaUrl(image)}
-                alt={image.alternativeText ?? site.name}
-                width={image.width}
-                height={image.height}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {t('pageTitle', { name: site.name })}
-            </h1>
-            {site.short_description && (
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {site.short_description}
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* Deal offers */}
         <div className="space-y-6">
           {activeOffers.length > 0 && (() => {

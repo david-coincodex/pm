@@ -37,7 +37,6 @@ export default async function Footer() {
                 { href: routes.bundles(), label: t('bundles') },
                 { href: routes.category('cam-sites'), label: t('liveSex') },
                 { href: routes.reviews(), label: t('reviews') },
-                { href: routes.discounts(), label: 'All Discounts' },
               ].map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">

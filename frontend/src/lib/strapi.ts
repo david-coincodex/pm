@@ -634,7 +634,7 @@ export type Review = {
 };
 
 const REVIEW_POPULATE =
-  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=authors&populate[4]=authors.avatar&populate[5]=editors&populate[6]=editors.avatar&populate[7]=paysiteScores&populate[8]=camsiteScores';
+  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=authors&populate[4]=authors.avatar&populate[5]=editors&populate[6]=editors.avatar&populate[7]=paysiteScores&populate[8]=camsiteScores&populate[9]=site.gallery&populate[10]=site.offers&populate[11]=site.platform&populate[12]=site.platform.paymentMethods';
 
 /** Fetch all published reviews for a locale, newest first. */
 export async function getReviews(locale: string, limit = 100): Promise<Review[]> {
@@ -674,4 +674,63 @@ export async function getReviewBySiteSlug(siteSlug: string, locale: string): Pro
     return fallback.data[0] ?? null;
   }
   return null;
+}
+
+// ─── Sale ────────────────────────────────────────────────────────────────────
+
+export type SaleBadgeIcon = 'fire' | 'tag' | 'bolt' | 'star' | 'gift' | 'percent';
+
+export type Sale = {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string;
+  navLabel: string;
+  themeColor: string;
+  badgeLabel: string | null;
+  badgeIcon: SaleBadgeIcon | null;
+  badgeImage: StrapiMedia | null;
+  featuredSites: Site[];
+  sites: Site[];
+  bundles: Bundle[];
+  content: Record<string, unknown>[] | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+};
+
+const SALE_POPULATE =
+  'populate[badgeImage]=true' +
+  '&populate[featuredSites][populate][logo]=true&populate[featuredSites][populate][cover_image]=true&populate[featuredSites][populate][offers]=true' +
+  '&populate[sites][populate][logo]=true&populate[sites][populate][cover_image]=true&populate[sites][populate][offers]=true' +
+  '&populate[bundles][populate][sites][populate][logo]=true&populate[bundles][populate][sites][populate][cover_image]=true&populate[bundles][populate][sites][populate][offers]=true&populate[bundles][populate][offers]=true';
+
+/** Fetch the currently active (published) sale, if any. Includes badge info and site IDs for card overlays. */
+export async function getActiveSale(): Promise<Pick<Sale, 'id' | 'documentId' | 'title' | 'slug' | 'navLabel' | 'themeColor' | 'startsAt' | 'endsAt' | 'badgeLabel' | 'badgeIcon' | 'badgeImage'> & { siteIds: number[] } | null> {
+  const now = new Date().toISOString();
+  const res = await strapiGet<(Sale & { sites: { id: number }[]; featuredSites: { id: number }[] })[]>(
+    `/sales?filters[publishedAt][$notNull]=true&filters[startsAt][$lte]=${encodeURIComponent(now)}&filters[endsAt][$gte]=${encodeURIComponent(now)}&fields[0]=title&fields[1]=slug&fields[2]=navLabel&fields[3]=themeColor&fields[4]=startsAt&fields[5]=endsAt&fields[6]=badgeLabel&fields[7]=badgeIcon&populate[0]=badgeImage&populate[sites][fields][0]=id&populate[featuredSites][fields][0]=id&pagination[pageSize]=1`,
+    { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
+  );
+  const sale = res.data[0];
+  if (!sale) return null;
+  const allSiteIds = [
+    ...(sale.sites ?? []).map((s) => s.id),
+    ...(sale.featuredSites ?? []).map((s) => s.id),
+  ];
+  return {
+    ...sale,
+    siteIds: [...new Set(allSiteIds)],
+  };
+}
+
+/** Fetch a full sale by slug. */
+export async function getSaleBySlug(slug: string): Promise<Sale | null> {
+  const res = await strapiGet<Sale[]>(
+    `/sales?${SALE_POPULATE}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data[0] ?? null;
 }
