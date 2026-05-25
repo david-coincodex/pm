@@ -9,6 +9,8 @@ interface SiteCardProps {
   site: Site;
   /** Best (lowest) deal price to show as a teaser */
   bestPrice?: number;
+  /** Original / full price to show crossed out */
+  bestFullPrice?: number;
   currency?: string;
   /** ID of the best active offer, used for the Buy Now button */
   bestOfferId?: number;
@@ -16,6 +18,8 @@ interface SiteCardProps {
   discountPercent?: number;
   /** Review mode: shows score badge, "Read Review" button, and links to review page */
   review?: { score: number | null };
+  /** Force dark card styling (e.g. when placed on a dark background) */
+  variant?: 'light' | 'dark';
 }
 
 function scoreColor(score: number): string {
@@ -24,7 +28,8 @@ function scoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export default async function SiteCard({ site, bestPrice, currency = 'USD', bestOfferId, discountPercent, review }: SiteCardProps) {
+export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant }: SiteCardProps) {
+  const isDark = variant === 'dark';
   const [t, activeSale] = await Promise.all([
     getTranslations('discount'),
     getActiveSale(),
@@ -35,9 +40,9 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
   const saleBadge = activeSale?.siteIds.includes(site.id) ? activeSale : null;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+    <article className={`group flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow hover:shadow-md ${isDark ? 'border-slate-700 bg-slate-800 hover:shadow-slate-900' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
       {/* Cover image */}
-      <Link href={href} className="relative block aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-700">
+      <Link href={href} className={`relative block aspect-video w-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100 dark:bg-slate-700'}`}>
         {image ? (
           <Image
             src={strapiMediaUrl(image)}
@@ -47,7 +52,7 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-slate-400 dark:text-slate-500">
+          <div className={`flex h-full items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400 dark:text-slate-500'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -66,7 +71,8 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
             themeColor={saleBadge.themeColor}
           />
         ) : (!review && site.siteType === 'camsite' && (
-          <span className="absolute left-2 top-2 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+          <span className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
             {t('liveBadge')}
           </span>
         ))}
@@ -84,23 +90,34 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link
           href={href}
-          className="text-base font-semibold text-slate-900 hover:underline dark:text-white"
+          className={`text-base font-semibold hover:underline ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}
         >
           {review ? t('reviewTitle', { name: site.name }) : site.name}
         </Link>
 
         {site.short_description && (
-          <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2">
+          <p className={`text-sm leading-relaxed line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
             {site.short_description}
           </p>
         )}
 
-        {!review && bestPrice !== undefined && (
-          <div className="mt-1 flex items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">From</span>
-            <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-              {currency} {bestPrice.toFixed(2)}
-            </span>
+        {!review && (
+          <div className="mt-1 flex items-center gap-1.5 h-6">
+            {bestPrice !== undefined ? (
+              <>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>From</span>
+                {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
+                  <span className={`text-xs line-through ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    ${bestFullPrice.toFixed(2)}
+                  </span>
+                )}
+                <span className={`text-base font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  ${bestPrice.toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400 dark:text-slate-500'}`}>&nbsp;</span>
+            )}
           </div>
         )}
 
@@ -110,7 +127,7 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
             <>
               <Link
                 href={href}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                className={`flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition ${isDark ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700'}`}
               >
                 {tReviews!('readReview')}
               </Link>
@@ -125,7 +142,7 @@ export default async function SiteCard({ site, bestPrice, currency = 'USD', best
             <>
               <Link
                 href={href}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                className={`flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition ${isDark ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700'}`}
               >
                 {t('viewDeal')}
               </Link>

@@ -10,6 +10,7 @@ import { routes } from '@/lib/routes';
 import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/site/DealBuy';
 import RichText from '@/components/RichText';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -42,10 +43,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BundleDetailPage({ params }: Props) {
   const { locale, slug } = await params;
-  const [bundle, t, dt] = await Promise.all([
+  const [bundle, t, dt, tBc] = await Promise.all([
     getBundleBySlug(slug),
     getTranslations({ locale, namespace: 'bundles' }),
     getTranslations({ locale, namespace: 'discount' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
 
   if (!bundle) notFound();
@@ -57,7 +59,12 @@ export default async function BundleDetailPage({ params }: Props) {
   const dealIncludes = bundle.sites.map((s) => s.name).join('\n');
 
   return (
-    <Container className="py-10">
+    <>
+      <BreadcrumbsSetter crumbs={[
+        { label: tBc('bundles'), href: routes.bundles() },
+        { label: bundle.name, href: routes.bundle(slug) },
+      ]} />
+      <Container className="py-10">
 
       {/* Hero cover image */}
       {bundle.cover_image && (
@@ -164,5 +171,6 @@ export default async function BundleDetailPage({ params }: Props) {
         )}
       </SidebarLayout>
     </Container>
+    </>
   );
 }

@@ -5,7 +5,9 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { getArticleById, strapiMediaUrl } from '@/lib/strapi';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; id: string; slug: string }> };
 
@@ -47,8 +49,13 @@ export default async function ArticlePage({ params }: Props) {
   if (!article) notFound();
 
   return (
-    <Container className="py-10">
-      <article className="mx-auto max-w-3xl">
+    <>
+      <BreadcrumbsSetter crumbs={[
+        { label: t('pageTitle'), href: routes.blog() },
+        { label: article.title, href: routes.blogArticle(id, article.slug) },
+      ]} />
+      <Container className="py-10">
+        <article className="mx-auto max-w-3xl">
         {/* Cover image */}
         {article.coverImage && (
           <div className="mb-8 aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
@@ -161,5 +168,6 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </article>
     </Container>
+    </>
   );
 }

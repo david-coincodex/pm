@@ -23,7 +23,11 @@
       "required": true
     },
     "description": {
-      "type": "blocks"
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": {
+        "preset": "defaultHtml"
+      }
     },
     "cover_image": {
       "type": "media",

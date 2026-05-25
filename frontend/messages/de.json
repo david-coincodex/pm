@@ -155,7 +155,8 @@
     "sites": "Webseiten",
     "blog": "Blog",
     "offer": "Angebot",
-    "reviews": "Bewertungen"
+    "reviews": "Bewertungen",
+    "bundles": "Bundles"
   },
   "discounts": {
     "pageTitle": "Rabatte",
@@ -304,13 +305,13 @@
   },
   "sale": {
     "endsIn": "Angebot endet in",
-    "days": "{count, plural, one {# Tag} other {# Tage}}",
-    "hours": "{count}h",
-    "minutes": "{count}m",
-    "seconds": "{count}s",
+    "days": "{count, plural, one {Tag} other {Tage}}",
+    "hours": "Stunden",
+    "minutes": "Minuten",
+    "seconds": "Sekunden",
     "expired": "Dieses Angebot ist abgelaufen.",
     "featuredDeals": "Top-Angebote",
-    "allDeals": "Alle Angebote",
+    "allDeals": "Alle {saleName} Porno-Rabatte",
     "bundleDeals": "Bundle-Angebote",
     "notFound": "Verkauf nicht gefunden."
   }

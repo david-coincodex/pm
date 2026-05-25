@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { routing } from '@/i18n/routing';
 import { getPageBySlug } from '@/lib/strapi';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import RichText from '@/components/RichText';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -37,7 +39,11 @@ export default async function CmsPage({ params }: Props) {
   if (!page) notFound();
 
   return (
-    <Container className="py-10 lg:py-14">
+    <>
+      <BreadcrumbsSetter crumbs={[
+        { label: page.h1 ?? page.title, href: routes.page(slug) },
+      ]} />
+      <Container className="py-10 lg:py-14">
       <SidebarLayout reversed sidebar={<div />}>
         <h1 className="mb-8 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           {page.h1 ?? page.title}
@@ -49,5 +55,6 @@ export default async function CmsPage({ params }: Props) {
         )}
       </SidebarLayout>
     </Container>
+    </>
   );
 }

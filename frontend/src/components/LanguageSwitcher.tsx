@@ -33,11 +33,11 @@ export default function LanguageSwitcher({ showLabel = false }: Props) {
           type="button"
           aria-label={t('label')}
           aria-expanded={open}
-          className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 md:py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
-          <span className={`fi fi-${current?.countryCode} rounded-sm text-base`} />
-          <span className={showLabel ? '' : 'uppercase'}>
-            {showLabel ? t(locale as 'en' | 'de') : locale}
+          <span className={`fi fi-${current?.countryCode} fis rounded-full text-lg`} />
+          <span className={showLabel ? '' : 'md:hidden'}>
+            {t(locale as 'en' | 'de')}
           </span>
           <svg
             className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`}

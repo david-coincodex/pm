@@ -3,12 +3,14 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { getSaleBySlug, getDiscountPercent, type Sale } from '@/lib/strapi';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import RichText from '@/components/RichText';
 import SectionTitle from '@/components/SectionTitle';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
-import SaleCountdown from '@/components/sale/SaleCountdown';
+import SaleHero from '@/components/sale/SaleHero';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -42,6 +44,7 @@ function buildSiteItem(site: Sale['sites'][number]) {
     site,
     bestPrice: bestOffer?.price,
     bestOfferId: bestOffer?.id,
+    bestFullPrice: bestOffer?.full_price ?? undefined,
     discountPercent: bestOffer ? getDiscountPercent(bestOffer) ?? undefined : undefined,
   };
 }
@@ -56,54 +59,25 @@ export default async function SalePage({ params }: Props) {
 
   if (!sale) notFound();
 
-  const featuredItems = (sale.featuredSites ?? []).map((s) => buildSiteItem(s));
-  // All sites excluding the featured ones to avoid duplication
+  const hasFeatured = (sale.featuredSites ?? []).length > 0;
   const featuredIds = new Set((sale.featuredSites ?? []).map((s) => s.id));
-  const remainingItems = (sale.sites ?? [])
+  const allItems = (sale.sites ?? [])
     .filter((s) => !featuredIds.has(s.id))
     .map((s) => buildSiteItem(s));
 
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <section
-        className="py-14"
-        style={{
-          background: `linear-gradient(135deg, ${sale.themeColor}22 0%, transparent 60%)`,
-          borderBottom: `2px solid ${sale.themeColor}33`,
-        }}
-      >
-        <Container>
-          <div className="flex flex-col items-start gap-4">
-            <h1
-              className="text-4xl font-black tracking-tight sm:text-5xl"
-              style={{ color: sale.themeColor }}
-            >
-              {sale.title}
-            </h1>
-            {sale.description && (
-              <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300">
-                {sale.description}
-              </p>
-            )}
-            <SaleCountdown endsAt={sale.endsAt} themeColor={sale.themeColor} />
-          </div>
-        </Container>
-      </section>
-
-      {/* ── Featured deals ───────────────────────────────── */}
-      {featuredItems.length > 0 && (
-        <Container className="pt-14">
-          <SectionTitle title={t('featuredDeals')} />
-          <SiteCardGrid items={featuredItems} />
-        </Container>
-      )}
+      <BreadcrumbsSetter crumbs={[
+        { label: sale.title, href: routes.sale(sale.slug) },
+      ]} />
+      {/* ── Hero (title, description, countdown, featured deals) ── */}
+      <SaleHero sale={sale} />
 
       {/* ── All deals ────────────────────────────────────── */}
-      {remainingItems.length > 0 && (
-        <Container className={featuredItems.length > 0 ? 'pt-14 pb-14' : 'py-14'}>
-          {featuredItems.length > 0 && <SectionTitle title={t('allDeals')} />}
-          <SiteCardGrid items={remainingItems} />
+      {allItems.length > 0 && (
+        <Container className={hasFeatured ? 'pt-14 pb-14' : 'py-14'}>
+          {hasFeatured && <SectionTitle title={t('allDeals', { saleName: sale.title })} />}
+          <SiteCardGrid items={allItems} />
         </Container>
       )}
 

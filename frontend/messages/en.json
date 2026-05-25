@@ -155,7 +155,8 @@
     "sites": "Sites",
     "blog": "Blog",
     "offer": "Offer",
-    "reviews": "Reviews"
+    "reviews": "Reviews",
+    "bundles": "Bundles"
   },
   "discounts": {
     "pageTitle": "Discounts",
@@ -305,13 +306,13 @@
   },
   "sale": {
     "endsIn": "Sale ends in",
-    "days": "{count, plural, one {# day} other {# days}}",
-    "hours": "{count}h",
-    "minutes": "{count}m",
-    "seconds": "{count}s",
+    "days": "{count, plural, one {Day} other {Days}}",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds",
     "expired": "This sale has ended.",
     "featuredDeals": "Featured Deals",
-    "allDeals": "All Deals",
+    "allDeals": "All {saleName} Porn Discounts",
     "bundleDeals": "Bundle Deals",
     "notFound": "Sale not found."
   }

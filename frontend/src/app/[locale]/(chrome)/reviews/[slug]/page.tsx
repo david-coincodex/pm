@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { getReviewBySiteSlug, getReviews, getPublishedBundles, PaysiteScores, CamsiteScores, strapiMediaUrl, type Review } from '@/lib/strapi';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import RichText from '@/components/RichText';
@@ -16,6 +17,7 @@ import SectionTitle from '@/components/SectionTitle';
 import OffersTable from '@/components/site/OffersTable';
 import PaymentMethodPills from '@/components/site/PaymentMethodPills';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -54,12 +56,13 @@ function calcOverall(scores: PaysiteScores | CamsiteScores): number {
 export default async function ReviewDetailPage({ params }: Props) {
   const { locale, slug } = await params;
 
-  const [review, allReviews, bundles, t, tScores] = await Promise.all([
+  const [review, allReviews, bundles, t, tScores, tBc] = await Promise.all([
     getReviewBySiteSlug(slug, locale),
     getReviews(locale, 5),
     getPublishedBundles(3),
     getTranslations({ locale, namespace: 'reviews' }),
     getTranslations({ locale, namespace: 'scores' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
 
   if (!review) notFound();
@@ -126,6 +129,10 @@ export default async function ReviewDetailPage({ params }: Props) {
 
   return (
     <>
+      <BreadcrumbsSetter crumbs={[
+        { label: tBc('reviews'), href: routes.reviews() },
+        { label: site.name, href: routes.review(slug) },
+      ]} />
       <Container className="py-10 lg:py-14">
       <SidebarLayout
         sidebar={sidebar}

@@ -18,38 +18,78 @@ export default function SaleCountdown({ endsAt, themeColor }: SaleCountdownProps
     return () => clearInterval(interval);
   }, [endsAt]);
 
-  // Not yet mounted — render nothing to avoid hydration mismatch
-  if (timeLeft === undefined) return null;
-
   if (timeLeft === null) {
-    return <p className="text-sm text-slate-400">{t('expired')}</p>;
+    // Sale ended — show zeroed-out segments
+    return (
+      <div className="flex items-center gap-2">
+        <Segment value={0} label={t('days', { count: 0 })} color={themeColor} />
+        <Segment value={0} label={t('hours', { count: 0 })} color={themeColor} />
+        <Segment value={0} label={t('minutes', { count: 0 })} color={themeColor} />
+        <Segment value={0} label={t('seconds', { count: 0 })} color={themeColor} />
+      </div>
+    );
   }
 
+  // Always render 4 fixed-width segment slots; show skeleton until mounted
+  const isLoaded = timeLeft !== undefined;
+
   return (
-    <div className="flex items-center gap-3 text-white">
-      <span className="text-sm font-medium opacity-80">{t('endsIn')}</span>
-      <div className="flex items-center gap-2">
-        {timeLeft.days > 0 && (
-          <Segment value={timeLeft.days} label={t('days', { count: timeLeft.days })} color={themeColor} />
-        )}
-        <Segment value={timeLeft.hours} label={t('hours', { count: timeLeft.hours })} color={themeColor} />
-        <Segment value={timeLeft.minutes} label={t('minutes', { count: timeLeft.minutes })} color={themeColor} />
-        <Segment value={timeLeft.seconds} label={t('seconds', { count: timeLeft.seconds })} color={themeColor} />
-      </div>
+    <div className="flex items-center gap-2">
+      {/* Days slot — always reserved, hidden when 0 after load */}
+      <Segment
+        value={isLoaded ? timeLeft.days : undefined}
+        label={t('days', { count: isLoaded ? timeLeft.days : 0 })}
+        color={themeColor}
+        hidden={isLoaded && timeLeft.days === 0}
+      />
+      <Segment
+        value={isLoaded ? timeLeft.hours : undefined}
+        label={t('hours', { count: isLoaded ? timeLeft.hours : 0 })}
+        color={themeColor}
+      />
+      <Segment
+        value={isLoaded ? timeLeft.minutes : undefined}
+        label={t('minutes', { count: isLoaded ? timeLeft.minutes : 0 })}
+        color={themeColor}
+      />
+      <Segment
+        value={isLoaded ? timeLeft.seconds : undefined}
+        label={t('seconds', { count: isLoaded ? timeLeft.seconds : 0 })}
+        color={themeColor}
+      />
     </div>
   );
 }
 
-function Segment({ value, label, color }: { value: number; label: string; color: string }) {
+function Segment({
+  value,
+  label,
+  color,
+  hidden,
+}: {
+  value: number | undefined;
+  label: string;
+  color: string;
+  hidden?: boolean;
+}) {
+  if (hidden) return null;
+  const isLoaded = value !== undefined;
   return (
     <div
-      className="flex min-w-[3rem] flex-col items-center rounded-lg px-3 py-1.5 text-center"
+      className="flex w-20 flex-col items-center rounded-lg px-3 py-2.5 text-center"
       style={{ backgroundColor: color + '33' }}
     >
-      <span className="text-xl font-black tabular-nums leading-none" style={{ color }}>
-        {String(value).padStart(2, '0')}
+      <span
+        className={`h-9 w-10 text-3xl font-black tabular-nums leading-none ${isLoaded ? '' : 'animate-pulse rounded bg-white/20'}`}
+        style={isLoaded ? { color } : undefined}
+      >
+        {isLoaded ? String(value).padStart(2, '0') : ''}
       </span>
-      <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest opacity-70">{label}</span>
+      <span
+        className={`mt-1 text-xs font-semibold uppercase tracking-widest opacity-70 ${isLoaded ? 'text-white' : 'animate-pulse rounded bg-white/20 text-transparent'}`}
+      >
+        {label}
+      </span>
     </div>
   );
 }

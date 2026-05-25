@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_content_pros_cons",
+  "info": {
+    "displayName": "Pros & Cons",
+    "icon": "thumbs-up",
+    "description": "A list of pros and cons"
+  },
+  "options": {},
+  "attributes": {
+    "pros": {
+      "type": "json"
+    },
+    "cons": {
+      "type": "json"
+    }
+  }
+}

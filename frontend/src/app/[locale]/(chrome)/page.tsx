@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getCamSiteDeals, getPublishedBundles, strapiMediaUrl, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
+import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getCamSiteDeals, getPublishedBundles, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from "@/lib/pagination";
 import Container from "@/components/Container";
 import SiteCardGrid from "@/components/site/SiteCardGrid";
 import Pagination from "@/components/Pagination";
-import FeaturedCarousel from "@/components/FeaturedCarousel";
+import SiteCardRow from "@/components/site/SiteCardRow";
+import FeaturedHeader from "@/components/FeaturedHeader";
 import CategorySpotlight from "@/components/CategorySpotlight";
 import BundleShowcase from "@/components/BundleShowcase";
 import CategoryGrid from "@/components/CategoryGrid";
@@ -44,7 +45,7 @@ export default async function Home({ params, searchParams }: Props) {
     pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
   }));
 
-  // Featured carousel — only on page 1
+  // Featured row — only on page 1
   const featuredItems = page === 1
     ? await getFeaturedDeals().then((deals) =>
         deals
@@ -53,19 +54,10 @@ export default async function Home({ params, searchParams }: Props) {
             const activeOffers = (d.site.offers ?? []).filter((o) => o.isActive);
             const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
             const bestOffer = sorted[0];
-            const cover = d.site.cover_image ?? d.site.logo;
             return {
-              name: d.name,
-              site: {
-                name: d.site.name,
-                slug: d.site.slug,
-                short_description: d.site.short_description,
-                coverUrl: cover ? strapiMediaUrl(cover) : null,
-                coverAlt: cover?.alternativeText ?? null,
-                coverWidth: cover?.width ?? 0,
-                coverHeight: cover?.height ?? 0,
-              },
+              site: d.site,
               bestPrice: bestOffer?.price,
+              bestFullPrice: bestOffer?.full_price ?? undefined,
               currency: 'USD',
               bestOfferId: bestOffer?.id,
               discountPercent: bestOffer ? getDiscountPercent(bestOffer) ?? undefined : undefined,
@@ -79,10 +71,11 @@ export default async function Home({ params, searchParams }: Props) {
     const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
     const bestOffer = sorted[0];
     const bestPrice = bestOffer?.price;
+    const bestFullPrice = bestOffer?.full_price ?? undefined;
     const bestOfferId = bestOffer?.id;
     const currency = "USD";
     const discountPercent = getMaxDiscountPercent(activeOffers) ?? undefined;
-    return { site, bestPrice, currency, bestOfferId, discountPercent };
+    return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent };
   });
 
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
@@ -95,10 +88,11 @@ export default async function Home({ params, searchParams }: Props) {
           const sorted = [...lifetimeOffers].sort((a, b) => a.price - b.price);
           const bestOffer = sorted[0];
           const bestPrice = bestOffer?.price;
+          const bestFullPrice = bestOffer?.full_price ?? undefined;
           const bestOfferId = bestOffer?.id;
           const currency = "USD";
           const discountPercent = getMaxDiscountPercent(lifetimeOffers) ?? undefined;
-          return { site, bestPrice, currency, bestOfferId, discountPercent };
+          return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent };
         })
       ).catch(() => [])
     : [];
@@ -118,7 +112,14 @@ export default async function Home({ params, searchParams }: Props) {
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
 
-      {page === 1 && featuredItems.length > 0 && <FeaturedCarousel items={featuredItems} locale={locale} />}
+      {page === 1 && featuredItems.length > 0 && (
+        <section className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <FeaturedHeader locale={locale} />
+            <SiteCardRow items={featuredItems.slice(0, 3)} columns={3} variant="dark" />
+          </div>
+        </section>
+      )}
 
       <Container className="py-10">
         <SectionTitle as="h1" title={t("pageTitle")} subtitle={t("pageSubtitle")} />

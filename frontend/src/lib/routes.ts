@@ -33,8 +33,8 @@ export const routes = {
   /** Blog listing */
   blog: () => '/blog/' as const,
 
-  /** Blog article — e.g. /blog/1/my-article-slug */
-  blogArticle: (id: number | string, slug: string) => `/blog/${id}/${slug}` as const,
+  /** Blog article — e.g. /blog/1/my-article-slug/ */
+  blogArticle: (id: number | string, slug: string) => `/blog/${id}/${slug}/` as const,
 
   /** Static CMS page — e.g. /page/about/ */
   page: (slug: string) => `/page/${slug}/` as const,

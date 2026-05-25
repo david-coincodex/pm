@@ -38,7 +38,8 @@
       "required": true
     },
     "themeColor": {
-      "type": "string",
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
       "default": "#ef4444"
     },
     "badgeLabel": {

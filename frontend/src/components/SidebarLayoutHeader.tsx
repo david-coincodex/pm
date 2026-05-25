@@ -10,7 +10,7 @@ export default function SidebarLayoutHeader({ title, description }: SidebarLayou
         {title}
       </h1>
       {description && (
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+        <p className="mt-1 hidden text-base text-slate-500 dark:text-slate-400 md:block">{description}</p>
       )}
     </div>
   );

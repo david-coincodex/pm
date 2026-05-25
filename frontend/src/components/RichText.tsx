@@ -134,6 +134,20 @@ interface RichTextProps {
 }
 
 export default function RichText({ content, className = '' }: RichTextProps) {
+  if (!content) return null;
+
+  // CKEditor HTML string
+  if (typeof content === 'string') {
+    if (!content.trim()) return null;
+    return (
+      <div
+        className={`prose prose-slate dark:prose-invert max-w-none ${className}`}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
+  }
+
+  // Legacy blocks format (array)
   if (!Array.isArray(content) || content.length === 0) return null;
 
   return (

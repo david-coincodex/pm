@@ -7,6 +7,7 @@ services:
       target: development
     ports:
       - "1339:1339"
+      - "5173:5173"
     volumes:
       # source hot-reload
       - ./backend/src:/app/src

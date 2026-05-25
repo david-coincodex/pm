@@ -20,6 +20,7 @@ import ImageGallery from '@/components/ImageGallery';
 import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 /** Extract category slug from a URL slug like "best-ai-porn-sites" → "ai-porn" */
 function parseCategorySlug(slug: string): string | null {
@@ -149,6 +150,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
       return {
         site,
         bestPrice: bestOffer?.price,
+        bestFullPrice: bestOffer?.full_price ?? undefined,
         currency: 'USD',
         bestOfferId: bestOffer?.id,
         discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
@@ -159,6 +161,9 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
     return (
       <>
+        <BreadcrumbsSetter crumbs={[
+          { label: category.name, href: `/${slug}/` },
+        ]} />
         {prevHref && <link rel="prev" href={prevHref} />}
         {nextHref && <link rel="next" href={nextHref} />}
         <Container className="py-10">
@@ -206,6 +211,9 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
   return (
     <>
+    <BreadcrumbsSetter crumbs={[
+      { label: site.name, href: `/${slug}/` },
+    ]} />
     <Container className="py-10">
       <TrackSiteView site={{
         slug: site.slug,
@@ -311,6 +319,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
               return {
                 site: related,
                 bestPrice: bestOffer?.price,
+                bestFullPrice: bestOffer?.full_price ?? undefined,
                 currency: 'USD',
                 bestOfferId: bestOffer?.id,
                 discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,

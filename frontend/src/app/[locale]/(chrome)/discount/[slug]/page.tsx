@@ -11,6 +11,7 @@ import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/discount/DealBuy';
 import SubsiteGrid from '@/components/site/SubsiteGrid';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
+import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -67,8 +68,12 @@ export default async function DiscountDetailPage({ params }: Props) {
     .sort((a, b) => a.priority - b.priority);
 
   return (
-    <Container className="py-10">
-      <SidebarLayout
+    <>
+      <BreadcrumbsSetter crumbs={[
+        { label: site.name, href: `/discount/${slug}/` },
+      ]} />
+      <Container className="py-10">
+        <SidebarLayout
         sidebar={
           <DealBuy
             offers={activeOffers}
@@ -251,5 +256,6 @@ export default async function DiscountDetailPage({ params }: Props) {
         </div>
       )}
     </Container>
+    </>
   );
 }

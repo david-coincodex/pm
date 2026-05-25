@@ -4,6 +4,7 @@ import { hasLocale } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { routing } from "@/i18n/routing";
+import { siteSettings } from "@/lib/siteSettings";
 
 type Props = {
   children: React.ReactNode;
@@ -23,6 +24,7 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "metadata" });
 
   return {
+    metadataBase: new URL(siteSettings.baseUrl),
     title: {
       default: t("title"),
       template: `%s | ${t("title")}`,
