@@ -260,7 +260,7 @@
     "viewAll": "Alle Artikel ansehen"  },
   "categoryGrid": {
     "eyebrow": "Nach Kategorie stöbern",
-    "title": "Dein Bereich",
+    "title": "Mehr entdecken",
     "sites": "{count, plural, one {# Seite} other {# Seiten}}"
   },
   "reviews": {

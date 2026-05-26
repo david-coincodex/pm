@@ -261,7 +261,7 @@
   },
   "categoryGrid": {
     "eyebrow": "Browse by Category",
-    "title": "Find Your Niche",
+    "title": "Discover More",
     "sites": "{count, plural, one {# site} other {# sites}}"
   },
   "reviews": {

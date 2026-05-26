@@ -21,6 +21,9 @@ import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
+import SidebarCategorySites from '@/components/SidebarCategorySites';
+import CategoryGrid from '@/components/CategoryGrid';
 
 /** Extract category slug from a URL slug like "best-ai-porn-sites" → "ai-porn" */
 function parseCategorySlug(slug: string): string | null {
@@ -155,7 +158,12 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         <Container className="py-10">
           <SidebarLayout
             reversed
-            sidebar={<div />}
+            sidebar={
+              <div className="flex flex-col gap-8">
+                <SidebarFeaturedSites />
+                <SidebarCategorySites categoryId={3} title="Live Sex Deals" limit={3} />
+              </div>
+            }
             header={
               <SectionTitle
                 as="h1"
@@ -172,6 +180,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
             )}
           </SidebarLayout>
         </Container>
+        <CategoryGrid />
       </>
     );
   }
