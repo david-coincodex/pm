@@ -55,18 +55,6 @@
         "i18n": { "localized": true }
       }
     },
-    "pros": {
-      "type": "text",
-      "pluginOptions": {
-        "i18n": { "localized": true }
-      }
-    },
-    "cons": {
-      "type": "text",
-      "pluginOptions": {
-        "i18n": { "localized": true }
-      }
-    },
     "paysiteScores": {
       "type": "component",
       "repeatable": false,

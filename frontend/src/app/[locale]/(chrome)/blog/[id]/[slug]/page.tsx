@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { getArticleById, getLatestArticles, strapiMediaUrl } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import { siteSettings } from '@/lib/siteSettings';
 import Container from '@/components/Container';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 import SidebarLayout from '@/components/SidebarLayout';
@@ -146,7 +147,12 @@ export default async function ArticlePage({ params }: Props) {
             ...(article.coverImage && { image: strapiMediaUrl(article.coverImage) }),
             datePublished: article.publishDate ?? article.publishedAt,
             ...(isSignificantUpdate(article.publishDate ?? article.publishedAt, article.modifiedDate) && { dateModified: article.modifiedDate }),
-            author: article.author ? [{ '@type': 'Person', name: article.author.name }] : [],
+            author: article.author ? [{
+              '@type': 'Person',
+              name: article.author.name,
+              url: `${siteSettings.baseUrl}${routes.blogAuthor(article.author.slug)}`,
+              ...(article.author.bio && { description: article.author.bio }),
+            }] : [],
           }),
         }}
       />

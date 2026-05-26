@@ -8,7 +8,6 @@ import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import RichText from '@/components/RichText';
-import ProsConsList from '@/components/review/ProsConsList';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import ReviewScoreCard from '@/components/review/ReviewScoreCard';
 import ImageGallery from '@/components/ImageGallery';
@@ -96,9 +95,6 @@ export default async function ReviewDetailPage({ params }: Props) {
     ['privateShows', tScores('privateShows')],
   ];
 
-  const pros = review.pros?.split('\n').map((s) => s.trim()).filter(Boolean) ?? [];
-  const cons = review.cons?.split('\n').map((s) => s.trim()).filter(Boolean) ?? [];
-
   const scoreEntries: { key: string; label: string; value: number }[] = [];
   if (review.paysiteScores) {
     for (const [key, label] of paysiteEntries) {
@@ -162,13 +158,6 @@ export default async function ReviewDetailPage({ params }: Props) {
           locale={locale}
           showUpdated={!!review.modifiedDate}
         />
-
-        {/* Pros / Cons */}
-        {(pros.length > 0 || cons.length > 0) && (
-          <div className="mb-8">
-            <ProsConsList pros={pros} cons={cons} />
-          </div>
-        )}
 
         {/* Main content */}
         {review.content && (

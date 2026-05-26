@@ -79,8 +79,8 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                     {/* Tags row above site name */}
                     <div className="flex flex-wrap items-center gap-1">
                       {discountPercent !== undefined && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                          -{discountPercent}%
+                        <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+                          {discountPercent}%
                         </span>
                       )}
                       {saleBadge ? (
@@ -90,7 +90,7 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                           themeColor={saleBadge.themeColor}
                         />
                       ) : isInCamCategory ? (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                        <span className="flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-500 dark:border-slate-600">
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
                           {t('liveBadge')}
                         </span>
@@ -112,7 +112,7 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                       <div className="mt-1 flex flex-wrap items-baseline gap-1 text-xs">
                         <span className="text-slate-500 dark:text-slate-400">From</span>
                         {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
-                          <span className="text-slate-400 line-through dark:text-slate-500">${bestFullPrice.toFixed(2)}</span>
+                          <span className="text-slate-500 line-through dark:text-slate-400">${bestFullPrice.toFixed(2)}</span>
                         )}
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">${bestPrice.toFixed(2)}</span>
                       </div>

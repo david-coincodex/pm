@@ -93,7 +93,7 @@ export default async function Home({ params, searchParams }: Props) {
           const bestOfferId = bestOffer?.id;
           const currency = "USD";
           const discountPercent = getMaxDiscountPercent(lifetimeOffers) ?? undefined;
-          return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent };
+          return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, forcedType: 'lifetime' as const };
         })
       ).catch(() => [])
     : [];

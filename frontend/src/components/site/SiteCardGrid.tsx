@@ -1,5 +1,5 @@
 import SiteCard from './SiteCard';
-import { Site } from '@/lib/strapi';
+import { Site, Offer } from '@/lib/strapi';
 import { getTranslations } from 'next-intl/server';
 
 interface SiteWithDealMeta {
@@ -13,6 +13,8 @@ interface SiteWithDealMeta {
   review?: { score: number | null };
   /** Whether the site is a cam site (for live badge + button label) */
   isCamSite?: boolean;
+  /** Force a specific offer type — links View Deal to ?offer=<id> and shows 'Only' label */
+  forcedType?: Offer['offerType'];
 }
 
 interface SiteCardGridProps {
@@ -37,8 +39,8 @@ export default async function SiteCardGrid({ items, emptyMessage, variant, cols 
 
   return (
     <div className={gridCols}>
-      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review, isCamSite }) => (
-        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} isCamSite={isCamSite} />
+      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review, isCamSite, forcedType }) => (
+        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} isCamSite={isCamSite} forcedType={forcedType} />
       ))}
     </div>
   );

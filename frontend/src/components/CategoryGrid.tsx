@@ -55,7 +55,7 @@ export default async function CategoryGrid() {
 
                   {/* Info */}
                   <div className="flex flex-col gap-0.5 px-3 py-3">
-                    <span className="line-clamp-1 text-sm font-semibold text-slate-900 group-hover:text-rose-600 dark:text-white dark:group-hover:text-rose-400 transition-colors">
+                    <span className="line-clamp-1 text-sm font-semibold text-slate-900 group-hover:text-emerald-600 dark:text-white dark:group-hover:text-emerald-400 transition-colors">
                       {category.name}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">

@@ -44,9 +44,10 @@ interface DealBuyProps {
   dealIncludes?: string | null;
   paymentMethods?: string[] | null;
   review?: { slug: string; score: number | null } | null;
+  initialOfferId?: number;
 }
 
-export default function DealBuy({ offers, dealIncludes, paymentMethods, review }: DealBuyProps) {
+export default function DealBuy({ offers, dealIncludes, paymentMethods, review, initialOfferId }: DealBuyProps) {
   const t = useTranslations('discount');
   const locale = useLocale();
 
@@ -65,7 +66,11 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review }
   // Combined sorted list for selection
   const allSorted = [...sortedSubs, ...sortedCredits];
 
-  const [selectedId, setSelectedId] = useState<number>(allSorted[0]?.id ?? 0);
+  const [selectedId, setSelectedId] = useState<number>(
+    initialOfferId && allSorted.find((s) => s.id === initialOfferId)
+      ? initialOfferId
+      : (allSorted[0]?.id ?? 0)
+  );
   const [showUpsell, setShowUpsell] = useState(false);
   const selected = allSorted.find((s) => s.id === selectedId) ?? allSorted[0];
 

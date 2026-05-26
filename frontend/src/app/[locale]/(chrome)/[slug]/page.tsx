@@ -28,7 +28,7 @@ function parseCategorySlug(slug: string): string | null {
   return m ? m[1] : null;
 }
 
-type Props = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ page?: string }> };
+type Props = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ page?: string; offer?: string }> };
 
 export async function generateStaticParams() {
   const categories = await getAllCategories().catch(() => []);
@@ -177,6 +177,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
   }
 
   // Site detail page
+  const { offer: offerParam } = await searchParams;
   const [site, t, tPlatform] = await Promise.all([
     getDealBySiteSlug(slug),
     getTranslations({ locale, namespace: 'discount' }),
@@ -196,6 +197,11 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
   const activeOffers = (site.offers ?? [])
     .filter((s) => s.isActive)
     .sort((a, b) => a.priority - b.priority);
+
+  const forcedOfferId = offerParam ? Number(offerParam) : null;
+  const initialOfferId = forcedOfferId && activeOffers.find((o) => o.id === forcedOfferId)
+    ? forcedOfferId
+    : undefined;
 
   const subscriptionOffers = activeOffers.filter((o) => o.offerKind === 'subscription');
   const creditsOffers = activeOffers.filter((o) => o.offerKind === 'credits');
@@ -239,6 +245,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
             dealIncludes={site.included}
             paymentMethods={site.platform?.paymentMethods?.map((pm) => pm.method) ?? null}
             review={review ? { slug: site.slug, score: computeOverallScore(review.paysiteScores, review.camsiteScores) } : null}
+            initialOfferId={initialOfferId}
           />
         }
         header={
@@ -265,18 +272,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
           <div className="mt-10">
             <h2 className="mb-5 text-xl font-bold text-slate-900 dark:text-white">
               Operated by{' '}
-              {site.platform.website ? (
-                <a
-                  href={site.platform.website}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="text-emerald-600 hover:underline dark:text-emerald-400"
-                >
-                  {site.platform.name}
-                </a>
-              ) : (
-                <span className="text-emerald-600 dark:text-emerald-400">{site.platform.name}</span>
-              )}
+              <span className="text-emerald-600 dark:text-emerald-400">{site.platform.name}</span>
             </h2>
             <div className="flex flex-wrap items-start gap-4">
               {site.platform.logo && (

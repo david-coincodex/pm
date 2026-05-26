@@ -699,8 +699,6 @@ export type Review = {
   slug: string;
   description: string | null;
   content: Record<string, unknown>[] | null;
-  pros: string | null;
-  cons: string | null;
   paysiteScores: PaysiteScores | null;
   camsiteScores: CamsiteScores | null;
   site: Site;

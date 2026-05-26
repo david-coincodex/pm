@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Site, strapiMediaUrl, getActiveSale } from '@/lib/strapi';
+import { Site, Offer, strapiMediaUrl, getActiveSale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import SaleBadgeOverlay from '@/components/sale/SaleBadgeOverlay';
 
@@ -22,6 +22,8 @@ interface SiteCardProps {
   variant?: 'light' | 'dark';
   /** Whether this site is a cam site (for live badge + button label). Falls back to site.siteType === 'camsite'. */
   isCamSite?: boolean;
+  /** Force a specific offer type — links View Deal to ?offer=<id> and shows 'Only' label */
+  forcedType?: Offer['offerType'];
 }
 
 function scoreColor(score: number): string {
@@ -30,7 +32,7 @@ function scoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite }: SiteCardProps) {
+export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite, forcedType }: SiteCardProps) {
   const isCam = isCamSite ?? site.siteType === 'camsite';
   const isDark = variant === 'dark';
   const [t, activeSale] = await Promise.all([
@@ -39,13 +41,14 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
   ]);
   const tReviews = review ? await getTranslations('reviews') : null;
   const href = review ? routes.review(site.slug) : `/${site.slug}/`;
+  const dealHref = !review && forcedType && bestOfferId ? `/${site.slug}/?offer=${bestOfferId}` : href;
   const image = site.cover_image ?? site.logo;
   const saleBadge = activeSale?.siteIds.includes(site.id) ? activeSale : null;
 
   return (
     <article className={`group flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow hover:shadow-md ${isDark ? 'border-slate-700 bg-slate-800 hover:shadow-slate-900' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
       {/* Cover image */}
-      <Link href={href} className={`relative block aspect-video w-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100 dark:bg-slate-700'}`}>
+      <Link href={dealHref} className={`relative block aspect-video w-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100 dark:bg-slate-700'}`}>
         {image ? (
           <Image
             src={strapiMediaUrl(image)}
@@ -92,7 +95,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link
-          href={href}
+          href={dealHref}
           className={`text-base font-semibold hover:underline ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}
         >
           {review ? t('reviewTitle', { name: site.name }) : site.name}
@@ -108,7 +111,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
           <div className="mt-1 flex items-center gap-1.5 h-6">
             {bestPrice !== undefined ? (
               <>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>From</span>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>{forcedType ? t('only') : t('from')}</span>
                 {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
                   <span className={`text-xs line-through ${isDark ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
                     ${bestFullPrice.toFixed(2)}
@@ -144,7 +147,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
           ) : (
             <>
               <Link
-                href={href}
+                href={dealHref}
                 className={`flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition ${isDark ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700'}`}
               >
                 {t('viewDeal')}

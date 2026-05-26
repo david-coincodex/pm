@@ -170,6 +170,8 @@
     "regularPrice": "Normalpreis",
     "discount": "Rabatt",
     "getDiscount": "Rabatt erhalten",
+    "from": "Ab",
+    "only": "Nur",
     "viewDeal": "Angebot ansehen",
     "allowsDownloads": "Downloads",
     "yes": "Ja",
