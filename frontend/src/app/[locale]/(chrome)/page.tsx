@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getCamSiteDeals, getPublishedBundles, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
+import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getSitesByCategoryId, getPublishedBundles, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from "@/lib/pagination";
 import Container from "@/components/Container";
 import SiteCardGrid from "@/components/site/SiteCardGrid";
@@ -12,6 +12,7 @@ import BundleShowcase from "@/components/BundleShowcase";
 import CategoryGrid from "@/components/CategoryGrid";
 import LatestArticles from "@/components/LatestArticles";
 import SectionTitle from "@/components/SectionTitle";
+import { siteSettings } from "@/lib/siteSettings";
 
 const PAGE_SIZE = 12;
 
@@ -99,7 +100,7 @@ export default async function Home({ params, searchParams }: Props) {
 
   // Cam site deals — only on page 1
   const camSites = page === 1
-    ? await getCamSiteDeals(4).catch(() => [])
+    ? await getSitesByCategoryId(siteSettings.CAM_CATEGORY_ID, 1, 4).then((r) => r.sites).catch(() => [])
     : [];
 
   // Bundles — only on page 1
@@ -150,6 +151,7 @@ export default async function Home({ params, searchParams }: Props) {
                   currency: 'USD',
                   bestOfferId: bestOffer?.id,
                   discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
+                  isCamSite: true,
                 };
               })} />
             </>

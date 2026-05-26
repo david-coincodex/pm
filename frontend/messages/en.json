@@ -189,14 +189,22 @@
     "verifiedOn": "Verified on {date}",
     "ourReview": "Our Review",
     "readReview": "Read full review",
-    "reviewTitle": "{name} Review"
+    "reviewTitle": "{name} Review",
+    "featuredSites": "Featured Sites"
   },
   "blog": {
     "pageTitle": "Blog",
     "empty": "No articles published yet.",
     "by": "By",
     "editedBy": "Edited by",
-    "readMore": "Read more"
+    "readMore": "Read more",
+    "on": "on",
+    "updatedOn": "Updated on",
+    "peopleAlsoRead": "People Also Read",
+    "viewAll": "View all articles",
+    "authorPageTitle": "Articles by {name}",
+    "authorArticlesEmpty": "No articles by this author yet.",
+    "latestReviews": "Latest reviews by {name}"
   },
   "offer": {
     "redirecting": "Redirecting you to the offer…",
@@ -265,8 +273,8 @@
     "showLess": "Show less",
     "readReview": "Read Review",
     "by": "By",
-    "editedBy": "Edited by",
     "publishedOn": "Published",
+    "updatedOn": "Updated",
     "empty": "No reviews published yet.",
     "alsoRead": "People also read",
     "pricingTitle": "Pricing & Payment Methods",
@@ -315,5 +323,9 @@
     "allDeals": "All {saleName} Porn Discounts",
     "bundleDeals": "Bundle Deals",
     "notFound": "Sale not found."
+  },
+  "richText": {
+    "showMore": "Show {count} more",
+    "showLess": "Show less"
   }
 }

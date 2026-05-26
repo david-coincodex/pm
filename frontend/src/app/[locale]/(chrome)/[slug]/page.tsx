@@ -13,10 +13,10 @@ import DealBuy from '@/components/site/DealBuy';
 import SubsiteGrid from '@/components/site/SubsiteGrid';
 import SectionTitle from '@/components/SectionTitle';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
+import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
 import Pagination from '@/components/Pagination';
 import TrackSiteView from '@/components/TrackSiteView';
 import RichText from '@/components/RichText';
-import ImageGallery from '@/components/ImageGallery';
 import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
@@ -143,20 +143,6 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
     if (!category) notFound();
 
-    const items = sites.map((site) => {
-      const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
-      const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
-      const bestOffer = sorted[0];
-      return {
-        site,
-        bestPrice: bestOffer?.price,
-        bestFullPrice: bestOffer?.full_price ?? undefined,
-        currency: 'USD',
-        bestOfferId: bestOffer?.id,
-        discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
-      };
-    });
-
     const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
     return (
@@ -167,15 +153,24 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         {prevHref && <link rel="prev" href={prevHref} />}
         {nextHref && <link rel="next" href={nextHref} />}
         <Container className="py-10">
-          <SectionTitle
-            as="h1"
-            title={t('heading', { name: category.name })}
-            subtitle={category.description ?? t('defaultSubtitle', { name: category.name })}
-          />
-          <SiteCardGrid items={items} />
-          {pagination.pageCount > 1 && (
-            <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
-          )}
+          <SidebarLayout
+            reversed
+            sidebar={<div />}
+            header={
+              <SectionTitle
+                as="h1"
+                title={t('heading', { name: category.name })}
+                subtitle={category.description ?? t('defaultSubtitle', { name: category.name })}
+              />
+            }
+          >
+            {category.intro && <RichText content={category.intro} />}
+            <SiteCardInlineList sites={sites} initialShow={5} />
+            {category.content && <RichText content={category.content} />}
+            {pagination.pageCount > 1 && (
+              <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
+            )}
+          </SidebarLayout>
         </Container>
       </>
     );
@@ -250,14 +245,10 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
           <SidebarLayoutHeader
             title={t('pageTitle', { name: site.name })}
             description={site.short_description}
+            gallery={site.gallery ?? []}
           />
         }
       >
-        {/* Gallery */}
-        {(site.gallery ?? []).length > 0 && (
-          <ImageGallery images={site.gallery} className="mb-8" />
-        )}
-
         {/* Rich-text content */}
         {site.description && (
           <RichText content={site.description} className="mt-8" />

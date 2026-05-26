@@ -58,6 +58,10 @@
       }
     },
     "publishDate": {
+      "type": "datetime",
+      "required": true
+    },
+    "modifiedDate": {
       "type": "datetime"
     },
     "coverImage": {
@@ -78,18 +82,12 @@
       "target": "api::tag.tag",
       "inversedBy": "articles"
     },
-    "authors": {
+    "author": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "manyToOne",
       "target": "api::author.author",
       "required": true,
       "inversedBy": "authoredArticles"
-    },
-    "editors": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::author.author",
-      "inversedBy": "editedArticles"
     }
   }
 }

@@ -176,6 +176,8 @@ export type Category = {
   name: string;
   slug: string;
   description: string | null;
+  intro: string | null;
+  content: string | null;
   cover_image: StrapiMedia | null;
   sites: Site[];
 };
@@ -318,6 +320,18 @@ export async function getCamSiteDeals(limit = 4): Promise<Site[]> {
   return res.data;
 }
 
+/** Fetch active sites by siteType with at least one active offer. */
+export async function getSitesBySiteType(
+  siteType: Site['siteType'],
+  limit = 12,
+): Promise<Site[]> {
+  const res = await strapiGet<Site[]>(
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[siteType][$eq]=${encodeURIComponent(siteType)}&filters[offers][isActive][$eq]=true&sort=name:asc&pagination[pageSize]=${limit}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data;
+}
+
 /** Fetch active featured deals with their sites + offers, sorted by priority desc. */
 export async function getFeaturedDeals(): Promise<Featured[]> {
   const now = new Date().toISOString();
@@ -363,6 +377,14 @@ export async function getTopDeals(limit = 4, excludeSlug?: string): Promise<Site
 export async function getDealBySiteSlug(slug: string): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
     `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=subsites&populate[4]=subsites.logo&populate[5]=subsites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true`,
+    { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data[0] ?? null;
+}
+
+export async function getSiteById(id: number): Promise<Site | null> {
+  const res = await strapiGet<Site[]>(
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=subsites&populate[4]=subsites.logo&populate[5]=subsites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[id][$eq]=${id}&filters[isActive][$eq]=true&pagination[pageSize]=1`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data[0] ?? null;
@@ -414,6 +436,22 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data[0] ?? null;
+}
+
+/** Fetch a paginated list of active sites belonging to a category ID. */
+export async function getSitesByCategoryId(
+  categoryId: number,
+  page = 1,
+  pageSize = 12,
+): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<Site[]>(
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][id][$eq]=${categoryId}&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    sites: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
 }
 
 /** Fetch a paginated list of active sites belonging to a category slug. */
@@ -510,8 +548,9 @@ export type Article = {
   coverImage: StrapiMedia | null;
   categories: ArticleCategory[];
   tags: ArticleTag[];
-  authors: ArticleAuthor[];
-  editors: ArticleAuthor[];
+  author: ArticleAuthor | null;
+  publishDate: string | null;
+  modifiedDate: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -519,12 +558,18 @@ export type Article = {
 };
 
 const ARTICLE_POPULATE =
-  'populate[0]=coverImage&populate[1]=categories&populate[2]=tags&populate[3]=authors&populate[4]=authors.avatar&populate[5]=editors&populate[6]=editors.avatar';
+  'populate[0]=coverImage&populate[1]=categories&populate[2]=tags&populate[3]=author&populate[4]=author.avatar';
+
+/** Scheduling filter: hide articles whose publishDate is in the future. */
+function articleScheduleFilter(): string {
+  const now = new Date().toISOString();
+  return `filters[$and][0][$or][0][publishDate][$lte]=${now}&filters[$and][0][$or][1][publishDate][$null]=true`;
+}
 
 /** Fetch published articles for a locale, newest first. */
 export async function getArticles(locale: string): Promise<Article[]> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc`
+    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc`
   );
   return res.data;
 }
@@ -536,7 +581,40 @@ export async function getArticlesPaginated(
   pageSize = 12
 ): Promise<{ data: Article[]; pagination: NonNullable<StrapiResponse<Article[]>['meta']['pagination']> }> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
+  return { data: res.data, pagination };
+}
+
+/** Fetch all author slugs (for static params generation). */
+export async function getAllAuthorSlugs(): Promise<string[]> {
+  const res = await strapiGet<ArticleAuthor[]>(
+    `/authors?fields[0]=slug&pagination[pageSize]=100`,
+    { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data.map((a) => a.slug);
+}
+
+/** Fetch a single author by slug with avatar populated. Returns null if not found. */
+export async function getAuthorBySlug(slug: string): Promise<ArticleAuthor | null> {
+  const res = await strapiGet<ArticleAuthor[]>(
+    `/authors?populate[0]=avatar&filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data[0] ?? null;
+}
+
+/** Fetch a paginated list of published articles by author slug for a locale, newest first. */
+export async function getArticlesByAuthor(
+  authorSlug: string,
+  locale: string,
+  page = 1,
+  pageSize = 12
+): Promise<{ data: Article[]; pagination: NonNullable<StrapiResponse<Article[]>['meta']['pagination']> }> {
+  const res = await strapiGet<Article[]>(
+    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&filters[author][slug][$eq]=${encodeURIComponent(authorSlug)}&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
@@ -546,7 +624,7 @@ export async function getArticlesPaginated(
 /** Fetch the latest N published articles for a locale. */
 export async function getLatestArticles(locale: string, limit = 8): Promise<Article[]> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[pageSize]=${limit}`,
+    `/articles?${ARTICLE_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[pageSize]=${limit}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data;
@@ -555,7 +633,7 @@ export async function getLatestArticles(locale: string, limit = 8): Promise<Arti
 /** Fetch a single article by numeric id and slug. Returns null if not found. */
 export async function getArticleById(id: number, locale: string): Promise<Article | null> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_POPULATE}&filters[id][$eq]=${id}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}`,
+    `/articles?${ARTICLE_POPULATE}&filters[id][$eq]=${id}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data[0] ?? null;
@@ -626,15 +704,15 @@ export type Review = {
   paysiteScores: PaysiteScores | null;
   camsiteScores: CamsiteScores | null;
   site: Site;
-  authors: ArticleAuthor[];
-  editors: ArticleAuthor[];
+  author: ArticleAuthor | null;
   publishDate: string | null;
+  modifiedDate: string | null;
   publishedAt: string | null;
   locale: string;
 };
 
 const REVIEW_POPULATE =
-  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=authors&populate[4]=authors.avatar&populate[5]=editors&populate[6]=editors.avatar&populate[7]=paysiteScores&populate[8]=camsiteScores&populate[9]=site.gallery&populate[10]=site.offers&populate[11]=site.platform&populate[12]=site.platform.paymentMethods';
+  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=author&populate[4]=author.avatar&populate[5]=paysiteScores&populate[6]=camsiteScores&populate[7]=site.gallery&populate[8]=site.offers&populate[9]=site.platform&populate[10]=site.platform.paymentMethods';
 
 /** Fetch all published reviews for a locale, newest first. */
 export async function getReviews(locale: string, limit = 100): Promise<Review[]> {
@@ -657,6 +735,15 @@ export async function getReviewsPaginated(
   );
   const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
   return { data: res.data, pagination };
+}
+
+/** Fetch the latest N published reviews by author slug for a locale. */
+export async function getReviewsByAuthor(authorSlug: string, locale: string, limit = 3): Promise<Review[]> {
+  const res = await strapiGet<Review[]>(
+    `/reviews?${REVIEW_POPULATE}&filters[publishedAt][$notNull]=true&filters[author][slug][$eq]=${encodeURIComponent(authorSlug)}&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[pageSize]=${limit}`,
+    { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data;
 }
 
 /** Fetch a single published review by site slug + locale. Falls back to 'en' if no translation. */

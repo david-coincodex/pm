@@ -11,15 +11,18 @@ interface SiteWithDealMeta {
   discountPercent?: number;
   /** When provided, the card renders in review mode */
   review?: { score: number | null };
+  /** Whether the site is a cam site (for live badge + button label) */
+  isCamSite?: boolean;
 }
 
 interface SiteCardGridProps {
   items: SiteWithDealMeta[];
   emptyMessage?: string;
   variant?: 'light' | 'dark';
+  cols?: 2 | 3 | 4;
 }
 
-export default async function SiteCardGrid({ items, emptyMessage, variant }: SiteCardGridProps) {
+export default async function SiteCardGrid({ items, emptyMessage, variant, cols = 4 }: SiteCardGridProps) {
   const t = await getTranslations('discounts');
   const message = emptyMessage ?? t('empty');
 
@@ -27,10 +30,15 @@ export default async function SiteCardGrid({ items, emptyMessage, variant }: Sit
     return <p className={variant === 'dark' ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}>{message}</p>;
   }
 
+  const gridCols =
+    cols === 2 ? 'grid gap-6 sm:grid-cols-2' :
+    cols === 3 ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3' :
+    'grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review }) => (
-        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} />
+    <div className={gridCols}>
+      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review, isCamSite }) => (
+        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} isCamSite={isCamSite} />
       ))}
     </div>
   );

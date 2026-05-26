@@ -1,130 +1,79 @@
-type TextNode = {
-  type: 'text';
-  text: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  strikethrough?: boolean;
-  code?: boolean;
+import parse, { type DOMNode, Element } from 'html-react-parser';
+import { getTranslations, getLocale } from 'next-intl/server';
+import ProsConsBlock from '@/components/rich-text/ProsConsBlock';
+import SiteCardInline from '@/components/rich-text/SiteCardInline';
+import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
+import ArticleCardInline from '@/components/rich-text/ArticleCardInline';
+import { prefetchWidgetData, type WidgetData } from '@/lib/richTextWidgets';
+import { type Site, type Article } from '@/lib/strapi';
+
+const ELEMENT_CLASSES: Record<string, string> = {
+  p: 'text-base leading-relaxed text-slate-700 dark:text-slate-300',
+  h1: 'text-2xl font-bold text-slate-900 dark:text-white mt-6 mb-3',
+  h2: 'text-xl font-bold text-slate-900 dark:text-white mt-5 mb-2',
+  h3: 'text-lg font-semibold text-slate-900 dark:text-white mt-4 mb-2',
+  h4: 'text-base font-semibold text-slate-900 dark:text-white mt-3 mb-1',
+  h5: 'text-sm font-semibold text-slate-900 dark:text-white mt-3 mb-1',
+  h6: 'text-sm font-medium text-slate-900 dark:text-white mt-2 mb-1',
+  ul: 'list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300',
+  ol: 'list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300',
+  li: 'text-slate-700 dark:text-slate-300',
+  a: 'text-emerald-600 hover:underline dark:text-emerald-400',
+  blockquote: 'border-l-4 border-emerald-400 pl-4 italic text-slate-600 dark:border-emerald-600 dark:text-slate-400',
+  code: 'rounded bg-slate-100 px-1 py-0.5 font-mono text-sm dark:bg-slate-800',
+  pre: 'overflow-x-auto rounded-lg bg-slate-100 p-4 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200',
+  img: 'rounded-lg max-w-full h-auto',
+  table: 'w-full border-collapse text-sm text-slate-700 dark:text-slate-300',
+  th: 'border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left font-semibold',
+  td: 'border border-slate-200 dark:border-slate-700 px-3 py-2',
 };
 
-type LinkNode = {
-  type: 'link';
-  url: string;
-  children: InlineNode[];
-};
+function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, widgetData: WidgetData, locale: string) {
+  if (!(domNode instanceof Element)) return;
 
-type InlineNode = TextNode | LinkNode;
-
-type ParagraphBlock = {
-  type: 'paragraph';
-  children: InlineNode[];
-};
-
-type HeadingBlock = {
-  type: 'heading';
-  level: 1 | 2 | 3 | 4 | 5 | 6;
-  children: InlineNode[];
-};
-
-type ListItemBlock = {
-  type: 'list-item';
-  children: InlineNode[];
-};
-
-type ListBlock = {
-  type: 'list';
-  format: 'ordered' | 'unordered';
-  children: ListItemBlock[];
-};
-
-type QuoteBlock = {
-  type: 'quote';
-  children: InlineNode[];
-};
-
-type CodeBlock = {
-  type: 'code';
-  children: InlineNode[];
-};
-
-type Block = ParagraphBlock | HeadingBlock | ListBlock | QuoteBlock | CodeBlock;
-
-function renderInline(node: InlineNode, key: number): React.ReactNode {
-  if (node.type === 'link') {
-    return (
-      <a key={key} href={node.url} className="text-emerald-600 hover:underline dark:text-emerald-400" rel="noopener noreferrer">
-        {node.children.map((c, i) => renderInline(c, i))}
-      </a>
-    );
+  // Widget: Pros/Cons
+  if (domNode.attribs['data-component'] === 'pros-cons') {
+    const pros = domNode.attribs['data-pros']?.split('||').filter(Boolean) ?? [];
+    const cons = domNode.attribs['data-cons']?.split('||').filter(Boolean) ?? [];
+    return <ProsConsBlock pros={pros} cons={cons} prosLabel={prosLabel} consLabel={consLabel} />;
   }
 
-  let content: React.ReactNode = node.text;
-  if (node.bold) content = <strong key={`b${key}`}>{content}</strong>;
-  if (node.italic) content = <em key={`i${key}`}>{content}</em>;
-  if (node.underline) content = <u key={`u${key}`}>{content}</u>;
-  if (node.strikethrough) content = <s key={`s${key}`}>{content}</s>;
-  if (node.code) content = <code key={`c${key}`} className="rounded bg-slate-100 px-1 py-0.5 font-mono text-sm dark:bg-slate-800">{content}</code>;
+  // Widget: Site Card
+  if (domNode.attribs['data-component'] === 'site-card') {
+    const id = domNode.attribs['data-site-id'];
+    const site = widgetData.get(`site-card:${id}`) as Site | undefined;
+    if (!site) return <></>;
+    return <SiteCardInline site={site} />;
+  }
 
-  return <span key={key}>{content}</span>;
-}
+  // Widget: Article Card
+  if (domNode.attribs['data-component'] === 'article-card') {
+    const id = domNode.attribs['data-article-id'];
+    const article = widgetData.get(`article-card:${id}`) as Article | undefined;
+    if (!article) return <></>;
+    return <ArticleCardInline article={article} locale={locale} />;
+  }
 
-const HEADING_CLASSES: Record<number, string> = {
-  1: 'text-2xl font-bold text-slate-900 dark:text-white mt-6 mb-3',
-  2: 'text-xl font-bold text-slate-900 dark:text-white mt-5 mb-2',
-  3: 'text-lg font-semibold text-slate-900 dark:text-white mt-4 mb-2',
-  4: 'text-base font-semibold text-slate-900 dark:text-white mt-3 mb-1',
-  5: 'text-sm font-semibold text-slate-900 dark:text-white mt-3 mb-1',
-  6: 'text-sm font-medium text-slate-900 dark:text-white mt-2 mb-1',
-};
+  // Widget: Site Card List
+  if (domNode.attribs['data-component'] === 'site-card-list') {
+    const idsStr = domNode.attribs['data-site-ids'] ?? '';
+    const showAttr = domNode.attribs['data-show'];
+    const initialShow = showAttr ? parseInt(showAttr, 10) : 5;
+    const sites = (widgetData.get(`site-card-list:${idsStr}`) as Site[] | undefined) ?? [];
+    if (!sites.length) return <></>;
+    return <SiteCardInlineList sites={sites} initialShow={initialShow} />;
+  }
 
-function renderBlock(block: Block, index: number): React.ReactNode {
-  switch (block.type) {
-    case 'paragraph': {
-      const children = block.children.map((c, i) => renderInline(c, i));
-      return (
-        <p key={index} className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-          {children}
-        </p>
-      );
-    }
-    case 'heading': {
-      const Tag = `h${block.level}` as keyof React.JSX.IntrinsicElements;
-      return (
-        <Tag key={index} className={HEADING_CLASSES[block.level]}>
-          {block.children.map((c, i) => renderInline(c, i))}
-        </Tag>
-      );
-    }
-    case 'list': {
-      const Tag = block.format === 'ordered' ? 'ol' : 'ul';
-      const listClass = block.format === 'ordered'
-        ? 'list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300'
-        : 'list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300';
-      return (
-        <Tag key={index} className={listClass}>
-          {block.children.map((item, i) => (
-            <li key={i}>{item.children.map((c, j) => renderInline(c, j))}</li>
-          ))}
-        </Tag>
-      );
-    }
-    case 'quote': {
-      return (
-        <blockquote key={index} className="border-l-4 border-emerald-400 pl-4 italic text-slate-600 dark:border-emerald-600 dark:text-slate-400">
-          {block.children.map((c, i) => renderInline(c, i))}
-        </blockquote>
-      );
-    }
-    case 'code': {
-      return (
-        <pre key={index} className="overflow-x-auto rounded-lg bg-slate-100 p-4 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-          {block.children.map((c, i) => renderInline(c, i))}
-        </pre>
-      );
-    }
-    default:
-      return null;
+  // Standard element styling
+  const classes = ELEMENT_CLASSES[domNode.name];
+  if (classes) {
+    const existing = domNode.attribs.class ?? '';
+    domNode.attribs.class = existing ? `${existing} ${classes}` : classes;
+  }
+
+  // Add rel to links
+  if (domNode.name === 'a' && !domNode.attribs.rel) {
+    domNode.attribs.rel = 'noopener noreferrer';
   }
 }
 
@@ -133,26 +82,32 @@ interface RichTextProps {
   className?: string;
 }
 
-export default function RichText({ content, className = '' }: RichTextProps) {
+export default async function RichText({ content, className = '' }: RichTextProps) {
   if (!content) return null;
 
   // CKEditor HTML string
   if (typeof content === 'string') {
     if (!content.trim()) return null;
+    const [t, locale] = await Promise.all([
+      getTranslations('reviews'),
+      getLocale(),
+    ]);
+    const widgetData = await prefetchWidgetData(content, locale);
+    const prosLabel = t('pros');
+    const consLabel = t('cons');
     return (
-      <div
-        className={`prose prose-slate dark:prose-invert max-w-none ${className}`}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+      <div className={`space-y-4 max-w-none ${className}`}>
+        {parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) })}
+      </div>
     );
   }
 
-  // Legacy blocks format (array)
+  // Legacy blocks format (array) — not expected from CKEditor
   if (!Array.isArray(content) || content.length === 0) return null;
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {(content as Block[]).map((block, i) => renderBlock(block, i))}
+      {parse((content as { __html: string }[])[0]?.__html ?? '', { replace: (node) => replaceNode(node, '', '', new Map(), 'en') })}
     </div>
   );
 }

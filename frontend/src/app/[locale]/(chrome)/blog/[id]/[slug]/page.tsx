@@ -2,12 +2,25 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
-import { getArticleById, strapiMediaUrl } from '@/lib/strapi';
+import { getArticleById, getLatestArticles, strapiMediaUrl } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import SidebarLayout from '@/components/SidebarLayout';
+import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
+import RichText from '@/components/RichText';
+import SectionTitle from '@/components/SectionTitle';
+import ArticleHeroGrid from '@/components/ArticleHeroGrid';
+import ContentMeta from '@/components/ContentMeta';
+import SidebarCategorySites from '@/components/SidebarCategorySites';
+import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
+
+/** Returns true if modifiedDate is more than 24 h after the publish date. */
+function isSignificantUpdate(publishIso: string | null | undefined, modifiedIso: string | null | undefined): boolean {
+  if (!publishIso || !modifiedIso) return false;
+  return new Date(modifiedIso).getTime() - new Date(publishIso).getTime() > 24 * 60 * 60 * 1000;
+}
 
 type Props = { params: Promise<{ locale: string; id: string; slug: string }> };
 
@@ -35,6 +48,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ])
       ),
     },
+    openGraph: {
+      type: 'article',
+      title: article.metaTitle ?? article.title,
+      description: article.description ?? undefined,
+      ...(article.coverImage && { images: [{ url: strapiMediaUrl(article.coverImage) }] }),
+      publishedTime: article.publishDate ?? article.publishedAt ?? undefined,
+      modifiedTime: isSignificantUpdate(article.publishDate ?? article.publishedAt, article.modifiedDate) ? article.modifiedDate! : undefined,
+      authors: article.author ? [article.author.name] : [],
+    },
   };
 }
 
@@ -48,126 +70,86 @@ export default async function ArticlePage({ params }: Props) {
 
   if (!article) notFound();
 
+  const blogBase = locale === 'en' ? '/blog' : `/${locale}/blog`;
+  const latestArticles = await getLatestArticles(locale, 9).catch(() => []);
+  const relatedArticles = latestArticles.filter((a) => a.id !== article.id).slice(0, 8);
+
   return (
     <>
       <BreadcrumbsSetter crumbs={[
         { label: t('pageTitle'), href: routes.blog() },
         { label: article.title, href: routes.blogArticle(id, article.slug) },
       ]} />
-      <Container className="py-10">
-        <article className="mx-auto max-w-3xl">
-        {/* Cover image */}
-        {article.coverImage && (
-          <div className="mb-8 aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
-            <Image
-              src={strapiMediaUrl(article.coverImage)}
-              alt={article.coverImage.alternativeText ?? article.title}
-              width={article.coverImage.width}
-              height={article.coverImage.height}
-              className="h-full w-full object-cover"
-              priority
-            />
-          </div>
-        )}
-
-        {/* Categories */}
-        {article.categories.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            {article.categories.map((cat) => (
-              <span
-                key={cat.id}
-                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-              >
-                {cat.name}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Title */}
-        <h1 className="mb-4 text-3xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-          {article.title}
-        </h1>
-
-        {/* Description */}
-        {article.description && (
-          <p className="mb-6 text-lg leading-relaxed text-slate-500 dark:text-slate-400">
-            {article.description}
-          </p>
-        )}
-
-        {/* Meta: authors / date */}
-        <div className="mb-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 pb-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          {(article.authors ?? []).length > 0 && (
-            <div className="flex items-center gap-2">
-              {article.authors[0].avatar && (
-                <div className="h-8 w-8 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                  <Image
-                    src={strapiMediaUrl(article.authors[0].avatar)}
-                    alt={article.authors[0].name}
-                    width={32}
-                    height={32}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-              <span>
-                {t('by')} <strong className="font-medium text-slate-700 dark:text-slate-200">{(article.authors ?? []).map((a) => a.name).join(', ')}</strong>
-              </span>
+      <Container className="py-10 lg:py-14">
+        <SidebarLayout
+          reversed
+          sidebar={
+            <div className="flex flex-col gap-8">
+              <SidebarFeaturedSites />
+              <SidebarCategorySites categoryId={3} title="Live Sex Deals" limit={3} />
             </div>
-          )}
-
-          {(article.editors ?? []).length > 0 && (
-            <span>
-              {t('editedBy')} <strong className="font-medium text-slate-700 dark:text-slate-200">{(article.editors ?? []).map((e) => e.name).join(', ')}</strong>
-            </span>
-          )}
-
-          {article.publishedAt && (
-            <time dateTime={article.publishedAt} className="ml-auto">
-              {new Date(article.publishedAt).toLocaleDateString(locale, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </time>
-          )}
-        </div>
-
-        {/* Tags */}
-        {(article.tags ?? []).length > 0 && (
-          <div className="mb-8 flex flex-wrap gap-2">
-            {(article.tags ?? []).map((tag) => (
-              <span
-                key={tag.id}
-                className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
-              >
-                #{tag.name}
-              </span>
-            ))}
+          }
+          header={<SidebarLayoutHeader title={article.title} description={article.description} />}
+        >
+          {/* Cover image */}
+          <div className="mb-8 aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
+            {article.coverImage ? (
+              <Image
+                src={strapiMediaUrl(article.coverImage)}
+                alt={article.coverImage.alternativeText ?? article.title}
+                width={article.coverImage.width}
+                height={article.coverImage.height}
+                className="h-full w-full object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6" />
+                </svg>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Content — placeholder for Strapi blocks renderer */}
-        {article.content && (
-          <div className="prose prose-slate max-w-none dark:prose-invert">
-            {/* TODO: replace with a Strapi blocks renderer component */}
-            <pre className="whitespace-pre-wrap text-xs text-slate-400">
-              {JSON.stringify(article.content, null, 2)}
-            </pre>
-          </div>
-        )}
+          {/* Meta: author / date */}
+          <ContentMeta
+            author={article.author}
+            publishDate={article.publishDate}
+            publishedAt={article.publishedAt}
+            modifiedDate={article.modifiedDate}
+            locale={locale}
+            showUpdated={isSignificantUpdate(article.publishDate ?? article.publishedAt, article.modifiedDate)}
+          />
 
-        <div className="mt-10">
-          <Link
-            href="/blog"
-            className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
-          >
-            ← {t('pageTitle')}
-          </Link>
-        </div>
-      </article>
-    </Container>
+          {/* Content */}
+          {article.content && <RichText content={article.content} />}
+        </SidebarLayout>
+      </Container>
+
+      {relatedArticles.length > 0 && (
+        <section className="py-14">
+          <Container>
+            <SectionTitle title={t('peopleAlsoRead')} link={blogBase} linkLabel={t('viewAll')} />
+            <ArticleHeroGrid articles={relatedArticles} locale={locale} blogBase={blogBase} />
+          </Container>
+        </section>
+      )}
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: article.title,
+            description: article.description ?? undefined,
+            ...(article.coverImage && { image: strapiMediaUrl(article.coverImage) }),
+            datePublished: article.publishDate ?? article.publishedAt,
+            ...(isSignificantUpdate(article.publishDate ?? article.publishedAt, article.modifiedDate) && { dateModified: article.modifiedDate }),
+            author: article.author ? [{ '@type': 'Person', name: article.author.name }] : [],
+          }),
+        }}
+      />
     </>
   );
 }

@@ -18,6 +18,7 @@ import OffersTable from '@/components/site/OffersTable';
 import PaymentMethodPills from '@/components/site/PaymentMethodPills';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import ContentMeta from '@/components/ContentMeta';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -98,10 +99,6 @@ export default async function ReviewDetailPage({ params }: Props) {
   const pros = review.pros?.split('\n').map((s) => s.trim()).filter(Boolean) ?? [];
   const cons = review.cons?.split('\n').map((s) => s.trim()).filter(Boolean) ?? [];
 
-  const publishDate = review.publishDate
-    ? new Date(review.publishDate).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
-    : null;
-
   const scoreEntries: { key: string; label: string; value: number }[] = [];
   if (review.paysiteScores) {
     for (const [key, label] of paysiteEntries) {
@@ -151,37 +148,20 @@ export default async function ReviewDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* Meta */}
-        {(review.authors.length > 0 || review.editors.length > 0 || publishDate) && (
-          <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            {review.authors.length > 0 && (
-              <span>
-                {t('by')}{' '}
-                <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {review.authors.map((a) => a.name).join(', ')}
-                </span>
-              </span>
-            )}
-            {review.editors.length > 0 && (
-              <span>
-                · {t('editedBy')}{' '}
-                <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {review.editors.map((e) => e.name).join(', ')}
-                </span>
-              </span>
-            )}
-            {publishDate && (
-              <span>· {t('publishedOn')} {publishDate}</span>
-            )}
-          </div>
-        )}
-
         {/* Gallery */}
-        {site.gallery && site.gallery.length > 0 && (
-          <div className="mb-8">
-            <ImageGallery images={site.gallery} />
-          </div>
-        )}
+        <div className="mb-8">
+          <ImageGallery images={site.gallery ?? []} />
+        </div>
+
+        {/* Meta */}
+        <ContentMeta
+          author={review.author}
+          publishDate={review.publishDate}
+          publishedAt={review.publishedAt}
+          modifiedDate={review.modifiedDate}
+          locale={locale}
+          showUpdated={!!review.modifiedDate}
+        />
 
         {/* Pros / Cons */}
         {(pros.length > 0 || cons.length > 0) && (

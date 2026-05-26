@@ -36,6 +36,9 @@ export const routes = {
   /** Blog article — e.g. /blog/1/my-article-slug/ */
   blogArticle: (id: number | string, slug: string) => `/blog/${id}/${slug}/` as const,
 
+  /** Blog author page — e.g. /blog/author/jane-doe/ */
+  blogAuthor: (slug: string) => `/blog/author/${slug}/` as const,
+
   /** Static CMS page — e.g. /page/about/ */
   page: (slug: string) => `/page/${slug}/` as const,
 

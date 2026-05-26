@@ -40,27 +40,15 @@
     },
     "authoredArticles": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "oneToMany",
       "target": "api::article.article",
-      "mappedBy": "authors"
-    },
-    "editedArticles": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::article.article",
-      "mappedBy": "editors"
+      "mappedBy": "author"
     },
     "authoredReviews": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "oneToMany",
       "target": "api::review.review",
-      "mappedBy": "authors"
-    },
-    "editedReviews": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::review.review",
-      "mappedBy": "editors"
+      "mappedBy": "author"
     }
   }
 }

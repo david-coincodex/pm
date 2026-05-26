@@ -20,6 +20,8 @@ interface SiteCardProps {
   review?: { score: number | null };
   /** Force dark card styling (e.g. when placed on a dark background) */
   variant?: 'light' | 'dark';
+  /** Whether this site is a cam site (for live badge + button label). Falls back to site.siteType === 'camsite'. */
+  isCamSite?: boolean;
 }
 
 function scoreColor(score: number): string {
@@ -28,7 +30,8 @@ function scoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant }: SiteCardProps) {
+export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite }: SiteCardProps) {
+  const isCam = isCamSite ?? site.siteType === 'camsite';
   const isDark = variant === 'dark';
   const [t, activeSale] = await Promise.all([
     getTranslations('discount'),
@@ -70,7 +73,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
             badgeIcon={saleBadge.badgeIcon}
             themeColor={saleBadge.themeColor}
           />
-        ) : (!review && site.siteType === 'camsite' && (
+        ) : (!review && isCam && (
           <span className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
             {t('liveBadge')}
@@ -135,7 +138,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                 href={`/${site.slug}/`}
                 className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
               >
-                {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
+                {isCam ? t('getCredits') : t('buyNow')}
               </Link>
             </>
           ) : (
@@ -153,14 +156,14 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                   rel="nofollow noopener noreferrer"
                   className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                 >
-                  {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
+                  {isCam ? t('getCredits') : t('buyNow')}
                 </Link>
               ) : (
                 <Link
                   href={href}
                   className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                 >
-                  {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
+                  {isCam ? t('getCredits') : t('buyNow')}
                 </Link>
               )}
             </>

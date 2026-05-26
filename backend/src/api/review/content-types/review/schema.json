@@ -83,19 +83,18 @@
       "target": "api::site.site",
       "required": true
     },
-    "authors": {
+    "author": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "manyToOne",
       "target": "api::author.author",
+      "required": true,
       "inversedBy": "authoredReviews"
     },
-    "editors": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::author.author",
-      "inversedBy": "editedReviews"
-    },
     "publishDate": {
+      "type": "datetime",
+      "required": true
+    },
+    "modifiedDate": {
       "type": "datetime"
     }
   }

@@ -50,6 +50,18 @@
       "required": false,
       "allowedTypes": ["images"]
     },
+    "intro": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": { "preset": "defaultHtml" },
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "content": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": { "preset": "defaultHtml" },
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
     "sites": {
       "type": "relation",
       "relation": "manyToMany",

@@ -189,14 +189,22 @@
     "verifiedOn": "Verifiziert am {date}",
     "ourReview": "Unser Test",
     "readReview": "Vollständigen Test lesen",
-    "reviewTitle": "{name} Test"
+    "reviewTitle": "{name} Test",
+    "featuredSites": "Empfohlene Seiten"
   },
   "blog": {
     "pageTitle": "Blog",
     "empty": "Noch keine Artikel veröffentlicht.",
     "by": "Von",
     "editedBy": "Bearbeitet von",
-    "readMore": "Weiterlesen"
+    "readMore": "Weiterlesen",
+    "on": "am",
+    "updatedOn": "Aktualisiert am",
+    "peopleAlsoRead": "Das könnte dich auch interessieren",
+    "viewAll": "Alle Artikel ansehen",
+    "authorPageTitle": "Artikel von {name}",
+    "authorArticlesEmpty": "Noch keine Artikel von diesem Autor.",
+    "latestReviews": "Neueste Rezensionen von {name}"
   },
   "offer": {
     "redirecting": "Du wirst zum Angebot weitergeleitet…",
@@ -264,8 +272,8 @@
     "showLess": "Weniger anzeigen",
     "readReview": "Rezension lesen",
     "by": "Von",
-    "editedBy": "Bearbeitet von",
     "publishedOn": "Veröffentlicht",
+    "updatedOn": "Aktualisiert",
     "empty": "Noch keine Bewertungen veröffentlicht.",
     "alsoRead": "Andere lesen auch",
     "pricingTitle": "Preise & Zahlungsmethoden",
@@ -314,5 +322,9 @@
     "allDeals": "Alle {saleName} Porno-Rabatte",
     "bundleDeals": "Bundle-Angebote",
     "notFound": "Verkauf nicht gefunden."
+  },
+  "richText": {
+    "showMore": "{count} weitere anzeigen",
+    "showLess": "Weniger anzeigen"
   }
 }
