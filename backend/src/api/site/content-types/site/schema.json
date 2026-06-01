@@ -11,7 +11,7 @@
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {},
+  "pluginOptions": { "i18n": { "localized": true } },
   "attributes": {
     "name": {
       "type": "string",
@@ -32,7 +32,8 @@
       "customField": "plugin::ckeditor5.CKEditor",
       "options": {
         "preset": "defaultHtml"
-      }
+      },
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "logo": {
       "type": "media",
@@ -61,7 +62,8 @@
       "max": 1
     },
     "short_description": {
-      "type": "string"
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "cover_image": {
       "type": "media",
@@ -70,7 +72,8 @@
       "allowedTypes": ["images"]
     },
     "included": {
-      "type": "text"
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "gallery": {
       "type": "media",
@@ -84,11 +87,17 @@
       "target": "api::offer.offer",
       "mappedBy": "site"
     },
-    "subsites": {
+    "parent_site": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::site.site",
+      "inversedBy": "child_sites"
+    },
+    "child_sites": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::subsite.subsite",
-      "mappedBy": "site"
+      "target": "api::site.site",
+      "mappedBy": "parent_site"
     },
     "categories": {
       "type": "relation",
@@ -101,6 +110,17 @@
       "relation": "manyToOne",
       "target": "api::platform.platform",
       "inversedBy": "sites"
+    },
+    "reviewSources": {
+      "type": "component",
+      "repeatable": true,
+      "component": "review.review-source"
+    },
+    "scrapedReviews": {
+      "type": "json"
+    },
+    "externalContext": {
+      "type": "json"
     }
   }
 }

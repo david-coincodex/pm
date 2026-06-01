@@ -12,11 +12,11 @@ export const routes = {
   /** Homepage */
   home: () => '/' as const,
 
-  /** Site detail page — e.g. /brazzers/ */
-  site: (slug: string) => `/${slug}/` as const,
+  /** Site detail page — e.g. /discounts/brazzers/ */
+  site: (slug: string) => `/discounts/${slug}/` as const,
 
-  /** Subsite detail page — e.g. /brazzers/brazzers-network/ */
-  subsite: (siteSlug: string, subsiteSlug: string) => `/${siteSlug}/${subsiteSlug}/` as const,
+  /** Subsite detail page — uses the same /discounts/ prefix as regular sites */
+  subsite: (_siteSlug: string, subsiteSlug: string) => `/discounts/${subsiteSlug}/` as const,
 
   /** Offer redirect page — e.g. /offer/42/ */
   offer: (id: number | string) => `/offer/${id}/` as const,

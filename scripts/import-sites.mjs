@@ -524,6 +524,261 @@ const SITES = [
     affiliateLink: 'https://www.sexyhub.com/',
     subsites: [],
   },
+
+  // ── EXISTING SITES — additional subsites from user's network list ─────────────
+  {
+    existingSlug: 'girlsway',
+    name: 'Girlsway',
+    subsites: [
+      { name: 'Girlsway Originals', slug: 'girlsway-originals' },
+      { name: 'Sex Tape Lesbians',  slug: 'sex-tape-lesbians' },
+      { name: 'Girls Try Anal',     slug: 'girls-try-anal' },
+      { name: "Mommy's Girl",       slug: 'mommys-girl' },
+      { name: 'Web Young',          slug: 'web-young' },
+    ],
+  },
+  {
+    existingSlug: 'new-sensations',
+    name: 'New Sensations',
+    subsites: [
+      { name: 'The Romance Series',  slug: 'the-romance-series' },
+      { name: 'Tales From The Edge', slug: 'tales-from-the-edge' },
+      { name: 'Digital Sin',         slug: 'digital-sin' },
+      { name: 'HotwifeXXX',          slug: 'hotwife-xxx' },
+    ],
+  },
+  {
+    existingSlug: 'reality-kings',
+    name: 'Reality Kings',
+    subsites: [
+      { name: 'Bad Tow Truck', slug: 'bad-tow-truck' },
+    ],
+  },
+  {
+    existingSlug: 'team-skeet',
+    name: 'TeamSkeet',
+    subsites: [
+      { name: 'Hoby Buchanon', slug: 'hoby-buchanon' },
+    ],
+  },
+  {
+    existingSlug: 'mofos',
+    name: 'Mofos',
+    subsites: [
+      { name: 'Busted Babysitters', slug: 'busted-babysitters' },
+      { name: 'Drone Hunter',       slug: 'drone-hunter' },
+      { name: 'Project RV',         slug: 'project-rv' },
+    ],
+  },
+
+  // ── NEW PARENT SITES — from user's network list ───────────────────────────────
+  {
+    name: 'Bad Daddy POV',
+    slug: 'bad-daddy-pov',
+    url: 'https://www.baddaddypov.com/',
+    siteType: 'paysite',
+    short_description: 'POV-focused hardcore network with 15+ anal and amateur subsites.',
+    full_price: 29.95,
+    price: 14.95,
+    affiliateLink: 'https://www.baddaddypov.com/',
+    subsites: [
+      { name: 'Anal BBC',             slug: 'anal-bbc' },
+      { name: 'Anal Violation',       slug: 'anal-violation' },
+      { name: 'DTF Sluts',            slug: 'dtf-sluts' },
+      { name: 'Girl Faction',         slug: 'girl-faction' },
+      { name: 'Her Gape',             slug: 'her-gape' },
+      { name: 'Homemade Anal Whores', slug: 'homemade-anal-whores' },
+      { name: 'James Deen',           slug: 'james-deen' },
+      { name: 'Only Prince',          slug: 'only-prince' },
+      { name: 'Pervert Gallery',      slug: 'pervert-gallery' },
+      { name: 'POV Perverts',         slug: 'pov-perverts' },
+      { name: 'Teenage Anal Sluts',   slug: 'teenage-anal-sluts' },
+      { name: 'Twisted Visual',       slug: 'twisted-visual' },
+      { name: 'Your Mom Does Anal',   slug: 'your-mom-does-anal' },
+      { name: 'Your Mom Does Porn',   slug: 'your-mom-does-porn' },
+    ],
+  },
+  {
+    name: 'Analized',
+    slug: 'analized',
+    url: 'https://www.analized.com/',
+    siteType: 'paysite',
+    short_description: 'Anal-focused network sharing channels with the Bad Daddy POV network.',
+    full_price: 29.95,
+    price: 14.95,
+    affiliateLink: 'https://www.analized.com/',
+    subsites: [],
+  },
+  {
+    name: 'Thai Swinger',
+    slug: 'thai-swinger',
+    url: 'https://www.thaiswinger.com/',
+    siteType: 'paysite',
+    short_description: 'Thai amateur and swinger content network.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.thaiswinger.com/',
+    subsites: [
+      { name: 'Latina Raw',  slug: 'latina-raw' },
+      { name: 'Isan Unseen', slug: 'isan-unseen' },
+    ],
+  },
+  {
+    name: 'Ladyboy Gold',
+    slug: 'ladyboy-gold',
+    url: 'https://www.ladyboygold.com/',
+    siteType: 'paysite',
+    short_description: 'Premium Thai ladyboy network with 3 exclusive subsites.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.ladyboygold.com/',
+    subsites: [
+      { name: 'TS RAW',        slug: 'ts-raw' },
+      { name: 'Ladyboy Tube',  slug: 'ladyboy-tube' },
+      { name: 'Ladyboy Crush', slug: 'ladyboy-crush' },
+    ],
+  },
+  {
+    name: "Devil's Film",
+    slug: 'devils-film',
+    url: 'https://www.devilsfilm.com/',
+    siteType: 'paysite',
+    short_description: 'Massive adult network (part of Fame Digital / Gamma) with 28+ subsites spanning all genres.',
+    full_price: 29.95,
+    price: 7.95,
+    affiliateLink: 'https://www.devilsfilm.com/',
+    subsites: [
+      { name: 'Big Fat Creampie',     slug: 'big-fat-creampie' },
+      { name: 'Bushy Bushy',          slug: 'bushy-bushy' },
+      { name: 'Cum Shot Oasis',       slug: 'cum-shot-oasis' },
+      { name: 'Curry Creampie',       slug: 'curry-creampie' },
+      { name: 'Daring Sex',           slug: 'daring-sex' },
+      { name: 'Devils Film Parodies', slug: 'devils-film-parodies' },
+      { name: 'Devils GangBang',      slug: 'devils-gangbang' },
+      { name: 'FameDigital Network',  slug: 'famedigital-network' },
+      { name: 'Give Me Teens',        slug: 'give-me-teens' },
+      { name: 'Granny Ghetto',        slug: 'granny-ghetto' },
+      { name: 'Hairy Undies',         slug: 'hairy-undies' },
+      { name: 'I Swallow Peter North', slug: 'i-swallow-peter-north' },
+      { name: 'Lesbian Factor',       slug: 'lesbian-factor' },
+      { name: 'Low Art Films',        slug: 'low-art-films' },
+      { name: 'Mother Fucker XXX',    slug: 'mother-fucker-xxx' },
+      { name: 'My Teen Oasis',        slug: 'my-teen-oasis' },
+      { name: 'Out Of the Family',    slug: 'out-of-the-family' },
+      { name: 'Peter North',          slug: 'peter-north' },
+      { name: 'Peter North DVD',      slug: 'peter-north-dvd' },
+      { name: 'POV This',             slug: 'pov-this' },
+      { name: 'Rocco Siffredi',       slug: 'rocco-siffredi' },
+      { name: 'Silvia Saint',         slug: 'silvia-saint' },
+      { name: 'Silverstone DVD',      slug: 'silverstone-dvd' },
+      { name: 'Squirtalicious',       slug: 'squirtalicious' },
+      { name: 'Tera Patrick',         slug: 'tera-patrick' },
+      { name: 'Transsexual Road Trip', slug: 'transsexual-road-trip' },
+      { name: 'Tranny Pros',          slug: 'tranny-pros' },
+      { name: 'White Ghetto',         slug: 'white-ghetto' },
+    ],
+  },
+  {
+    name: 'Fetish Network',
+    slug: 'fetish-network',
+    url: 'https://www.fetishnetwork.com/',
+    siteType: 'paysite',
+    short_description: 'BDSM and fetish network with 11 subsites covering femdom, spanking and bondage.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.fetishnetwork.com/',
+    subsites: [
+      { name: 'Brutal Dungeon',          slug: 'brutal-dungeon' },
+      { name: 'Brutal Punishment',       slug: 'brutal-punishment' },
+      { name: 'Cash Fetish',             slug: 'cash-fetish' },
+      { name: 'Femdom Academy',          slug: 'femdom-academy' },
+      { name: 'Japanese Femdom Videos',  slug: 'japanese-femdom-videos' },
+      { name: 'Jerkoff Girlfriends',     slug: 'jerkoff-girlfriends' },
+      { name: 'Panty Girlfriends',       slug: 'panty-girlfriends' },
+      { name: 'Perfect Spanking',        slug: 'perfect-spanking' },
+      { name: 'Punished Angels',         slug: 'punished-angels' },
+      { name: 'Shibari Dolls',           slug: 'shibari-dolls' },
+      { name: 'Taboo Tug Jobs',          slug: 'taboo-tug-jobs' },
+    ],
+  },
+  {
+    name: 'Blowpass',
+    slug: 'blowpass',
+    url: 'https://www.blowpass.com/',
+    siteType: 'paysite',
+    short_description: 'Blowjob-focused network with exclusive oral and group content.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.blowpass.com/',
+    subsites: [
+      { name: 'Cock Sucking Challenge', slug: 'cock-sucking-challenge' },
+      { name: 'Squirting Orgies',       slug: 'squirting-orgies' },
+      { name: 'Sunlust XXX',            slug: 'sunlust-xxx' },
+    ],
+  },
+  {
+    name: 'Wankz',
+    slug: 'wankz',
+    url: 'https://www.wankz.com/',
+    siteType: 'paysite',
+    short_description: 'Premium HD network featuring fantasy, amateur and niche content.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.wankz.com/',
+    subsites: [
+      { name: 'Bubbly Massage',    slug: 'bubbly-massage' },
+      { name: 'Brother Undercover', slug: 'brother-undercover' },
+      { name: 'Blow Patrol',       slug: 'blow-patrol' },
+    ],
+  },
+  {
+    name: 'Pornstar Platinum',
+    slug: 'pornstar-platinum',
+    url: 'https://www.pornstarplatinum.com/',
+    siteType: 'paysite',
+    short_description: 'Network of individual pornstar sites with exclusive solo and hardcore content.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.pornstarplatinum.com/',
+    subsites: [
+      { name: 'Fukks',                   slug: 'fukks' },
+      { name: 'Nina Elle XXX',           slug: 'nina-elle-xxx' },
+      { name: 'Pornstar Platinum Mobile', slug: 'pornstar-platinum-mobile' },
+      { name: 'Yuri Luv',               slug: 'yuri-luv' },
+    ],
+  },
+  {
+    name: 'Puba',
+    slug: 'puba',
+    url: 'https://www.puba.com/',
+    siteType: 'paysite',
+    short_description: 'Network of exclusive pornstar personal sites with solo and hardcore content.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.puba.com/',
+    subsites: [
+      { name: 'Brett Rossi',     slug: 'brett-rossi' },
+      { name: 'Dahlia Sky',      slug: 'dahlia-sky' },
+      { name: 'Dana DeArmond',   slug: 'dana-dearmond' },
+      { name: 'Mia Lelani',      slug: 'mia-lelani' },
+      { name: 'Nicole Aniston',  slug: 'nicole-aniston' },
+      { name: 'Romi Rain',       slug: 'romi-rain' },
+    ],
+  },
+  {
+    name: 'PornPros',
+    slug: 'pornpros',
+    url: 'https://www.pornpros.com/',
+    siteType: 'paysite',
+    short_description: 'Premium HD network with 20+ subsites including Passion HD, Tiny4K and PureMature.',
+    full_price: 29.95,
+    price: 9.95,
+    affiliateLink: 'https://www.pornpros.com/',
+    subsites: [
+      { name: 'Cum Disgrace',     slug: 'cum-disgrace' },
+      { name: 'Milf Humiliation', slug: 'milf-humiliation' },
+    ],
+  },
 ];
 
 // ── Strapi helpers ─────────────────────────────────────────────────────────────
@@ -572,7 +827,8 @@ async function publishSite(token, documentId) {
     method: 'POST',
     headers: authHeaders(token),
   });
-  if (!res.ok) {
+  // 405 = already published or not supported via API token — entries are auto-published on creation
+  if (!res.ok && res.status !== 405) {
     console.warn(`  ⚠ publish site ${documentId}: ${res.status}`);
   }
 }
@@ -599,7 +855,7 @@ async function createOffer(token, { siteDocumentId, price, full_price, affiliate
 
 async function subsiteExists(token, slug) {
   const res = await fetch(
-    `${STRAPI_URL}/api/subsites?filters[slug][$eq]=${encodeURIComponent(slug)}`,
+    `${STRAPI_URL}/api/sites?filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
     { headers: authHeaders(token) }
   );
   if (!res.ok) throw new Error(`subsiteExists(${slug}): ${res.status} ${await res.text()}`);
@@ -607,16 +863,24 @@ async function subsiteExists(token, slug) {
   return (data?.length ?? 0) > 0;
 }
 
-async function createSubsite(token, { name, slug, siteDocumentId }) {
-  const res = await fetch(`${STRAPI_URL}/api/subsites`, {
+async function createSubsite(token, { name, slug, url, siteType, siteDocumentId }) {
+  const res = await fetch(`${STRAPI_URL}/api/sites`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({
-      data: { name, slug, isActive: true, site: siteDocumentId },
+      data: {
+        name,
+        slug,
+        url: url || 'https://example.com/',
+        siteType: siteType || 'paysite',
+        isActive: true,
+        parent_site: siteDocumentId,
+      },
     }),
   });
   if (!res.ok) throw new Error(`createSubsite(${name}): ${res.status} ${await res.text()}`);
-  return res.json();
+  const { data } = await res.json();
+  return data;
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -667,6 +931,10 @@ async function main() {
       }
     }
 
+    // Resolve parent URL and siteType for child sites
+    const parentUrl = existing?.url ?? site.url ?? 'https://example.com/';
+    const parentSiteType = existing?.siteType ?? site.siteType ?? 'paysite';
+
     // ── 2. Create offer for new sites ───────────────────────────────────────
     if (!isExisting && !existing) {
       if (DRY_RUN) {
@@ -706,7 +974,14 @@ async function main() {
       }
 
       try {
-        await createSubsite(token, { name: sub.name, slug: sub.slug, siteDocumentId: documentId });
+        const created = await createSubsite(token, {
+          name: sub.name,
+          slug: sub.slug,
+          url: sub.url ?? parentUrl,
+          siteType: sub.siteType ?? parentSiteType,
+          siteDocumentId: documentId,
+        });
+        await publishSite(token, created.documentId);
         added++;
       } catch (err) {
         console.warn(`    ⚠ ${sub.name}: ${err.message}`);

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { getBundleBySlug, strapiMediaUrl } from '@/lib/strapi';
+import { getBundleBySlug, getAllBundleSlugs, strapiMediaUrl } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
 import { Link } from '@/i18n/navigation';
 import Container from '@/components/Container';
@@ -14,9 +14,16 @@ import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
+export async function generateStaticParams() {
+  const slugs = await getAllBundleSlugs().catch(() => []);
+  return routing.locales.flatMap((locale) =>
+    slugs.map((slug) => ({ locale, slug }))
+  );
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const bundle = await getBundleBySlug(slug);
+  const bundle = await getBundleBySlug(slug, locale);
   if (!bundle) return {};
   const t = await getTranslations({ locale, namespace: 'bundles' });
   const canonical =
@@ -44,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BundleDetailPage({ params }: Props) {
   const { locale, slug } = await params;
   const [bundle, t, dt, tBc] = await Promise.all([
-    getBundleBySlug(slug),
+    getBundleBySlug(slug, locale),
     getTranslations({ locale, namespace: 'bundles' }),
     getTranslations({ locale, namespace: 'discount' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),

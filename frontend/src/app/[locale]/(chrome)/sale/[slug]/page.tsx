@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
-import { getSaleBySlug, getDiscountPercent, type Sale } from '@/lib/strapi';
+import { getSaleBySlug, getAllSaleSlugs, getDiscountPercent, type Sale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import RichText from '@/components/RichText';
@@ -14,9 +14,16 @@ import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
+export async function generateStaticParams() {
+  const slugs = await getAllSaleSlugs().catch(() => []);
+  return routing.locales.flatMap((locale) =>
+    slugs.map((slug) => ({ locale, slug }))
+  );
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const sale = await getSaleBySlug(slug);
+  const sale = await getSaleBySlug(slug, locale);
   if (!sale) return {};
 
   const canonical =
@@ -53,7 +60,7 @@ export default async function SalePage({ params }: Props) {
   const { locale, slug } = await params;
 
   const [sale, t] = await Promise.all([
-    getSaleBySlug(slug),
+    getSaleBySlug(slug, locale),
     getTranslations({ locale, namespace: 'sale' }),
   ]);
 

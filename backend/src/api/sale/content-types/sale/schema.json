@@ -11,7 +11,7 @@
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {},
+  "pluginOptions": { "i18n": { "localized": true } },
   "attributes": {
     "title": {
       "type": "string",
@@ -23,7 +23,8 @@
       "required": true
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "startsAt": {
       "type": "datetime",
@@ -35,7 +36,8 @@
     },
     "navLabel": {
       "type": "string",
-      "required": true
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "themeColor": {
       "type": "customField",
@@ -43,7 +45,8 @@
       "default": "#ef4444"
     },
     "badgeLabel": {
-      "type": "string"
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "badgeIcon": {
       "type": "enumeration",
@@ -72,13 +75,16 @@
       "target": "api::bundle.bundle"
     },
     "content": {
-      "type": "blocks"
+      "type": "blocks",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "metaTitle": {
-      "type": "string"
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
     },
     "metaDescription": {
-      "type": "text"
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
     }
   }
 }

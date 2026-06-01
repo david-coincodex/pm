@@ -47,16 +47,6 @@ export type StrapiMedia = {
   };
 };
 
-export type Subsite = {
-  id: number;
-  documentId: string;
-  name: string;
-  slug: string;
-  logo: StrapiMedia | null;
-  cover_image: StrapiMedia | null;
-  isActive: boolean;
-};
-
 export type Platform = {
   id: number;
   documentId: string;
@@ -81,7 +71,8 @@ export type Site = {
   included: string | null;
   gallery: StrapiMedia[];
   offers: Offer[];
-  subsites: Subsite[];
+  parent_site: Site | null;
+  child_sites: Site[];
   platform: Platform | null;
 };
 
@@ -244,13 +235,21 @@ export async function getBundlesPaginated(
   };
 }
 
-/** Fetch a single bundle by slug with sites, their offers, and the bundle's own offers. */
-export async function getBundleBySlug(slug: string): Promise<Bundle | null> {
+/** Fetch a single bundle by slug with sites, their offers, and the bundle's own offers. Falls back to 'en' if no translation exists. */
+export async function getBundleBySlug(slug: string, locale = 'en'): Promise<Bundle | null> {
   const res = await strapiGet<Bundle[]>(
-    `/bundles?populate[0]=sites&populate[1]=sites.logo&populate[2]=sites.cover_image&populate[3]=sites.offers&populate[4]=offers&populate[5]=cover_image&populate[6]=gallery&filters[slug][$eq]=${encodeURIComponent(slug)}`,
+    `/bundles?populate[0]=sites&populate[1]=sites.logo&populate[2]=sites.cover_image&populate[3]=sites.offers&populate[4]=offers&populate[5]=cover_image&populate[6]=gallery&filters[slug][$eq]=${encodeURIComponent(slug)}&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data[0] ?? null;
+  if (res.data[0]) return res.data[0];
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Bundle[]>(
+      `/bundles?populate[0]=sites&populate[1]=sites.logo&populate[2]=sites.cover_image&populate[3]=sites.offers&populate[4]=offers&populate[5]=cover_image&populate[6]=gallery&filters[slug][$eq]=${encodeURIComponent(slug)}&locale=en`,
+      { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
 }
 
 export type Offer = {
@@ -299,7 +298,7 @@ export type Featured = {
 /** Fetch all active sites that have at least one active offer, with offers populated. */
 export async function getSitesWithDeals(): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    '/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&sort=name:asc'
+    '/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[parent_site][$null]=true&sort=name:asc'
   );
   return res.data;
 }
@@ -307,7 +306,7 @@ export async function getSitesWithDeals(): Promise<Site[]> {
 /** Fetch active sites with at least one lifetime offer, max 4, sorted by name. */
 export async function getLifetimeDeals(limit = 4): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[offers][offerType][$eq]=lifetime&sort=name:asc&pagination[pageSize]=${limit}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[offers][offerType][$eq]=lifetime&filters[parent_site][$null]=true&sort=name:asc&pagination[pageSize]=${limit}`,
   );
   return res.data;
 }
@@ -315,7 +314,7 @@ export async function getLifetimeDeals(limit = 4): Promise<Site[]> {
 /** Fetch active cam sites with at least one active offer, max 4, sorted by name. */
 export async function getCamSiteDeals(limit = 4): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[siteType][$eq]=camsite&filters[offers][isActive][$eq]=true&sort=name:asc&pagination[pageSize]=${limit}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[siteType][$eq]=camsite&filters[offers][isActive][$eq]=true&filters[parent_site][$null]=true&sort=name:asc&pagination[pageSize]=${limit}`,
   );
   return res.data;
 }
@@ -326,7 +325,7 @@ export async function getSitesBySiteType(
   limit = 12,
 ): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[siteType][$eq]=${encodeURIComponent(siteType)}&filters[offers][isActive][$eq]=true&sort=name:asc&pagination[pageSize]=${limit}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[siteType][$eq]=${encodeURIComponent(siteType)}&filters[offers][isActive][$eq]=true&filters[parent_site][$null]=true&sort=name:asc&pagination[pageSize]=${limit}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data;
@@ -355,7 +354,7 @@ export async function getSitesWithDealsPaginated(
   pageSize = 12,
 ): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[parent_site][$null]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
   );
   return {
     sites: res.data,
@@ -366,25 +365,33 @@ export async function getSitesWithDealsPaginated(
 /** Fetch top N active sites with offers, optionally excluding a slug. */
 export async function getTopDeals(limit = 4, excludeSlug?: string): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&sort=createdAt:desc&pagination[pageSize]=${limit + 1}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[parent_site][$null]=true&sort=createdAt:desc&pagination[pageSize]=${limit + 1}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   const all = res.data.filter((s) => s.slug !== excludeSlug);
   return all.slice(0, limit);
 }
 
-/** Fetch the active site by slug with its offers and subsites. */
-export async function getDealBySiteSlug(slug: string): Promise<Site | null> {
+/** Fetch the active site by slug with its offers and child sites. Falls back to 'en' if no translation exists. */
+export async function getDealBySiteSlug(slug: string, locale = 'en'): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=subsites&populate[4]=subsites.logo&populate[5]=subsites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data[0] ?? null;
+  if (res.data[0]) return res.data[0];
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Site[]>(
+      `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
+      { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
 }
 
 export async function getSiteById(id: number): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=subsites&populate[4]=subsites.logo&populate[5]=subsites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[id][$eq]=${id}&filters[isActive][$eq]=true&pagination[pageSize]=1`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[id][$eq]=${id}&filters[isActive][$eq]=true&pagination[pageSize]=1`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data[0] ?? null;
@@ -402,7 +409,7 @@ export async function getOfferById(id: number): Promise<(Offer & { site: Site })
 /** Fetch all active sites, populated with logo and cover image. */
 export async function getSites(): Promise<Site[]> {
   const res = await strapiGet<Site[]>(
-    '/sites?populate[0]=logo&populate[1]=cover_image&filters[isActive][$eq]=true&sort=name:asc'
+    '/sites?populate[0]=logo&populate[1]=cover_image&filters[isActive][$eq]=true&filters[parent_site][$null]=true&sort=name:asc'
   );
   return res.data;
 }
@@ -445,7 +452,7 @@ export async function getSitesByCategoryId(
   pageSize = 12,
 ): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][id][$eq]=${categoryId}&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][id][$eq]=${categoryId}&filters[parent_site][$null]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return {
@@ -461,7 +468,7 @@ export async function getSitesByCategorySlug(
   pageSize = 12,
 ): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}&filters[parent_site][$null]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return {
@@ -470,41 +477,29 @@ export async function getSitesByCategorySlug(
   };
 }
 
-/** Fetch a single site by slug. Returns null if not found. */
-export async function getSiteBySlug(slug: string): Promise<Site | null> {
+/** Fetch a single site by slug. Returns null if not found. Falls back to 'en' if no translation. */
+export async function getSiteBySlug(slug: string, locale = 'en'): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data[0] ?? null;
+  if (res.data[0]) return res.data[0];
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Site[]>(
+      `/sites?populate[0]=logo&populate[1]=cover_image&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
+      { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
 }
 
-/** Fetch a subsite by its own slug, including its parent site with offers. */
-export async function getSubsiteBySlug(subslug: string): Promise<(Subsite & { site: Site & { offers: Offer[] } }) | null> {
-  const res = await strapiGet<(Subsite & { site: Site & { offers: Offer[] } })[]>(
-    `/subsites?populate[0]=logo&populate[1]=cover_image&populate[2]=site&populate[3]=site.logo&populate[4]=site.cover_image&populate[5]=site.offers&filters[slug][$eq]=${encodeURIComponent(subslug)}&filters[isActive][$eq]=true`,
-    { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
-  );
-  return res.data[0] ?? null;
-}
-
-/** Search sites by name or short_description. Runs server-side (no cache). */
+/** Search sites by name or short_description (includes subsites). Runs server-side (no cache). */
 export async function searchSites(query: string): Promise<Site[]> {
   const q = encodeURIComponent(query.trim());
   if (!q) return [];
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[$or][0][name][$containsi]=${q}&filters[$or][1][short_description][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
-    { next: { revalidate: 0 } } as Parameters<typeof strapiGet>[1]
-  );
-  return res.data;
-}
-
-/** Search subsites by name. Returns subsites with their parent site populated. */
-export async function searchSubsites(query: string): Promise<(Subsite & { site: Site })[]> {
-  const q = encodeURIComponent(query.trim());
-  if (!q) return [];
-  const res = await strapiGet<(Subsite & { site: Site })[]>(
-    `/subsites?populate[0]=logo&populate[1]=site&populate[2]=site.logo&populate[3]=site.offers&filters[isActive][$eq]=true&filters[name][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=parent_site&populate[4]=parent_site.offers&filters[isActive][$eq]=true&filters[$or][0][name][$containsi]=${q}&filters[$or][1][short_description][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
     { next: { revalidate: 0 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data;
@@ -694,9 +689,7 @@ export type CamsiteScores = {
 export type Review = {
   id: number;
   documentId: string;
-  metaTitle: string | null;
-  title: string;
-  slug: string;
+  titleExtra: string | null;
   description: string | null;
   content: Record<string, unknown>[] | null;
   paysiteScores: PaysiteScores | null;
@@ -811,11 +804,182 @@ export async function getActiveSale(): Promise<Pick<Sale, 'id' | 'documentId' | 
   };
 }
 
-/** Fetch a full sale by slug. */
-export async function getSaleBySlug(slug: string): Promise<Sale | null> {
+/** Fetch all published bundle slugs (for generateStaticParams). */
+export async function getAllBundleSlugs(): Promise<string[]> {
+  const res = await strapiGet<Bundle[]>(
+    '/bundles?fields[0]=slug&filters[publishedAt][$notNull]=true&locale=en&pagination[pageSize]=100',
+    { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data.map((b) => b.slug);
+}
+
+/** Fetch all published sale slugs (for generateStaticParams). */
+export async function getAllSaleSlugs(): Promise<string[]> {
   const res = await strapiGet<Sale[]>(
-    `/sales?${SALE_POPULATE}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true`,
+    '/sales?fields[0]=slug&filters[publishedAt][$notNull]=true&locale=en&pagination[pageSize]=100',
+    { next: { revalidate: 3600 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.data.map((s) => s.slug);
+}
+
+/** Fetch a full sale by slug and locale. Falls back to 'en' if no translation exists. */
+export async function getSaleBySlug(slug: string, locale = 'en'): Promise<Sale | null> {
+  const res = await strapiGet<Sale[]>(
+    `/sales?${SALE_POPULATE}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data[0] ?? null;
+  if (res.data[0]) return res.data[0];
+  if (locale !== 'en') {
+    const fallback = await strapiGet<Sale[]>(
+      `/sales?${SALE_POPULATE}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&locale=en`,
+      { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+    );
+    return fallback.data[0] ?? null;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Sitemap helpers
+// ---------------------------------------------------------------------------
+
+type SitemapLocalization = { locale: string };
+
+export type SitemapSite = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapBundle = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapSale = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapCategory = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapArticle = { id: number; slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapAuthor = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapReview = { updatedAt: string; site: { slug: string }; localizations: SitemapLocalization[] };
+export type SitemapPage = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+
+/** Fetch the total count of published entries for a content type (used by generateSitemaps). */
+export async function getSitemapCount(contentType: string, locale?: string): Promise<number> {
+  const localeParam = locale ? `&locale=${encodeURIComponent(locale)}` : '';
+  const res = await strapiGet<unknown[]>(
+    `/${contentType}?filters[publishedAt][$notNull]=true${localeParam}&pagination[pageSize]=1&pagination[page]=1`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return res.meta.pagination?.total ?? 0;
+}
+
+/** Fetch a page of published sites for the sitemap (includes subsites). */
+export async function getSitesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapSite[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapSite[]>(
+    `/sites?fields[0]=slug&fields[1]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published bundles for the sitemap. */
+export async function getBundlesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapBundle[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapBundle[]>(
+    `/bundles?fields[0]=slug&fields[1]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published sales for the sitemap. */
+export async function getSalesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapSale[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapSale[]>(
+    `/sales?fields[0]=slug&fields[1]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published categories (en) for the sitemap. */
+export async function getCategoriesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapCategory[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapCategory[]>(
+    `/categories?fields[0]=slug&fields[1]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published articles (en) for the sitemap. */
+export async function getArticlesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapArticle[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapArticle[]>(
+    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of authors for the sitemap. */
+export async function getAuthorsForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapAuthor[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapAuthor[]>(
+    `/authors?fields[0]=slug&fields[1]=updatedAt&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published reviews (en) for the sitemap. */
+export async function getReviewsForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapReview[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapReview[]>(
+    `/reviews?fields[0]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[site][fields][0]=slug&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
+}
+
+/** Fetch a page of published CMS pages (en) for the sitemap. */
+export async function getPagesForSitemap(
+  page: number,
+  pageSize: number,
+): Promise<{ data: SitemapPage[]; pagination: StrapiPaginationMeta }> {
+  const res = await strapiGet<SitemapPage[]>(
+    `/pages?fields[0]=slug&fields[1]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { next: { revalidate: 86400 } } as Parameters<typeof strapiGet>[1]
+  );
+  return {
+    data: res.data,
+    pagination: res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length },
+  };
 }

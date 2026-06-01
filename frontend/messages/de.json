@@ -273,6 +273,8 @@
     "showMore": "+{count} mehr",
     "showLess": "Weniger anzeigen",
     "readReview": "Rezension lesen",
+    "reviewTitle": "{name} Rezension",
+    "reviewMetaTitle": "{name} Rezension: {titleExtra}",
     "by": "Von",
     "publishedOn": "Veröffentlicht",
     "updatedOn": "Aktualisiert",

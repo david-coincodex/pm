@@ -40,8 +40,8 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
     getActiveSale(),
   ]);
   const tReviews = review ? await getTranslations('reviews') : null;
-  const href = review ? routes.review(site.slug) : `/${site.slug}/`;
-  const dealHref = !review && forcedType && bestOfferId ? `/${site.slug}/?offer=${bestOfferId}` : href;
+  const href = review ? routes.review(site.slug) : routes.site(site.slug);
+  const dealHref = !review && forcedType && bestOfferId ? `${routes.site(site.slug)}?offer=${bestOfferId}` : href;
   const image = site.cover_image ?? site.logo;
   const saleBadge = activeSale?.siteIds.includes(site.id) ? activeSale : null;
 
@@ -138,7 +138,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                 {tReviews!('readReview')}
               </Link>
               <Link
-                href={`/${site.slug}/`}
+                href={routes.site(site.slug)}
                 className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
               >
                 {isCam ? t('getCredits') : t('buyNow')}

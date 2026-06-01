@@ -3,17 +3,17 @@
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
-import { strapiMediaUrl, type Subsite } from '@/lib/strapi';
+import { strapiMediaUrl, type Site } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import PopoverSheet from '@/components/PopoverSheet';
 
 interface SubsiteGridProps {
-  subsites: Subsite[];
+  subsites: Site[];
   siteName: string;
   siteSlug: string;
 }
 
-function SubsiteTile({ subsite, siteSlug }: { subsite: Subsite; siteSlug: string }) {
+function SubsiteTile({ subsite, siteSlug }: { subsite: Site; siteSlug: string }) {
   const image = subsite.logo ?? subsite.cover_image;
   return (
     <Link

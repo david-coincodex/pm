@@ -6,7 +6,7 @@
     "pluralName": "reviews",
     "displayName": "Review",
     "description": "Site reviews with score breakdown",
-    "mainField": "title"
+    "mainField": "displayTitle"
   },
   "options": {
     "draftAndPublish": true
@@ -17,24 +17,11 @@
     }
   },
   "attributes": {
-    "metaTitle": {
-      "type": "string",
-      "required": true,
-      "pluginOptions": {
-        "i18n": { "localized": true }
-      }
+    "displayTitle": {
+      "type": "string"
     },
-    "title": {
+    "titleExtra": {
       "type": "string",
-      "required": true,
-      "pluginOptions": {
-        "i18n": { "localized": true }
-      }
-    },
-    "slug": {
-      "type": "uid",
-      "targetField": "title",
-      "required": true,
       "pluginOptions": {
         "i18n": { "localized": true }
       }

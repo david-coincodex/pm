@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchSites, searchSubsites } from '@/lib/strapi';
+import { searchSites } from '@/lib/strapi';
 
 export type SearchResult = {
   id: string;
@@ -16,39 +16,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json([]);
   }
   try {
-    const [sites, subsites] = await Promise.all([
-      searchSites(q),
-      searchSubsites(q),
-    ]);
+    const sites = await searchSites(q);
 
     const results: SearchResult[] = [];
 
     for (const site of sites) {
-      const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
-      const best = activeOffers.length > 0
-        ? [...activeOffers].sort((a, b) => a.price - b.price)[0]
+      // Use own offers, fall back to parent site offers for child sites
+      const ownOffers = (site.offers ?? []).filter((o) => o.isActive);
+      const effectiveOffers = ownOffers.length > 0
+        ? ownOffers
+        : ((site.parent_site as any)?.offers ?? []).filter((o: any) => o.isActive);
+      const best = effectiveOffers.length > 0
+        ? [...effectiveOffers].sort((a: any, b: any) => a.price - b.price)[0]
         : undefined;
       results.push({
         id: `site-${site.id}`,
         name: site.name,
         slug: site.slug,
-        price: best?.price,
-        fullPrice: best?.full_price,
-      });
-    }
-
-    for (const sub of subsites) {
-      // Skip if parent site already in results
-      if (results.some((r) => r.slug === sub.site?.slug)) continue;
-      const parentOffers = ((sub.site as any)?.offers ?? []).filter((o: any) => o.isActive);
-      const best = parentOffers.length > 0
-        ? [...parentOffers].sort((a: any, b: any) => a.price - b.price)[0]
-        : undefined;
-      results.push({
-        id: `sub-${sub.id}`,
-        name: sub.name,
-        slug: sub.slug,
-        parentSlug: sub.site?.slug,
+        parentSlug: site.parent_site?.slug ?? undefined,
         price: best?.price,
         fullPrice: best?.full_price,
       });

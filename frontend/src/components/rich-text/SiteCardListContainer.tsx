@@ -19,13 +19,15 @@ export default function SiteCardListContainer({ children, initialShow, showMoreL
     <div className="not-prose my-4">
       {visible}
       {remaining > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowAll((prev) => !prev)}
-          className="mt-3 text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
-        >
-          {showAll ? showLessLabel : showMoreLabel}
-        </button>
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowAll((prev) => !prev)}
+            className="cursor-pointer rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+          >
+            {showAll ? showLessLabel : showMoreLabel}
+          </button>
+        </div>
       )}
     </div>
   );

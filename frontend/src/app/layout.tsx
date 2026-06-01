@@ -1,5 +1,4 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import "flag-icons/css/flag-icons.min.css";
 
@@ -17,11 +16,8 @@ export default function RootLayout({
     <html>
       <head>
         {process.env.NODE_ENV === "development" && (
-          <Script
-            src="//unpkg.com/react-grab/dist/index.global.js"
-            crossOrigin="anonymous"
-            strategy="beforeInteractive"
-          />
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script src="https://unpkg.com/react-grab/dist/index.global.js" crossOrigin="anonymous" />
         )}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 dark:bg-slate-900`}>

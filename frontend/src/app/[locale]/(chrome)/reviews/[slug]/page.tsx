@@ -18,19 +18,26 @@ import PaymentMethodPills from '@/components/site/PaymentMethodPills';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 import ContentMeta from '@/components/ContentMeta';
+import { siteSettings } from '@/lib/siteSettings';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const review = await getReviewBySiteSlug(slug, locale);
+  const [review, t] = await Promise.all([
+    getReviewBySiteSlug(slug, locale),
+    getTranslations({ locale, namespace: 'reviews' }),
+  ]);
   if (!review) return {};
 
+  const metaTitle = review.titleExtra
+    ? t('reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
+    : t('reviewTitle', { name: review.site.name });
   const canonical =
     locale === routing.defaultLocale ? `/reviews/${slug}/` : `/${locale}/reviews/${slug}/`;
 
   return {
-    title: review.metaTitle ?? review.title,
+    title: metaTitle,
     description: review.description ?? undefined,
     alternates: {
       canonical,
@@ -51,6 +58,34 @@ function calcOverall(scores: PaysiteScores | CamsiteScores): number {
     .filter((v): v is number => typeof v === 'number' && v !== null);
   if (vals.length === 0) return 0;
   return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+}
+
+const OFFER_TYPE_LABEL: Record<string, string> = {
+  trial: 'Trial',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
+  lifetime: 'Lifetime',
+  credits: 'Credits',
+};
+
+function buildOffersSchema(offers: { id: number; offerType: string | null; price: number; full_price: number | null }[]) {
+  return offers.map((o) => ({
+    '@type': 'Offer',
+    name: o.offerType ? (OFFER_TYPE_LABEL[o.offerType] ?? o.offerType) : undefined,
+    price: o.price.toFixed(2),
+    priceCurrency: 'USD',
+    availability: 'https://schema.org/InStock',
+    url: `${siteSettings.baseUrl}${routes.offer(o.id)}`,
+    ...(o.full_price && o.full_price > o.price && {
+      priceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: o.price.toFixed(2),
+        priceCurrency: 'USD',
+        referencePrice: o.full_price.toFixed(2),
+      },
+    }),
+  }));
 }
 
 export default async function ReviewDetailPage({ params }: Props) {
@@ -129,7 +164,7 @@ export default async function ReviewDetailPage({ params }: Props) {
       <Container className="py-10 lg:py-14">
       <SidebarLayout
         sidebar={sidebar}
-        header={<SidebarLayoutHeader title={review.title} description={review.description} />}
+        header={<SidebarLayoutHeader title={t('reviewTitle', { name: site.name })} description={review.description} />}
       >
         {/* Cover image */}
         {siteImage && (
@@ -248,6 +283,44 @@ export default async function ReviewDetailPage({ params }: Props) {
       siteIncluded={false}
       siteName={site.name}
       locale={locale}
+    />
+
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Review',
+          name: review.titleExtra
+            ? `${site.name} Review: ${review.titleExtra}`
+            : `${site.name} Review`,
+          description: review.description ?? undefined,
+          datePublished: review.publishDate ?? review.publishedAt,
+          ...(review.modifiedDate && { dateModified: review.modifiedDate }),
+          author: review.author ? [{
+            '@type': 'Person',
+            name: review.author.name,
+            url: `${siteSettings.baseUrl}${routes.blogAuthor(review.author.slug)}`,
+            ...(review.author.bio && { description: review.author.bio }),
+          }] : [],
+          ...(overall !== null && {
+            reviewRating: {
+              '@type': 'Rating',
+              ratingValue: overall,
+              bestRating: 10,
+              worstRating: 0,
+            },
+          }),
+          itemReviewed: {
+            '@type': 'Service',
+            name: site.name,
+            url: `${siteSettings.baseUrl}/${site.slug}/`,
+            ...(site.short_description && { description: site.short_description }),
+            ...(siteImage && { image: strapiMediaUrl(siteImage) }),
+            ...(activeOffers.length > 0 && { offers: buildOffersSchema(activeOffers) }),
+          },
+        }),
+      }}
     />
     </>
   );

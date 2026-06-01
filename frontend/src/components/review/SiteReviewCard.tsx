@@ -64,7 +64,9 @@ export default async function SiteReviewCard({ review }: SiteReviewCardProps) {
           {site.name}
         </p>
         <Link href={href} className="text-base font-semibold text-slate-900 hover:underline dark:text-white line-clamp-2">
-          {review.title}
+          {review.titleExtra
+            ? t('reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
+            : t('reviewTitle', { name: review.site.name })}
         </Link>
         {review.description && (
           <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-3">

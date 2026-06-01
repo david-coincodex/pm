@@ -274,6 +274,8 @@
     "showMore": "+{count} more",
     "showLess": "Show less",
     "readReview": "Read Review",
+    "reviewTitle": "{name} Review",
+    "reviewMetaTitle": "{name} Review: {titleExtra}",
     "by": "By",
     "publishedOn": "Published",
     "updatedOn": "Updated",

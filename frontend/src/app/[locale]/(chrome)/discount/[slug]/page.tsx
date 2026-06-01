@@ -54,7 +54,7 @@ export default async function DiscountDetailPage({ params }: Props) {
   const { locale, slug } = await params;
 
   const [site, t] = await Promise.all([
-    getDealBySiteSlug(slug),
+    getDealBySiteSlug(slug, locale),
     getTranslations({ locale, namespace: 'discount' }),
   ]);
 
@@ -204,8 +204,8 @@ export default async function DiscountDetailPage({ params }: Props) {
           })()}
         </div>
 
-        {/* Bonus subsites */}
-        <SubsiteGrid subsites={site.subsites ?? []} siteName={site.name} siteSlug={site.slug} />
+        {/* Bonus child sites */}
+        <SubsiteGrid subsites={site.child_sites ?? []} siteName={site.name} siteSlug={site.slug} />
       </SidebarLayout>
 
       {/* People also bought */}

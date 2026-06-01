@@ -63,7 +63,7 @@ function PriceTag({ price, fullPrice }: { price?: number; fullPrice?: number | n
 }
 
 function SearchResultRow({ result, onNavigate, active }: { result: SearchResult; onNavigate: () => void; active?: boolean }) {
-  const href = result.parentSlug ? `/${result.parentSlug}/${result.slug}/` : `/${result.slug}/`;
+  const href = routes.site(result.slug);
   return (
     <Link
       href={href}
