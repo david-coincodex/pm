@@ -98,24 +98,37 @@ async function fetchAuthor(slug) {
 }
 
 async function fetchSites() {
-  const params = new URLSearchParams({
-    'populate[0]': 'reviewSources',
-    'populate[1]': 'offers',
-    'populate[2]': 'platform',
-    'filters[isActive][$eq]': 'true',
-    'pagination[pageSize]': '200',
-  });
+  let page = 1;
+  const pageSize = 100;
+  const allSites = [];
 
-  if (!allMode && slugs.length > 0) {
-    slugs.forEach((slug, i) => {
-      params.append(`filters[$or][${i}][slug][$eq]`, slug);
+  while (true) {
+    const params = new URLSearchParams({
+      'populate[0]': 'reviewSources',
+      'populate[1]': 'offers',
+      'populate[2]': 'platform',
+      'filters[isActive][$eq]': 'true',
+      'pagination[page]': String(page),
+      'pagination[pageSize]': String(pageSize),
     });
+
+    if (!allMode && slugs.length > 0) {
+      slugs.forEach((slug, i) => {
+        params.append(`filters[$or][${i}][slug][$eq]`, slug);
+      });
+    }
+
+    const res = await fetch(`${STRAPI_URL}/api/sites?${params}`, { headers });
+    if (!res.ok) throw new Error(`Failed to fetch sites page ${page}: ${res.status} ${await res.text()}`);
+
+    const { data, meta } = await res.json();
+    allSites.push(...data);
+
+    if (page >= (meta?.pagination?.pageCount ?? 1)) break;
+    page++;
   }
 
-  const res = await fetch(`${STRAPI_URL}/api/sites?${params}`, { headers });
-  if (!res.ok) throw new Error(`Failed to fetch sites: ${res.status} ${await res.text()}`);
-  const { data } = await res.json();
-  return data;
+  return allSites;
 }
 
 async function fetchExistingReview(siteDocumentId) {
