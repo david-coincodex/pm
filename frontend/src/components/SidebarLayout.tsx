@@ -12,7 +12,7 @@ interface SidebarLayoutProps {
 export default function SidebarLayout({ sidebar, children, header, className = '', reversed = false }: SidebarLayoutProps) {
   const gridCols = reversed ? 'lg:grid-cols-[1fr_400px]' : 'lg:grid-cols-[400px_1fr]';
   return (
-    <div className={`flex flex-col gap-8 lg:grid ${gridCols} lg:items-start lg:gap-10 ${className}`}>
+    <div className={`flex flex-col md:gap-8 lg:grid ${gridCols} lg:items-start lg:gap-10 ${className}`}>
       {/* Header spans full width on mobile (shown first), hidden inside the grid on lg where it lives in main */}
       {header && (
         <div className="lg:hidden">{header}</div>

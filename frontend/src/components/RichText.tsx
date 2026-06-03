@@ -96,7 +96,7 @@ export default async function RichText({ content, className = '' }: RichTextProp
     const prosLabel = t('pros');
     const consLabel = t('cons');
     return (
-      <div className={`space-y-4 max-w-none ${className}`}>
+      <div className={`rich-text-content space-y-4 max-w-none ${className}`}>
         {parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) })}
       </div>
     );

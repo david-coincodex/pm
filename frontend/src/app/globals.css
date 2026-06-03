@@ -93,3 +93,37 @@ body {
   color: #dc2626;
   font-weight: 700;
 }
+
+/* ── Button-style links (applied via CKEditor decorators) ─────────────── */
+.rich-text-content a.inline-flex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: white;
+  background-color: #059669;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.rich-text-content a.inline-flex:hover {
+  background-color: #047857;
+}
+
+.rich-text-content a.inline-flex:active {
+  transform: scale(0.95);
+}
+
+.dark .rich-text-content a.inline-flex {
+  background-color: #10b981;
+}
+
+.dark .rich-text-content a.inline-flex:hover {
+  background-color: #059669;
+}

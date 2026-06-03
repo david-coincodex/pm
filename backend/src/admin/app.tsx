@@ -622,6 +622,24 @@ const editorWidgetStyles = `
     font-weight: 400;
     color: #94a3b8;
   }
+  .ck-content a[class~="inline-flex"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: #2563eb;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    text-decoration: none !important;
+  }
+  .ck-content a[class~="inline-flex"]:hover {
+    background: #1d4ed8;
+  }
 `;
 
 export default {
@@ -641,6 +659,25 @@ export default {
       name: 'defaultHtml',
       editorConfig: {
         ...editorConfig,
+        link: {
+          ...(editorConfig.link ?? {}),
+          decorators: {
+            ...(editorConfig.link?.decorators ?? {}),
+            externalNofollow: {
+              mode: 'manual',
+              label: 'External (nofollow, blank)',
+              attributes: {
+                target: '_blank',
+                rel: 'nofollow noopener noreferrer',
+              },
+            },
+            buttonStyle: {
+              mode: 'manual',
+              label: 'Button Style',
+              classes: ['inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'bg-emerald-600', 'px-6', 'py-4', 'text-lg', 'font-bold', 'text-white', 'transition', 'hover:bg-emerald-700', 'active:scale-95', 'dark:bg-emerald-500', 'dark:hover:bg-emerald-600'],
+            },
+          },
+        },
         extraPlugins: [
           ...(editorConfig.extraPlugins ?? []),
           ProsConsPlugin as any,

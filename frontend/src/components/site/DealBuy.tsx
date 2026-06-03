@@ -88,7 +88,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
   const isCredits = selected.offerKind === 'credits';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+    <div className="rounded-none border-y border-slate-200 bg-white px-0 py-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
       {/* Parent site tag */}
       {parentSite && (
         <div className="mb-4 flex justify-center">
