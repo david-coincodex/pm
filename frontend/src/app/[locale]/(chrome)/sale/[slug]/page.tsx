@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { getSaleBySlug, getAllSaleSlugs, getDiscountPercent, type Sale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
 import RichText from '@/components/RichText';
 import SectionTitle from '@/components/SectionTitle';
@@ -26,21 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const sale = await getSaleBySlug(slug, locale);
   if (!sale) return {};
 
-  const canonical =
-    locale === routing.defaultLocale ? `/sale/${slug}/` : `/${locale}/sale/${slug}/`;
+  const salePath = routes.sale(slug);
 
   return {
     title: sale.metaTitle ?? sale.title,
     description: sale.metaDescription ?? sale.description ?? undefined,
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale ? `/sale/${slug}/` : `/${loc}/sale/${slug}/`,
-        ])
-      ),
-    },
+    alternates: localizedAlternates(salePath, locale),
   };
 }
 

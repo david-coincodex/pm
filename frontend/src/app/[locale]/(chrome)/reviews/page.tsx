@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { getReviewsPaginated, type Review, type PaysiteScores, type CamsiteScores } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SectionTitle from '@/components/SectionTitle';
@@ -34,7 +35,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return {
     title: paginatedTitle(t('pageMetaTitle'), page),
     description: t('pageDescription'),
-    alternates: paginatedAlternates('/reviews/', page, locale),
+    alternates: paginatedAlternates(routes.reviews(), page, locale),
   };
 }
 
@@ -47,8 +48,9 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
     getReviewsPaginated(locale, page, PAGE_SIZE),
     getTranslations({ locale, namespace: 'reviews' }),
   ]);
+  const reviewsWithSite = reviews.filter((review): review is Review & { site: NonNullable<Review['site']> } => Boolean(review.site));
 
-  const basePath = locale === 'en' ? '/reviews/' : `/${locale}/reviews/`;
+  const basePath = routes.reviews();
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   return (
@@ -58,7 +60,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
       <Container className="py-10 lg:py-14">
         <SectionTitle as="h1" title={t('pageTitle')} subtitle={t('pageDescription')} />
         <SiteCardGrid
-          items={reviews.map((review) => ({
+          items={reviewsWithSite.map((review) => ({
             site: review.site,
             review: { score: computeScore(review) },
           }))}

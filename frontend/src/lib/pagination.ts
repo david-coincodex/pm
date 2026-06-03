@@ -1,5 +1,28 @@
 import { routing } from '@/i18n/routing';
 
+function localePathPrefix(locale: string): string {
+  return locale === routing.defaultLocale ? '' : `/${locale}`;
+}
+
+export function localizedPath(path: string, locale: string): string {
+  return `${localePathPrefix(locale)}${path}`;
+}
+
+export function localizedAlternates(
+  path: string,
+  locale: string
+): Pick<NonNullable<import('next').Metadata['alternates']>, 'canonical' | 'languages'> {
+  const languages: Record<string, string> = Object.fromEntries(
+    routing.locales.map((loc) => [loc, localizedPath(path, loc)])
+  );
+  languages['x-default'] = path;
+
+  return {
+    canonical: localizedPath(path, locale),
+    languages,
+  };
+}
+
 /**
  * Build canonical & alternate URLs for a paginated listing page.
  * Handles page query param, locale prefixes, and x-default.
@@ -10,18 +33,7 @@ export function paginatedAlternates(
   locale: string
 ): Pick<NonNullable<import('next').Metadata['alternates']>, 'canonical' | 'languages'> {
   const pageQuery = page > 1 ? `?page=${page}` : '';
-  const localePath = locale === routing.defaultLocale ? '' : `/${locale}`;
-  const canonical = `${localePath}${basePath}${pageQuery}`;
-
-  const languages: Record<string, string> = Object.fromEntries(
-    routing.locales.map((loc) => {
-      const prefix = loc === routing.defaultLocale ? '' : `/${loc}`;
-      return [loc, `${prefix}${basePath}${pageQuery}`];
-    })
-  );
-  languages['x-default'] = `${basePath}${pageQuery}`;
-
-  return { canonical, languages };
+  return localizedAlternates(`${basePath}${pageQuery}`, locale);
 }
 
 /**

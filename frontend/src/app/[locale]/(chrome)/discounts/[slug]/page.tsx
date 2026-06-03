@@ -14,6 +14,7 @@ import {
   type CamsiteScores,
 } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
+import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
 import SidebarLayout from '@/components/SidebarLayout';
@@ -27,6 +28,7 @@ import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import ImageGallery from '@/components/ImageGallery';
 import { siteSettings } from '@/lib/siteSettings';
 
 function buildOffersSchema(offers: { id: number; offerType: string | null; price: number; full_price: number | null }[]) {
@@ -78,10 +80,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const site = await getDealBySiteSlug(slug, locale);
   if (!site) return {};
   const t = await getTranslations({ locale, namespace: 'discount' });
-  const canonical =
-    locale === routing.defaultLocale
-      ? `/discounts/${site.slug}/`
-      : `/${locale}/discounts/${site.slug}/`;
+  const sitePath = routes.site(site.slug);
 
   const now = new Date();
   const month = now.toLocaleString('en-US', { month: 'short' });
@@ -107,17 +106,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     title: metaTitle,
     description: site.short_description ?? undefined,
     other: { 'article:modified_time': verifiedIso, 'last-modified': verifiedIso },
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale
-            ? `/discounts/${site.slug}/`
-            : `/${loc}/discounts/${site.slug}/`,
-        ])
-      ),
-    },
+    alternates: localizedAlternates(sitePath, locale),
   };
 }
 
@@ -141,7 +130,12 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
   const bundlesToShow = siteBundles.length > 0 ? siteBundles : await getPublishedBundles(3);
 
   const image = site.cover_image ?? site.logo;
-  const activeOffers = (site.offers ?? [])
+  
+  // Determine which data source to use: parent_site or current site
+  const dataSource = site.parent_site ?? site;
+  const parentSiteInfo = site.parent_site ? { id: site.parent_site.id, name: site.parent_site.name, slug: site.parent_site.slug } : null;
+  
+  const activeOffers = (dataSource.offers ?? [])
     .filter((s) => s.isActive)
     .sort((a, b) => a.priority - b.priority);
 
@@ -182,20 +176,25 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         sidebar={
           <DealBuy
             offers={activeOffers}
-            dealIncludes={site.included}
-            paymentMethods={site.platform?.paymentMethods?.map((pm) => pm.method) ?? null}
+            dealIncludes={dataSource.included}
+            paymentMethods={dataSource.platform?.paymentMethods?.map((pm) => pm.method) ?? null}
             review={review ? { slug: site.slug, score: computeOverallScore(review.paysiteScores, review.camsiteScores) } : null}
             initialOfferId={initialOfferId}
+            parentSite={parentSiteInfo}
           />
         }
         header={
           <SidebarLayoutHeader
             title={t('pageTitle', { name: site.name })}
             description={site.short_description}
-            gallery={site.gallery ?? []}
           />
         }
       >
+        {/* Gallery */}
+        <div className="mb-8">
+          <ImageGallery images={site.gallery ?? []} />
+        </div>
+
         {/* Rich-text content */}
         {site.description && (
           <RichText content={site.description} className="mt-8" />

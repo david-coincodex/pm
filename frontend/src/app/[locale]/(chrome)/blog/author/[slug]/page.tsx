@@ -61,9 +61,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   if (!author) return {};
 
   const title = t('authorPageTitle', { name: author.name });
-  const basePath = locale === routing.defaultLocale
-    ? `/blog/author/${slug}/`
-    : `/${locale}/blog/author/${slug}/`;
+  const basePath = routes.blogAuthor(slug);
 
   return {
     title: paginatedTitle(title, page),
@@ -86,10 +84,8 @@ export default async function AuthorPage({ params, searchParams }: Props) {
   const { data: articles, pagination } = await getArticlesByAuthor(slug, locale, page, PAGE_SIZE);
   const authorReviews = page === 1 ? await getReviewsByAuthor(slug, locale, 4) : [];
 
-  const blogBase = locale === routing.defaultLocale ? '/blog' : `/${locale}/blog`;
-  const basePath = locale === routing.defaultLocale
-    ? `/blog/author/${slug}/`
-    : `/${locale}/blog/author/${slug}/`;
+  const blogBase = routes.blog().slice(0, -1);
+  const basePath = routes.blogAuthor(slug);
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   return (

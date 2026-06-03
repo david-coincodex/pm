@@ -7,6 +7,7 @@ import { routing } from '@/i18n/routing';
 import { Link } from '@/i18n/navigation';
 import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
+import { localizedAlternates } from '@/lib/pagination';
 import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/site/DealBuy';
 import RichText from '@/components/RichText';
@@ -26,25 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const bundle = await getBundleBySlug(slug, locale);
   if (!bundle) return {};
   const t = await getTranslations({ locale, namespace: 'bundles' });
-  const canonical =
-    locale === routing.defaultLocale
-      ? `/bundles/${bundle.slug}/`
-      : `/${locale}/bundles/${bundle.slug}/`;
+  const bundlePath = routes.bundle(bundle.slug);
 
   return {
     title: t('pageMetaTitle', { name: bundle.name }),
     description: bundle.description ?? undefined,
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale
-            ? `/bundles/${bundle.slug}/`
-            : `/${loc}/bundles/${bundle.slug}/`,
-        ])
-      ),
-    },
+    alternates: localizedAlternates(bundlePath, locale),
   };
 }
 

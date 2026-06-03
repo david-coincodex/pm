@@ -12,6 +12,7 @@ import BundleShowcase from "@/components/BundleShowcase";
 import CategoryGrid from "@/components/CategoryGrid";
 import LatestArticles from "@/components/LatestArticles";
 import SectionTitle from "@/components/SectionTitle";
+import { routes } from "@/lib/routes";
 import { siteSettings } from "@/lib/siteSettings";
 
 const PAGE_SIZE = 12;
@@ -29,7 +30,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   return {
     title: paginatedTitle(t("sitesTitle"), page),
-    alternates: paginatedAlternates('/', page, locale),
+    alternates: paginatedAlternates(routes.home(), page, locale),
   };
 }
 
@@ -39,7 +40,7 @@ export default async function Home({ params, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: "sites" });
 
   const page = parsePage(pageStr);
-  const basePath = locale === 'en' ? '/' : `/${locale}/`;
+  const basePath = routes.home();
 
   const { sites, pagination } = await getSitesWithDealsPaginated(page, PAGE_SIZE).catch(() => ({
     sites: [],

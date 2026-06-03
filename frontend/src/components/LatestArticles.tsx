@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { getLatestArticles } from '@/lib/strapi';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SectionTitle from '@/components/SectionTitle';
 import ArticleHeroGrid from '@/components/ArticleHeroGrid';
@@ -15,7 +16,7 @@ export default async function LatestArticles({ locale, limit = 8 }: LatestArticl
 
   if (articles.length === 0) return null;
 
-  const blogBase = locale === 'en' ? '/blog' : `/${locale}/blog`;
+  const blogBase = routes.blog().slice(0, -1);
 
   return (
     <section className="py-14">

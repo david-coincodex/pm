@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { getArticlesPaginated } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SectionTitle from '@/components/SectionTitle';
 import Pagination from '@/components/Pagination';
@@ -22,7 +23,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   return {
     title: paginatedTitle(t('pageTitle'), page),
-    alternates: paginatedAlternates('/blog/', page, locale),
+    alternates: paginatedAlternates(routes.blog(), page, locale),
   };
 }
 
@@ -36,8 +37,8 @@ export default async function BlogPage({ params, searchParams }: Props) {
     getTranslations({ locale, namespace: 'blog' }),
   ]);
 
-  const blogBase = locale === 'en' ? '/blog' : `/${locale}/blog`;
-  const basePath = blogBase + '/';
+  const blogBase = routes.blog().slice(0, -1);
+  const basePath = routes.blog();
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   return (

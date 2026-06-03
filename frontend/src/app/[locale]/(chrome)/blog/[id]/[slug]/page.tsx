@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
 import { getArticleById, getLatestArticles, strapiMediaUrl } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import { localizedAlternates } from '@/lib/pagination';
 import { siteSettings } from '@/lib/siteSettings';
 import Container from '@/components/Container';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
@@ -30,25 +30,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = await getArticleById(Number(id), locale);
   if (!article) return {};
 
-  const canonical =
-    locale === routing.defaultLocale
-      ? `/blog/${article.id}/${article.slug}/`
-      : `/${locale}/blog/${article.id}/${article.slug}/`;
+  const articlePath = routes.blogArticle(article.id, article.slug);
 
   return {
     title: article.metaTitle ?? article.title,
     description: article.description ?? undefined,
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale
-            ? `/blog/${article.id}/${article.slug}/`
-            : `/${loc}/blog/${article.id}/${article.slug}/`,
-        ])
-      ),
-    },
+    alternates: localizedAlternates(articlePath, locale),
     openGraph: {
       type: 'article',
       title: article.metaTitle ?? article.title,
@@ -71,7 +58,7 @@ export default async function ArticlePage({ params }: Props) {
 
   if (!article) notFound();
 
-  const blogBase = locale === 'en' ? '/blog' : `/${locale}/blog`;
+  const blogBase = routes.blog().slice(0, -1);
   const latestArticles = await getLatestArticles(locale, 9).catch(() => []);
   const relatedArticles = latestArticles.filter((a) => a.id !== article.id).slice(0, 8);
 

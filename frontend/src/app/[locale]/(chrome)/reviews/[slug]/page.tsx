@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
 import { getReviewBySiteSlug, getReviews, getPublishedBundles, PaysiteScores, CamsiteScores, strapiMediaUrl, type Review } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import RichText from '@/components/RichText';
@@ -33,21 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const metaTitle = review.titleExtra
     ? t('reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
     : t('reviewTitle', { name: review.site.name });
-  const canonical =
-    locale === routing.defaultLocale ? `/reviews/${slug}/` : `/${locale}/reviews/${slug}/`;
+  const reviewPath = routes.review(slug);
 
   return {
     title: metaTitle,
     description: review.description ?? undefined,
-    alternates: {
-      canonical,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale ? `/reviews/${slug}/` : `/${loc}/reviews/${slug}/`,
-        ])
-      ),
-    },
+    alternates: localizedAlternates(reviewPath, locale),
   };
 }
 
@@ -166,6 +157,11 @@ export default async function ReviewDetailPage({ params }: Props) {
         sidebar={sidebar}
         header={<SidebarLayoutHeader title={t('reviewTitle', { name: site.name })} description={review.description} />}
       >
+        {/* Gallery */}
+        <div className="mb-8">
+          <ImageGallery images={site.gallery ?? []} />
+        </div>
+
         {/* Cover image */}
         {siteImage && (
           <div className="mb-8 overflow-hidden rounded-2xl">
@@ -178,11 +174,6 @@ export default async function ReviewDetailPage({ params }: Props) {
             />
           </div>
         )}
-
-        {/* Gallery */}
-        <div className="mb-8">
-          <ImageGallery images={site.gallery ?? []} />
-        </div>
 
         {/* Meta */}
         <ContentMeta

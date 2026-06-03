@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { getCategoryBySlug, getSitesByCategorySlug, getAllCategories } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import SectionTitle from '@/components/SectionTitle';
@@ -43,10 +44,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   ]);
   if (!category) return {};
   const page = parsePage(pageStr);
+  const categoryPath = routes.category(categorySlug);
   return {
     title: paginatedTitle(t('pageMetaTitle', { name: category.name }), page),
     description: category.description ?? undefined,
-    alternates: paginatedAlternates(`/${slug}/`, page, locale),
+    alternates: paginatedAlternates(categoryPath, page, locale),
   };
 }
 
@@ -59,7 +61,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const page = parsePage(pageStr);
   const PAGE_SIZE = 12;
-  const basePath = locale === 'en' ? `/${slug}/` : `/${locale}/${slug}/`;
+  const basePath = routes.category(categorySlug);
 
   const [category, { sites, pagination }, t] = await Promise.all([
     getCategoryBySlug(categorySlug),
@@ -74,7 +76,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   return (
     <>
       <BreadcrumbsSetter crumbs={[
-        { label: category.name, href: `/${slug}/` },
+        { label: category.name, href: routes.category(categorySlug) },
       ]} />
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}

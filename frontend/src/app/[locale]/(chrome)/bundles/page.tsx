@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { getBundlesPaginated } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
+import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import BundleGrid from '@/components/bundle/BundleGrid';
 import Pagination from '@/components/Pagination';
@@ -23,7 +24,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return {
     title: paginatedTitle(t('pageTitle'), page),
     description: t('pageSubtitle'),
-    alternates: paginatedAlternates('/bundles/', page, locale),
+    alternates: paginatedAlternates(routes.bundles(), page, locale),
   };
 }
 
@@ -31,7 +32,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
-  const basePath = locale === 'en' ? '/bundles/' : `/${locale}/bundles/`;
+  const basePath = routes.bundles();
 
   const [{ bundles, pagination }, t] = await Promise.all([
     getBundlesPaginated(page, PAGE_SIZE).catch(() => ({

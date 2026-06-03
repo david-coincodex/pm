@@ -45,9 +45,10 @@ interface DealBuyProps {
   paymentMethods?: string[] | null;
   review?: { slug: string; score: number | null } | null;
   initialOfferId?: number;
+  parentSite?: { id: number; name: string; slug: string } | null;
 }
 
-export default function DealBuy({ offers, dealIncludes, paymentMethods, review, initialOfferId }: DealBuyProps) {
+export default function DealBuy({ offers, dealIncludes, paymentMethods, review, initialOfferId, parentSite }: DealBuyProps) {
   const t = useTranslations('discount');
   const locale = useLocale();
 
@@ -88,6 +89,18 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+      {/* Parent site tag */}
+      {parentSite && (
+        <div className="mb-4 flex justify-center">
+          <Link
+            href={routes.site(parentSite.slug)}
+            className="inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+          >
+            Part of {parentSite.name}
+          </Link>
+        </div>
+      )}
+
       {/* Offer selector */}
       {allSorted.length > 1 && (
         <div className="mb-5 flex flex-wrap justify-center gap-2">

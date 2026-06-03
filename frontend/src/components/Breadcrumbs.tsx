@@ -41,7 +41,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
     crumbs = [{ label: t('home'), href: '/' }, ...contextCrumbs];
   } else {
     const segments = pathname.split('/').filter(Boolean);
-    const nonLinkableSegments = new Set(['page']);
+    const nonLinkableSegments = new Set(['page', 'discounts']);
     crumbs = [{ label: t('home'), href: '/' }];
     let accumulated = '';
     for (const segment of segments) {

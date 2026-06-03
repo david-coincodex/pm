@@ -375,13 +375,13 @@ export async function getTopDeals(limit = 4, excludeSlug?: string): Promise<Site
 /** Fetch the active site by slug with its offers and child sites. Falls back to 'en' if no translation exists. */
 export async function getDealBySiteSlug(slug: string, locale = 'en'): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
   if (res.data[0]) return res.data[0];
   if (locale !== 'en') {
     const fallback = await strapiGet<Site[]>(
-      `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
+      `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
       { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
     );
     return fallback.data[0] ?? null;

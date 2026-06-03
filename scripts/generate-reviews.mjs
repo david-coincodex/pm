@@ -421,9 +421,17 @@ async function main() {
   let created = 0;
   let updated = 0;
   let skipped = 0;
+  let skippedMissingExternalContext = 0;
   const errors = [];
 
   for (const site of targetSites) {
+    if (!site.externalContext) {
+      console.log(`⏭  ${site.name} — missing externalContext, skipping`);
+      skipped++;
+      skippedMissingExternalContext++;
+      continue;
+    }
+
     // Check for existing review
     const existing = await fetchExistingReview(site.documentId);
 
@@ -517,6 +525,9 @@ async function main() {
   // Summary
   console.log('\n━━━ Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`Processed: ${processed} | Created: ${created} | Updated: ${updated} | Skipped: ${skipped}`);
+  if (skippedMissingExternalContext > 0) {
+    console.log(`Skipped due to missing externalContext: ${skippedMissingExternalContext}`);
+  }
   if (publishMode) console.log(`Mode: Published`);
   else console.log(`Mode: Draft (review in Strapi admin before publishing)`);
 
