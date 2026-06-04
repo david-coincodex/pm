@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "categorize-sites": "node categorize-sites-from-context.mjs"
+  },
   "engines": {
     "node": ">=18"
   },
