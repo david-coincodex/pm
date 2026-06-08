@@ -74,11 +74,20 @@ function splitVariants(s) {
 function slugVariants(slug, name, networkName) {
   const noHyphenSlug = toNoHyphen(slug);
   const noHyphenName = toNoHyphen(name);
+  const andName = name.replace(/&/g, ' and ').replace(/\band\b/gi, '&');
+  const hyphenAndName = toHyphen(name.replace(/&/g, ' and '));
+  const noHyphenAndName = toNoHyphen(name.replace(/&/g, ' and '));
+  const hyphenAmpName = toHyphen(andName);
+  const noHyphenAmpName = toNoHyphen(andName);
   const base = new Set([
     slug,                          // stored slug e.g. "adult-time"
     noHyphenSlug,                  // "adulttime"
     noHyphenName,                  // "adulttime" from name
     toHyphen(name),                // "adult-time" from name
+    hyphenAndName,
+    noHyphenAndName,
+    hyphenAmpName,
+    noHyphenAmpName,
     slug.replace(/-/g, ''),        // remove all hyphens from slug
     `${noHyphenSlug}com`,          // e.g. "blackedcom"
     `${slug}com`,                  // e.g. "blacked-com" (unlikely but cheap)
@@ -107,7 +116,6 @@ function slugVariants(slug, name, networkName) {
  *
  * URL patterns discovered via probing:
  *  - thebestporn:   /review/{slug}         (no hyphens, e.g. /review/adulttime)
- *  - theporndude:   /{numericId}/{name}     (ID-based; use search to find it)
  *  - adultreviews:  /review/{cat}/{slug}.html  (cat unknown; use search)
  *  - rabbitsreviews: /porn/reviews/{slug} or /porn/deals/site/{slug} (hyphenated slug)
  *  - mrporngeek:    /review/{slug}/         (hyphenated slug)
@@ -117,6 +125,9 @@ const SOURCES = [
   {
     name: 'TheBestPorn',
     async findUrl(page, site) {
+      const sitemapMatch = await findUrlFromMap(getTheBestPornMap, site);
+      if (sitemapMatch) return sitemapMatch;
+
       for (const v of slugVariants(site.slug, site.name, site.networkName)) {
         const url = `https://www.thebestporn.com/review/${v}`;
         if (await probeUrl(page, url)) return url;
@@ -131,6 +142,9 @@ const SOURCES = [
   {
     name: 'AdultReviews',
     async findUrl(page, site) {
+      const sitemapMatch = await findUrlFromMap(getAdultReviewsMap, site);
+      if (sitemapMatch) return sitemapMatch;
+
       // Their search is broken (redirects to homepage nav only).
       // URL pattern: /review/{category}/{hyphen-slug}.html
       // Probe common paysite categories with all slug variants.
@@ -151,6 +165,16 @@ const SOURCES = [
   {
     name: 'RabbitsReviews',
     async findUrl(page, site) {
+      const sitemapMatch = await findUrlFromMap(getRabbitsReviewsMap, site, {
+        extraVariants: [
+          `${site.slug}-network`,
+          `${toNoHyphen(site.slug)}-network`,
+          `${site.slug}-pass`,
+          `${site.slug}-reviews`,
+        ],
+      });
+      if (sitemapMatch) return sitemapMatch;
+
       const base = slugVariants(site.slug, site.name, site.networkName);
       // RabbitsReviews often appends "-network", "-pass", or "-reviews" to the slug
       const extra = [
@@ -173,6 +197,9 @@ const SOURCES = [
   {
     name: 'MrPornGeek',
     async findUrl(page, site) {
+      const sitemapMatch = await findUrlFromMap(getMrPornGeekMap, site);
+      if (sitemapMatch) return sitemapMatch;
+
       for (const v of slugVariants(site.slug, site.name, site.networkName)) {
         const url = `https://www.mrporngeek.com/review/${v}/`;
         if (await probeUrl(page, url)) return url;
@@ -185,6 +212,15 @@ const SOURCES = [
   {
     name: 'PornInspector',
     async findUrl(page, site) {
+      const sitemapMatch = await findUrlFromMap(getPornInspectorMap, site, {
+        extraVariants: [
+          `${site.slug}-pass`,
+          `${site.slug}-network`,
+          `${site.slug}-reviews`,
+        ],
+      });
+      if (sitemapMatch) return sitemapMatch;
+
       const base = slugVariants(site.slug, site.name, site.networkName);
       const extra = [
         `${site.slug}-pass`,
@@ -229,6 +265,59 @@ const SOURCES = [
 
 let discountedPornDealMapPromise;
 let pornDiscountsMapPromise;
+let theBestPornMapPromise;
+let adultReviewsMapPromise;
+let rabbitsReviewsMapPromise;
+let mrPornGeekMapPromise;
+let pornInspectorMapPromise;
+
+function addMapEntry(map, key, loc) {
+  if (!key) return;
+  map.set(toNoHyphen(key), loc);
+}
+
+async function fetchSitemapLocs(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    return [];
+  }
+
+  const xml = await res.text();
+  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+}
+
+async function buildMapFromLocs(urls, addKeys) {
+  const map = new Map();
+
+  for (const loc of urls) {
+    let pathname;
+    try {
+      pathname = new URL(loc).pathname;
+    } catch {
+      continue;
+    }
+
+    const parts = pathname.split('/').filter(Boolean);
+    addKeys(map, loc, parts);
+  }
+
+  return map;
+}
+
+async function findUrlFromMap(getMap, site, options = {}) {
+  const map = await getMap();
+  const variants = [...new Set([
+    ...slugVariants(site.slug, site.name, site.networkName),
+    ...(options.extraVariants ?? []),
+  ])];
+
+  for (const variant of variants) {
+    const match = map.get(toNoHyphen(variant));
+    if (match) return match;
+  }
+
+  return null;
+}
 
 async function getDiscountedPornDealMap() {
   if (!discountedPornDealMapPromise) {
@@ -305,6 +394,78 @@ async function getPornDiscountsMap() {
   }
 
   return pornDiscountsMapPromise;
+}
+
+async function getTheBestPornMap() {
+  if (!theBestPornMapPromise) {
+    theBestPornMapPromise = fetchSitemapLocs('https://www.thebestporn.com/sitemap.xml')
+      .then((indexUrls) => Promise.all(indexUrls.map(fetchSitemapLocs)))
+      .then((chunks) => chunks.flat())
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'review' || !parts[1]) return;
+        addMapEntry(map, parts[1], loc);
+      }));
+  }
+
+  return theBestPornMapPromise;
+}
+
+async function getAdultReviewsMap() {
+  if (!adultReviewsMapPromise) {
+    adultReviewsMapPromise = fetchSitemapLocs('https://www.adultreviews.com/sitemap.xml')
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'review' || !parts[2]) return;
+        addMapEntry(map, parts[2].replace(/\.html$/i, ''), loc);
+      }));
+  }
+
+  return adultReviewsMapPromise;
+}
+
+async function getRabbitsReviewsMap() {
+  if (!rabbitsReviewsMapPromise) {
+    rabbitsReviewsMapPromise = fetchSitemapLocs('https://www.rabbitsreviews.com/sitemap.xml')
+      .then((indexUrls) => Promise.all(indexUrls.filter((url) => !url.includes('image')).map(fetchSitemapLocs)))
+      .then((chunks) => chunks.flat())
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'porn') return;
+        if (parts[1] === 'reviews' && parts[2]) {
+          addMapEntry(map, parts[2], loc);
+        }
+        if (parts[1] === 'deals' && parts[2] === 'site' && parts[3]) {
+          addMapEntry(map, parts[3], loc);
+        }
+      }));
+  }
+
+  return rabbitsReviewsMapPromise;
+}
+
+async function getMrPornGeekMap() {
+  if (!mrPornGeekMapPromise) {
+    mrPornGeekMapPromise = fetchSitemapLocs('https://www.mrporngeek.com/sitemap_index.xml')
+      .then((indexUrls) => indexUrls.filter((url) => /sites-sitemap/i.test(url)))
+      .then((siteSitemapUrls) => Promise.all(siteSitemapUrls.map(fetchSitemapLocs)))
+      .then((chunks) => chunks.flat())
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'review' || !parts[1]) return;
+        addMapEntry(map, parts[1], loc);
+      }));
+  }
+
+  return mrPornGeekMapPromise;
+}
+
+async function getPornInspectorMap() {
+  if (!pornInspectorMapPromise) {
+    pornInspectorMapPromise = fetchSitemapLocs('https://www.porninspector.com/sitemap.xml')
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'reviews' || parts[1] !== 'review' || !parts[2]) return;
+        addMapEntry(map, parts[2], loc.replace(/^http:\/\//i, 'https://'));
+      }));
+  }
+
+  return pornInspectorMapPromise;
 }
 
 // ── CLI Parsing ────────────────────────────────────────────────────────────────
