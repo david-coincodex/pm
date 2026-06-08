@@ -425,13 +425,44 @@ export async function getAllCategories(): Promise<Category[]> {
 
 /** Fetch all published categories with cover images and their site counts. */
 export async function getCategoriesGrid(): Promise<(Category & { siteCount: number })[]> {
-  const res = await strapiGet<(Category & { sites: Site[] })[]>(
-    '/categories?populate[0]=cover_image&populate[1]=sites&pagination[pageSize]=100&sort=name:asc',
+  const categoriesPromise = strapiGet<Category[]>(
+    '/categories?populate[0]=cover_image&pagination[pageSize]=100&sort=name:asc',
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
-  return res.data.map((cat) => ({
+
+  type SiteCategoryRef = Pick<Category, 'documentId'>;
+  type SiteCategoryCountRow = {
+    categories: SiteCategoryRef[];
+  };
+
+  const siteCountByCategory = new Map<string, number>();
+  let page = 1;
+  let pageCount = 1;
+
+  do {
+    const sitesRes = await strapiGet<SiteCategoryCountRow[]>(
+      `/sites?fields[0]=id&populate[categories][fields][0]=documentId&filters[isActive][$eq]=true&pagination[page]=${page}&pagination[pageSize]=100`,
+      { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
+    );
+
+    for (const site of sitesRes.data) {
+      for (const category of site.categories ?? []) {
+        siteCountByCategory.set(
+          category.documentId,
+          (siteCountByCategory.get(category.documentId) ?? 0) + 1
+        );
+      }
+    }
+
+    pageCount = sitesRes.meta.pagination?.pageCount ?? 1;
+    page += 1;
+  } while (page <= pageCount);
+
+  const categoriesRes = await categoriesPromise;
+
+  return categoriesRes.data.map((cat) => ({
     ...cat,
-    siteCount: (cat.sites ?? []).length,
+    siteCount: siteCountByCategory.get(cat.documentId) ?? 0,
     sites: [],
   }));
 }
@@ -452,7 +483,7 @@ export async function getSitesByCategoryId(
   pageSize = 12,
 ): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][id][$eq]=${categoryId}&filters[parent_site][$null]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][id][$eq]=${categoryId}&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return {
@@ -468,7 +499,7 @@ export async function getSitesByCategorySlug(
   pageSize = 12,
 ): Promise<{ sites: Site[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[offers][isActive][$eq]=true&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}&filters[parent_site][$null]=true&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}&sort=name:asc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return {

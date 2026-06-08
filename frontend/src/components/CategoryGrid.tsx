@@ -18,11 +18,13 @@ export default async function CategoryGrid() {
         <SectionTitle
           title={t('title')}
           tag={t('eyebrow')}
+          link={routes.categories()}
+          linkLabel={t('viewAll') || 'View all'}
         />
 
         {/* Grid */}
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.map((category) => {
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {categories.slice(0, 12).map((category) => {
             const href = routes.category(category.slug);
             const imgSrc = category.cover_image
               ? strapiMediaUrl(category.cover_image)

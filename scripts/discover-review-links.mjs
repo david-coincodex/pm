@@ -11,6 +11,9 @@
  * Options:
  *   --all       Process all sites
  *   --force     Overwrite existing reviewSources (default: skip sites that already have them)
+ *   --site=slug Process a single site slug
+ *   --sites=a,b Process a comma-separated list of site slugs
+ *   --source=x  Only run a specific review source (repeatable, also accepts comma-separated values)
  *
  * Environment:
  *   STRAPI_URL      (default: http://localhost:1339)
@@ -40,6 +43,8 @@ const headers = {
   'Content-Type': 'application/json',
   Authorization: `Bearer ${TOKEN}`,
 };
+
+const sourceKey = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // ── Slug helpers ───────────────────────────────────────────────────────────────
 
@@ -196,17 +201,155 @@ const SOURCES = [
         'porninspector.com/reviews/review/', site.slug, site.name);
     },
   },
+  {
+    name: 'DiscountedPorn',
+    aliases: ['discountedporn', 'discountedporn.com'],
+    async findUrl(_page, site) {
+      const dealMap = await getDiscountedPornDealMap();
+      for (const variant of slugVariants(site.slug, site.name, site.networkName)) {
+        const match = dealMap.get(toNoHyphen(variant));
+        if (match) return match;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'PornDiscounts',
+    aliases: ['porndiscounts', 'porndiscounts.com'],
+    async findUrl(_page, site) {
+      const discountMap = await getPornDiscountsMap();
+      for (const variant of slugVariants(site.slug, site.name, site.networkName)) {
+        const match = discountMap.get(toNoHyphen(variant));
+        if (match) return match;
+      }
+      return null;
+    },
+  },
 ];
+
+let discountedPornDealMapPromise;
+let pornDiscountsMapPromise;
+
+async function getDiscountedPornDealMap() {
+  if (!discountedPornDealMapPromise) {
+    discountedPornDealMapPromise = fetch('https://www.discountedporn.com/sitemap.xml')
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch sitemap: ${res.status}`);
+        }
+        return res.text();
+      })
+      .then((xml) => {
+        const map = new Map();
+        const matches = xml.matchAll(/<loc>([^<]+)<\/loc>/g);
+
+        for (const match of matches) {
+          const loc = match[1];
+          let pathname;
+          try {
+            pathname = new URL(loc).pathname;
+          } catch {
+            continue;
+          }
+
+          const parts = pathname.split('/').filter(Boolean);
+          if (parts[0] !== 'deal' || !parts[1]) continue;
+
+          map.set(toNoHyphen(parts[1]), loc);
+        }
+
+        return map;
+      });
+  }
+
+  return discountedPornDealMapPromise;
+}
+
+async function getPornDiscountsMap() {
+  if (!pornDiscountsMapPromise) {
+    pornDiscountsMapPromise = fetch('https://www.porndiscounts.com/sitemap-discounts-discounts.xml')
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch sitemap: ${res.status}`);
+        }
+        return res.text();
+      })
+      .then((xml) => {
+        const map = new Map();
+        const matches = xml.matchAll(/<loc>([^<]+)<\/loc>/g);
+
+        for (const match of matches) {
+          const loc = match[1];
+          let pathname;
+          try {
+            pathname = new URL(loc).pathname;
+          } catch {
+            continue;
+          }
+
+          const parts = pathname.split('/').filter(Boolean);
+          if (parts[0] !== 'porn-discounts' || !parts[1]) continue;
+
+          const tail = parts.at(-1);
+          if (!tail) continue;
+
+          map.set(toNoHyphen(tail), loc);
+
+          if (parts.length === 2) {
+            map.set(toNoHyphen(parts[1]), loc);
+          }
+        }
+
+        return map;
+      });
+  }
+
+  return pornDiscountsMapPromise;
+}
 
 // ── CLI Parsing ────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
 const forceMode = args.includes('--force');
 const allMode = args.includes('--all');
-const slugs = args.filter((a) => !a.startsWith('--'));
+const cliSiteArgs = args
+  .filter((a) => a.startsWith('--site=') || a.startsWith('--sites='))
+  .flatMap((a) => a.split('=')[1]?.split(',') ?? [])
+  .map((a) => a.trim())
+  .filter(Boolean);
+const requestedSourceKeys = args
+  .filter((a) => a.startsWith('--source='))
+  .flatMap((a) => a.split('=')[1]?.split(',') ?? [])
+  .map((a) => sourceKey(a.trim()))
+  .filter(Boolean);
+const positionalSlugs = args.filter((a) => !a.startsWith('--'));
+const slugs = [...new Set([...positionalSlugs, ...cliSiteArgs])];
+
+if (allMode && slugs.length > 0) {
+  console.error('Use either --all or an explicit site list, not both.');
+  process.exit(1);
+}
 
 if (!allMode && slugs.length === 0) {
-  console.error('Usage: node scripts/discover-review-links.mjs [--all | slug1 slug2 ...] [--force]');
+  console.error('Usage: node scripts/discover-review-links.mjs [--all | slug1 slug2 ... | --site=slug | --sites=a,b] [--force] [--source=name]');
+  process.exit(1);
+}
+
+const sourceLookup = new Map();
+for (const source of SOURCES) {
+  for (const key of [source.name, ...(source.aliases ?? [])].map(sourceKey)) {
+    sourceLookup.set(key, source);
+  }
+}
+
+const selectedSources = requestedSourceKeys.length > 0
+  ? requestedSourceKeys.map((key) => sourceLookup.get(key)).filter(Boolean)
+  : SOURCES;
+
+if (requestedSourceKeys.length > 0 && selectedSources.length !== requestedSourceKeys.length) {
+  const unknown = requestedSourceKeys.filter((key) => !sourceLookup.has(key));
+  console.error(`Unknown source(s): ${unknown.join(', ')}`);
+  console.error(`Available sources: ${SOURCES.map((source) => source.name).join(', ')}`);
   process.exit(1);
 }
 
@@ -246,10 +389,15 @@ async function fetchSites() {
 }
 
 async function updateSiteReviewSources(documentId, reviewSources) {
+  const normalizedReviewSources = (reviewSources ?? []).map(({ sourceName, sourceUrl }) => ({
+    sourceName,
+    sourceUrl,
+  }));
+
   const res = await fetch(`${STRAPI_URL}/api/sites/${documentId}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify({ data: { reviewSources } }),
+    body: JSON.stringify({ data: { reviewSources: normalizedReviewSources } }),
   });
   if (!res.ok) throw new Error(`Failed to update site ${documentId}: ${res.status} ${await res.text()}`);
   return res.json();
@@ -339,7 +487,7 @@ async function discoverLinks(page, site) {
   site.networkName = site.platform?.name || null;
 
   const found = [];
-  for (const source of SOURCES) {
+  for (const source of selectedSources) {
     let url = null;
     try {
       url = await source.findUrl(page, site);
@@ -358,6 +506,30 @@ async function discoverLinks(page, site) {
     await new Promise((r) => setTimeout(r, 1500));
   }
   return found;
+}
+
+function mergeReviewSources(existing, discovered) {
+  const merged = [];
+  const discoveredBySource = new Map(discovered.map((item) => [item.sourceName, item]));
+
+  for (const source of existing ?? []) {
+    const replacement = discoveredBySource.get(source.sourceName);
+    if (replacement) {
+      merged.push({
+        id: source.id,
+        ...replacement,
+      });
+      discoveredBySource.delete(source.sourceName);
+    } else {
+      merged.push(source);
+    }
+  }
+
+  for (const source of discoveredBySource.values()) {
+    merged.push(source);
+  }
+
+  return merged;
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -403,9 +575,12 @@ async function main() {
       continue;
     }
 
-    await updateSiteReviewSources(site.documentId, found);
+    const nextSources = mergeReviewSources(existing, found);
+    await updateSiteReviewSources(site.documentId, nextSources);
     updated++;
-    console.log(`  💾 Saved ${found.length} source(s)\n`);
+    const addedCount = nextSources.length - existing.length;
+    const replacedCount = found.length - Math.max(0, addedCount);
+    console.log(`  💾 Saved ${found.length} source(s) (${addedCount} added, ${replacedCount} refreshed)\n`);
   }
 
   await browser.close();

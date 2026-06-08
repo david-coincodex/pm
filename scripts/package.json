@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "categorize-sites": "node categorize-sites-from-context.mjs"
+    "categorize-sites": "node categorize-sites-from-context.mjs",
+    "import-site-cover": "node import-site-cover-from-source.mjs",
+    "import-site-gallery": "node import-site-gallery-from-source.mjs"
   },
   "engines": {
     "node": ">=18"
