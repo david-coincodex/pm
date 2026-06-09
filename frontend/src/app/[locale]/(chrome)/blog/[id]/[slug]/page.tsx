@@ -112,6 +112,9 @@ export default async function ArticlePage({ params }: Props) {
 
           {/* Content */}
           {article.content && <RichText content={article.content} />}
+
+          {/* FAQ — below the content, inside the main container */}
+          <FaqSection faqs={article.faqs} bare hideTitle />
         </SidebarLayout>
       </Container>
 
@@ -123,8 +126,6 @@ export default async function ArticlePage({ params }: Props) {
           </Container>
         </section>
       )}
-
-      <FaqSection faqs={article.faqs} />
 
       <script
         type="application/ld+json"
