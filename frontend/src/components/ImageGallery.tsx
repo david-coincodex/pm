@@ -7,6 +7,7 @@ import { type StrapiMedia } from '@/lib/strapi';
 
 interface ImageGalleryProps {
   images: StrapiMedia[];
+  coverImage?: StrapiMedia | null;
   className?: string;
 }
 
@@ -28,9 +29,12 @@ function getGridClasses(total: number, index: number): string {
   return pattern[Math.min(index, pattern.length - 1)];
 }
 
-export default function ImageGallery({ images, className = '' }: ImageGalleryProps) {
+export default function ImageGallery({ images: galleryImages, coverImage, className = '' }: ImageGalleryProps) {
   const t = useTranslations('gallery');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Fall back to the cover image when the gallery has no images.
+  const images = galleryImages.length > 0 ? galleryImages : coverImage ? [coverImage] : [];
 
   const displayed = images.slice(0, 5);
   const hasMore = images.length > 5;

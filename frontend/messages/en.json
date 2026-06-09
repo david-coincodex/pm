@@ -19,7 +19,8 @@
     "reviews": "Reviews",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "search": "Search"
+    "search": "Search",
+    "allCategories": "All Categories"
   },
   "search": {
     "placeholder": "Search sites…",
@@ -262,6 +263,8 @@
   "categoryGrid": {
     "eyebrow": "Browse by Category",
     "title": "Discover More",
+    "viewAll": "View all",
+    "allCategories": "All Categories",
     "sites": "{count, plural, one {# site} other {# sites}}"
   },
   "reviews": {

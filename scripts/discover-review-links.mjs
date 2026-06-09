@@ -261,6 +261,18 @@ const SOURCES = [
       return null;
     },
   },
+  {
+    name: 'PornDeals',
+    aliases: ['porndeals', 'porndeals.com'],
+    async findUrl(_page, site) {
+      return findUrlFromMap(getPornDealsMap, site, {
+        extraVariants: [
+          `${site.slug}-network`,
+          `${toNoHyphen(site.slug)}-network`,
+        ],
+      });
+    },
+  },
 ];
 
 let discountedPornDealMapPromise;
@@ -270,6 +282,7 @@ let adultReviewsMapPromise;
 let rabbitsReviewsMapPromise;
 let mrPornGeekMapPromise;
 let pornInspectorMapPromise;
+let pornDealsMapPromise;
 
 function addMapEntry(map, key, loc) {
   if (!key) return;
@@ -466,6 +479,20 @@ async function getPornInspectorMap() {
   }
 
   return pornInspectorMapPromise;
+}
+
+async function getPornDealsMap() {
+  if (!pornDealsMapPromise) {
+    pornDealsMapPromise = fetchSitemapLocs('https://porndeals.com/sitemap.xml')
+      .then((locs) => buildMapFromLocs(locs, (map, loc, parts) => {
+        if (parts[0] !== 'reviews' || !parts[1]) return;
+        addMapEntry(map, parts[1], loc);
+        // Many entries carry a "-network" suffix; index the bare slug too.
+        addMapEntry(map, parts[1].replace(/-network$/, ''), loc);
+      }));
+  }
+
+  return pornDealsMapPromise;
 }
 
 // ── CLI Parsing ────────────────────────────────────────────────────────────────

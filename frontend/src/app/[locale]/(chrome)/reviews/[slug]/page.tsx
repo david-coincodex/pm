@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { getReviewBySiteSlug, getReviews, getPublishedBundles, PaysiteScores, CamsiteScores, strapiMediaUrl, type Review } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
@@ -159,21 +158,8 @@ export default async function ReviewDetailPage({ params }: Props) {
       >
         {/* Gallery */}
         <div className="mb-8">
-          <ImageGallery images={site.gallery ?? []} />
+          <ImageGallery images={site.gallery ?? []} coverImage={siteImage} />
         </div>
-
-        {/* Cover image */}
-        {siteImage && (
-          <div className="mb-8 overflow-hidden rounded-2xl">
-            <Image
-              src={strapiMediaUrl(siteImage)}
-              alt={siteImage.alternativeText ?? site.name}
-              width={siteImage.width}
-              height={siteImage.height}
-              className="w-full object-cover"
-            />
-          </div>
-        )}
 
         {/* Meta */}
         <ContentMeta

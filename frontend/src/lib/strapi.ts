@@ -723,6 +723,7 @@ export type Review = {
   titleExtra: string | null;
   description: string | null;
   content: Record<string, unknown>[] | null;
+  overallScore: number | null;
   paysiteScores: PaysiteScores | null;
   camsiteScores: CamsiteScores | null;
   site: Site;
@@ -745,14 +746,14 @@ export async function getReviews(locale: string, limit = 100): Promise<Review[]>
   return res.data;
 }
 
-/** Fetch a paginated list of published reviews for a locale, newest first. */
+/** Fetch a paginated list of published reviews for a locale, highest score first. */
 export async function getReviewsPaginated(
   locale: string,
   page = 1,
-  pageSize = 12
+  pageSize = 24
 ): Promise<{ data: Review[]; pagination: NonNullable<StrapiResponse<Review[]>['meta']['pagination']> }> {
   const res = await strapiGet<Review[]>(
-    `/reviews?${REVIEW_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/reviews?${REVIEW_POPULATE}&filters[publishedAt][$notNull]=true&locale=${encodeURIComponent(locale)}&sort[0]=overallScore:desc&sort[1]=publishDate:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };

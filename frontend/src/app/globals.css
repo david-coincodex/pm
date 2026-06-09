@@ -10,6 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* BundleShowcase slider animations (used via animate-* utilities) */
+  --animate-bundle-in-right: bundle-in-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-bundle-in-left: bundle-in-left 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes bundle-in-right {
+    from { opacity: 0; transform: translateX(32px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes bundle-in-left {
+    from { opacity: 0; transform: translateX(-32px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
 }
 
 @media (prefers-color-scheme: dark) {

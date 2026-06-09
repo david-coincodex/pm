@@ -11,6 +11,8 @@ import { strapiMediaUrl } from '@/lib/strapi';
 import { themes, type SpotlightTheme } from '@/lib/themes';
 
 const MAX_VISIBLE_SITES = 3;
+// Auto-advance interval.
+const SLIDE_MS = 4000;
 
 interface BundleShowcaseProps {
   bundles: Bundle[];
@@ -21,23 +23,52 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
   const t = useTranslations('bundles');
   const c = themes[theme];
   const [activeIndex, setActiveIndex] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pausedRef = useRef(false);
+  const startedAtRef = useRef(0);
+  const remainingRef = useRef(SLIDE_MS);
 
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      if (!pausedRef.current) {
-        setActiveIndex((prev) => (prev + 1) % bundles.length);
-      }
-    }, 4000);
-  }, [bundles.length]);
+  const clear = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  }, []);
 
-  useEffect(() => {
+  // Schedule the next auto-advance `ms` from now (tracks elapsed for pause/resume).
+  const run = useCallback((ms: number) => {
+    clear();
     if (bundles.length <= 1) return;
-    startTimer();
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [bundles.length, startTimer]);
+    remainingRef.current = ms;
+    startedAtRef.current = Date.now();
+    timerRef.current = setTimeout(() => {
+      setDirection('next');
+      setActiveIndex((prev) => (prev + 1) % bundles.length);
+    }, ms);
+  }, [bundles.length, clear]);
+
+  // Start a fresh full cycle whenever the active slide changes (unless paused).
+  useEffect(() => {
+    remainingRef.current = SLIDE_MS;
+    if (!pausedRef.current) run(SLIDE_MS);
+    return clear;
+  }, [activeIndex, run, clear]);
+
+  const pause = useCallback(() => {
+    pausedRef.current = true;
+    clear();
+    remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAtRef.current));
+  }, [clear]);
+
+  const resume = useCallback(() => {
+    pausedRef.current = false;
+    run(remainingRef.current);
+  }, [run]);
+
+  // Jump to a specific bundle; the slide-change effect restarts the timer.
+  const goTo = (idx: number) => {
+    if (idx === activeIndex) return;
+    setDirection(idx >= activeIndex ? 'next' : 'prev');
+    setActiveIndex(idx);
+  };
 
   if (bundles.length === 0) return null;
 
@@ -46,8 +77,8 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
   return (
     <section
       className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-14"
-      onMouseEnter={() => { pausedRef.current = true; }}
-      onMouseLeave={() => { pausedRef.current = false; }}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
     >
 
       <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -69,7 +100,7 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
               <button
                 key={b.id}
                 type="button"
-                onClick={() => setActiveIndex(idx)}
+                onClick={() => goTo(idx)}
                 className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition ${
                   idx === activeIndex
                     ? c.tabActive
@@ -85,7 +116,7 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
         {/* Active bundle */}
         <div
           key={bundle.id}
-          className="animate-fade-in"
+          className={`${direction === 'next' ? 'animate-bundle-in-right' : 'animate-bundle-in-left'} motion-reduce:animate-none`}
         >
           {bundle.description && (
             <p className="mb-6 text-center text-sm text-slate-400">{bundle.description}</p>
@@ -124,17 +155,17 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
             const remaining = allSites.length - MAX_VISIBLE_SITES;
 
             return (
-              <div className="flex flex-wrap items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-5">
                 {visibleSites.map((site, idx) => {
                   const image = site.cover_image ?? site.logo;
                   return (
-                    <div key={site.id} className="flex items-center gap-3">
+                    <div key={site.id} className="flex items-center gap-3 lg:gap-5">
                       {idx > 0 && (
-                        <span className={`text-2xl font-bold ${c.accentMuted}`}>+</span>
+                        <span className={`text-2xl font-bold lg:text-3xl ${c.accentMuted}`}>+</span>
                       )}
                       <Link
                         href={routes.site(site.slug)}
-                        className={`group flex w-48 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition ${c.cardHover} hover:bg-white/10`}
+                        className={`group flex w-44 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition sm:w-56 lg:w-72 ${c.cardHover} hover:bg-white/10`}
                       >
                         <div className="relative aspect-video w-full overflow-hidden bg-slate-800">
                           {image ? (
@@ -153,8 +184,8 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
                             </div>
                           )}
                         </div>
-                        <div className="p-3">
-                          <p className={`truncate text-sm font-semibold text-white transition-colors ${c.cardNameHover}`}>
+                        <div className="p-3 lg:p-4">
+                          <p className={`truncate text-sm font-semibold text-white transition-colors lg:text-base ${c.cardNameHover}`}>
                             {site.name}
                           </p>
                         </div>
@@ -163,9 +194,9 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
                   );
                 })}
                 {remaining > 0 && (
-                  <div className="flex items-center gap-3">
-                    <span className={`text-2xl font-bold ${c.accentMuted}`}>+</span>
-                    <span className="text-sm font-semibold text-slate-300">
+                  <div className="flex items-center gap-3 lg:gap-5">
+                    <span className={`text-2xl font-bold lg:text-3xl ${c.accentMuted}`}>+</span>
+                    <span className="text-sm font-semibold text-slate-300 lg:text-base">
                       {remaining} {t('sites')}
                     </span>
                   </div>
@@ -178,15 +209,22 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
         {/* Progress bar + CTA */}
         <div className="mt-8 flex flex-col items-center gap-4">
           {bundles.length > 1 && (
-            <div className="flex gap-1.5">
-              {bundles.map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`block h-1 rounded-full transition-all duration-300 ${
-                    idx === activeIndex ? `w-8 ${c.progressBar}` : 'w-3 bg-white/20'
-                  }`}
-                />
-              ))}
+            <div className="flex items-center gap-1.5">
+              {bundles.map((b, idx) => {
+                const isActive = idx === activeIndex;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => goTo(idx)}
+                    aria-label={b.name}
+                    aria-current={isActive}
+                    className={`block h-1.5 rounded-full transition-all duration-300 ${
+                      isActive ? `w-8 ${c.progressBar}` : 'w-3 bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                );
+              })}
             </div>
           )}
           <Link

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
@@ -8,14 +8,6 @@ import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import MobileSearchOverlay from './MobileSearchOverlay';
 import { routes } from '@/lib/routes';
-
-const CATEGORIES = [
-  { slug: 'ai-porn', name: 'AI Porn' },
-  { slug: 'vr-porn', name: 'VR Porn' },
-  { slug: 'premium-networks', name: 'Premium Networks' },
-  { slug: 'artsy-erotic', name: 'Artsy & Erotic' },
-  { slug: 'cam-sites', name: 'Cam Sites' },
-];
 
 function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const pathname = usePathname();
@@ -35,59 +27,9 @@ function NavLink({ href, label, onClick }: { href: string; label: string; onClic
   );
 }
 
-function CategoriesDropdown() {
-  const t = useTranslations('nav');
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-      >
-        {t('categories')}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={routes.category(cat.slug)}
-              onClick={() => setOpen(false)}
-              className="block px-4 py-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-            >
-              {cat.name}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function NavMenu({ activeSale }: { activeSale?: { slug: string; navLabel: string; themeColor: string } | null }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -123,7 +65,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           <NavLink href={routes.bundles()} label={t('bundles')} />
           <NavLink href={routes.category('cam-sites')} label={t('liveSex')} />
           <NavLink href={routes.reviews()} label={t('reviews')} />
-          <CategoriesDropdown />
+          <NavLink href={routes.categories()} label={t('categories')} />
           <NavLink href={routes.blog()} label={t('blog')} />
           {activeSale && (
             <Link
@@ -219,6 +161,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
             { href: routes.bundles(), label: t('bundles') },
             { href: routes.category('cam-sites'), label: t('liveSex') },
             { href: routes.reviews(), label: t('reviews') },
+            { href: routes.categories(), label: t('categories') },
             { href: routes.blog(), label: t('blog') },
           ].map(({ href, label }) => (
             <Link
@@ -240,37 +183,6 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
               {activeSale.navLabel}
             </Link>
           )}
-
-          {/* Categories accordion */}
-          <button
-            type="button"
-            onClick={() => setCatOpen((v) => !v)}
-            className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            {t('categories')}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-3.5 w-3.5 transition-transform ${catOpen ? 'rotate-180' : ''}`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <div className={`overflow-hidden transition-all duration-200 ${catOpen ? 'max-h-64' : 'max-h-0'}`}>
-            <div className="ml-3 flex flex-col border-l border-slate-200 pl-2 dark:border-slate-700">
-              {CATEGORIES.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={routes.category(cat.slug)}
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-md px-2 py-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                >
-                  {cat.name}
-                </Link>
-              ))}
-            </div>
-          </div>
         </nav>
 
         {/* Drawer footer: language switcher */}

@@ -30,6 +30,9 @@ export const routes = {
   /** Category page — e.g. /best-ai-porn-sites/ */
   category: (slug: string) => `/best-${slug}-sites/` as const,
 
+  /** All categories listing */
+  categories: () => '/categories/' as const,
+
   /** Blog listing */
   blog: () => '/blog/' as const,
 

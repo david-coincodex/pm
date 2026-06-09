@@ -42,6 +42,11 @@
         "i18n": { "localized": true }
       }
     },
+    "overallScore": {
+      "type": "decimal",
+      "writable": false,
+      "configurable": false
+    },
     "paysiteScores": {
       "type": "component",
       "repeatable": false,

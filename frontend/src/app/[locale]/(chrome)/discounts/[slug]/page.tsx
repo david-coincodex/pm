@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import {
   getDealBySiteSlug,
@@ -158,20 +157,6 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         bestFullPrice: activeOffers[0]?.full_price ?? null,
       }} />
 
-      {/* Hero cover image */}
-      {site.cover_image && (
-        <div className="mb-8 overflow-hidden rounded-2xl">
-          <Image
-            src={strapiMediaUrl(site.cover_image)}
-            alt={site.cover_image.alternativeText ?? site.name}
-            width={site.cover_image.width}
-            height={site.cover_image.height}
-            className="w-full object-cover"
-            priority
-          />
-        </div>
-      )}
-
       <SidebarLayout
         sidebar={
           <DealBuy
@@ -192,7 +177,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
       >
         {/* Gallery */}
         <div className="mb-8">
-          <ImageGallery images={site.gallery ?? []} />
+          <ImageGallery images={site.gallery ?? []} coverImage={image} />
         </div>
 
         {/* Rich-text content */}

@@ -129,9 +129,82 @@ async function getPornDiscountsMap() {
   return pornDiscountsMapPromise;
 }
 
+let pornDealsMapPromise;
+
+async function getPornDealsMap() {
+  if (!pornDealsMapPromise) {
+    pornDealsMapPromise = fetch('https://porndeals.com/sitemap.xml')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PornDeals sitemap: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((xml) => {
+        const map = new Map();
+        for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+          const loc = match[1];
+          let pathname;
+          try {
+            pathname = new URL(loc).pathname;
+          } catch {
+            continue;
+          }
+
+          const parts = pathname.split('/').filter(Boolean);
+          if (parts[0] !== 'reviews' || !parts[1]) continue;
+
+          map.set(toNoHyphen(parts[1]), loc);
+          // Many entries carry a "-network" suffix; index the bare slug too.
+          map.set(toNoHyphen(parts[1].replace(/-network$/, '')), loc);
+        }
+        return map;
+      });
+  }
+
+  return pornDealsMapPromise;
+}
+
+let pornDealsDiscountMapPromise;
+
+async function getPornDealsDiscountMap() {
+  if (!pornDealsDiscountMapPromise) {
+    pornDealsDiscountMapPromise = fetch('https://porndeals.com/sitemap.xml')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PornDeals sitemap: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((xml) => {
+        const map = new Map();
+        for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+          const loc = match[1];
+          let parts;
+          try {
+            parts = new URL(loc).pathname.split('/').filter(Boolean);
+          } catch {
+            continue;
+          }
+
+          // Discount pages are /<network>/<sub-site>/ — index by the sub-site (last) segment.
+          if (parts.length !== 2) continue;
+          if (parts[0] === 'blog' || parts[0] === 'reviews') continue;
+
+          map.set(toNoHyphen(parts[1]), loc);
+        }
+        return map;
+      });
+  }
+
+  return pornDealsDiscountMapPromise;
+}
+
 const SUPPORTED_SOURCES = new Map([
   ['porndiscounts', 'PornDiscounts'],
   ['porndiscountscom', 'PornDiscounts'],
+  ['porndeals', 'PornDeals'],
+  ['porndealscom', 'PornDeals'],
 ]);
 
 const args = process.argv.slice(2);
@@ -165,13 +238,13 @@ const sourceName = requestedSourceKeys.length === 0
   : SUPPORTED_SOURCES.get(requestedSourceKeys[0]);
 
 if (!sourceName || requestedSourceKeys.length > 1) {
-  console.error('Only one source is supported for now: PornDiscounts');
+  console.error('Only one source can be used per run. Supported: porndiscounts, porndeals');
   process.exit(1);
 }
 
 for (const key of requestedSourceKeys) {
   if (!SUPPORTED_SOURCES.has(key)) {
-    console.error(`Unknown source: ${key}. Supported: porndiscounts`);
+    console.error(`Unknown source: ${key}. Supported: porndiscounts, porndeals`);
     process.exit(1);
   }
 }
@@ -289,6 +362,58 @@ async function extractPornDiscountsCover(page, reviewUrl) {
   });
 }
 
+async function resolvePornDealsUrl(site) {
+  const existing = (site.reviewSources ?? []).find((source) => source.sourceName === 'PornDeals');
+  if (existing?.sourceUrl) return existing.sourceUrl;
+
+  const variants = slugVariants(site.slug, site.name, site.platform?.name || null);
+
+  // Prefer a top-level review page, then fall back to the sub-site discount page.
+  const dealMap = await getPornDealsMap();
+  for (const variant of variants) {
+    const match = dealMap.get(toNoHyphen(variant));
+    if (match) return match;
+  }
+
+  const discountMap = await getPornDealsDiscountMap();
+  for (const variant of variants) {
+    const match = discountMap.get(toNoHyphen(variant));
+    if (match) return match;
+  }
+
+  return null;
+}
+
+async function extractPornDealsCover(page, reviewUrl) {
+  await page.goto(reviewUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+  return page.evaluate(() => {
+    // Hero cover lives in the review header (.dc-review-header) or, on discount
+    // pages, in .deal-cover. Lazy-loaded — the high-res URL is in data-src.
+    const node = document.querySelector('.dc-review-header img, .deal-cover img');
+    if (!node) return null;
+
+    const value = node.getAttribute('data-src') || node.getAttribute('src');
+    if (!value) return null;
+
+    try {
+      return new URL(value, window.location.href).toString();
+    } catch {
+      return null;
+    }
+  });
+}
+
+const RESOLVERS = {
+  PornDiscounts: resolvePornDiscountsUrl,
+  PornDeals: resolvePornDealsUrl,
+};
+
+const EXTRACTORS = {
+  PornDiscounts: extractPornDiscountsCover,
+  PornDeals: extractPornDealsCover,
+};
+
 function extensionFromUrl(url, fallback = '.jpg') {
   const pathname = new URL(url).pathname;
   const extension = extname(pathname);
@@ -329,16 +454,16 @@ async function main() {
     console.log(`🖼️  ${site.name} (${site.slug})`);
 
     try {
-      const reviewUrl = await resolvePornDiscountsUrl(site);
+      const reviewUrl = await RESOLVERS[sourceName](site);
       if (!reviewUrl) {
-        console.log('  ✗ PornDiscounts URL not found\n');
-        failures.push(`${site.name}: missing PornDiscounts URL`);
+        console.log(`  ✗ ${sourceName} URL not found\n`);
+        failures.push(`${site.name}: missing ${sourceName} URL`);
         processed += 1;
         continue;
       }
 
       console.log(`  ↳ Source: ${reviewUrl}`);
-      const imageUrl = await extractPornDiscountsCover(page, reviewUrl);
+      const imageUrl = await EXTRACTORS[sourceName](page, reviewUrl);
       if (!imageUrl) {
         console.log('  ✗ Cover image not found on source page\n');
         failures.push(`${site.name}: no cover image on source page`);
