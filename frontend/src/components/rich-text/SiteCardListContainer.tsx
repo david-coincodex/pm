@@ -16,7 +16,7 @@ export default function SiteCardListContainer({ children, initialShow, showMoreL
   const remaining = childArray.length - initialShow;
 
   return (
-    <div className="not-prose my-4">
+    <div className="not-prose mt-4 mb-10">
       {visible}
       {remaining > 0 && (
         <div className="mt-4 flex justify-center">

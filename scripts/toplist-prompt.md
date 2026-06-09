@@ -13,7 +13,7 @@ Using the provided research context (scraped external sources), our own site cat
 - **Use only the site IDs we provide.** When embedding a SiteCard/SiteList you may ONLY use numeric site IDs from the "Our site catalog" section. Never invent an ID. Entries that don't match one of our sites must be plain text (`<h2>`/`<p>`), never a widget.
 - **Follow the structure instructions** for the requested toplist type exactly (order of sections, where widgets go, entry count).
 - **Honor `maxEntries`.** Do not exceed the requested number of ranked entries.
-- **No invented offers/links.** Only reference prices/offers present in our data. CTA buttons should link to our site/offer routes when given; otherwise omit the CTA.
+- **No prices.** Never mention specific prices, costs, discounts, or dollar amounts — pricing changes constantly. Speak about value/affordability only qualitatively (e.g. "strong value", "premium tier"). No invented offers or links.
 - **SEO:** compelling, keyword-aware `metaTitle` (≤ 60 chars ideal) and `description` (~150–160 chars), scannable headings, natural keyword usage, no keyword stuffing.
 - **FAQs are structured data**, returned in the `faqs` array — do NOT also place a FAQ section inside `content`.
 

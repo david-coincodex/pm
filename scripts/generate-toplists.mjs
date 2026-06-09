@@ -303,9 +303,9 @@ function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
 
   if (candidates.length) {
     p += `\n## Candidate sites (our catalog — ranked entries should come from here)\n`;
-    p += `Each: id | name | slug | bestPrice | shortDescription, then highlights and quotable reviewer opinions (attribute quotes to the listed source).\n`;
+    p += `Each: id | name | slug | shortDescription, then highlights and quotable reviewer opinions (attribute quotes to the listed source).\n`;
     for (const c of candidates) {
-      p += `- ${c.id} | ${c.name} | ${c.slug} | ${c.bestPrice ?? '—'} | ${truncate(c.shortDescription, 160) ?? ''}\n`;
+      p += `- ${c.id} | ${c.name} | ${c.slug} | ${truncate(c.shortDescription, 160) ?? ''}\n`;
       if (c.highlights) p += `    highlights: ${truncate(c.highlights, 400)}\n`;
       for (const q of c.opinionQuotes || []) p += `    quote: "${truncate(q.text, 200)}" — ${q.source}\n`;
     }
