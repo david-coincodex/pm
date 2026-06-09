@@ -61,7 +61,7 @@ Or via npm: `npm run generate-toplists -- <args>`.
 
 - Skips a job if an article with its slug already exists (unless `--force`).
 - **Current year:** the article is written for the current year; stale years (2024/2025) from sources are normalized.
-- **Images:** a cover image and a few inline images are picked from the source listicles and **re-hosted to our media** (the cover sets `coverImage`; inline `<img>` srcs are rewritten to our media URLs). Images that can't be downloaded are dropped, never hotlinked-broken.
+- **Images:** a cover image is picked from the sources and re-hosted (sets `coverImage`). For each ranked-site `<h2>`, the script inserts one image **above the heading**: it first matches a source image to that site (by alt/nearby-heading/filename, best size) and re-hosts it; if none matches, it falls back to that **site's own `cover_image`** from our content-type. The run logs per-site provenance (source-uploaded / our-cover / none).
 - Embeds SiteCard/SiteList widgets only for sites in our catalog; a **sanitizer** strips any widget referencing an unknown site ID.
 - FAQs are saved to the article's `faqs` component (NOT inline in content).
 - "Similar to" / "alternatives" articles use clean editorial (prose, lists, pros/cons, attributed source quotes) — no SiteCard/CTA.

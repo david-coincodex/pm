@@ -34,12 +34,8 @@ A short attributed quote drawn from EITHER the consolidated source context OR a 
 ```
 Only use quotes present in the provided context/our data, attributed to the listed source. Never fabricate a quote or attribution.
 
-### Image (optional)
-Insert an image ONLY using a `src` from the "Available images" list in the user message:
-```html
-<img src="EXACT_SRC_FROM_LIST" alt="descriptive alt" />
-```
-Do not invent image URLs. A few well-placed images near top entries is plenty.
+### Images — handled automatically
+Do NOT add `<img>` tags. Our pipeline inserts one relevant image above each ranked-site `<h2>` (a matched source image, or the site's own cover as fallback).
 
 ## Usage guidance
 - Follow the structure instructions for the requested type — they decide which elements to use.

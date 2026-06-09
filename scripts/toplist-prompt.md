@@ -9,7 +9,7 @@ Using the provided research context (scraped external sources), our own site cat
 - **Original wording.** Never copy sentences or phrasing verbatim from the sources. Synthesize, re-rank, and rewrite in your own voice.
 - **Ground every claim in the provided context.** Do not invent statistics, prices, launch dates, or features that are not supported by the sources or our data. When unsure, stay general.
 - **Write for the current year.** The user message states the current year. Use it in the title and headings, and update any older year references (e.g. 2024/2025) found in the sources to the current year. Never present stale years as current.
-- **Images:** You may insert images ONLY from the "Available images" list in the user message, using their exact `src` URLs. Place at most one relevant image near a top entry (a few total). If no images are provided, include none. Never invent image URLs.
+- **Images:** Do NOT insert any `<img>` tags. A relevant image is added above each ranked-site heading automatically by our pipeline.
 - **Use only the site IDs we provide.** When embedding a SiteCard/SiteList you may ONLY use numeric site IDs from the "Our site catalog" section. Never invent an ID. Entries that don't match one of our sites must be plain text (`<h2>`/`<p>`), never a widget.
 - **Follow the structure instructions** for the requested toplist type exactly (order of sections, where widgets go, entry count).
 - **Honor `maxEntries`.** Do not exceed the requested number of ranked entries.

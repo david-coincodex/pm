@@ -114,7 +114,7 @@ async function fetchCatalog() {
   return catalog;
 }
 
-const SITE_FIELDS = 'fields[0]=name&fields[1]=slug&fields[2]=short_description&fields[3]=externalContext&populate[offers][fields][0]=price&populate[offers][fields][1]=isActive&populate[categories][fields][0]=slug';
+const SITE_FIELDS = 'fields[0]=name&fields[1]=slug&fields[2]=short_description&fields[3]=externalContext&populate[offers][fields][0]=price&populate[offers][fields][1]=isActive&populate[categories][fields][0]=slug&populate[cover_image][fields][0]=url&populate[logo][fields][0]=url&populate[parent_site][fields][0]=slug';
 
 function toCandidate(s) {
   const offers = (s.offers ?? []).filter((o) => o.isActive);
@@ -134,6 +134,8 @@ function toCandidate(s) {
     bestPrice: best ? best.price : null,
     highlights: ctx?.contentHighlights ?? null,
     opinionQuotes,
+    coverUrl: s.cover_image?.url ?? s.logo?.url ?? null, // fallback image (already on our media)
+    isSub: !!s.parent_site, // true = sub-site/child channel
   };
 }
 
@@ -141,16 +143,36 @@ async function fetchSiteBySlug(slug) {
   const { data } = await strapiFetch(`/sites?${SITE_FIELDS}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&pagination[pageSize]=1`);
   return data[0] ?? null;
 }
-async function fetchSitesByCategory(categorySlug) {
-  const { data } = await strapiFetch(`/sites?${SITE_FIELDS}&filters[isActive][$eq]=true&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}&sort=name:asc&pagination[pageSize]=40`);
-  return data.map(toCandidate);
+// Fetch sites matching `extra` filters (active, name-sorted, capped).
+async function fetchSitesWhere(extra) {
+  const { data } = await strapiFetch(`/sites?${SITE_FIELDS}&filters[isActive][$eq]=true&${extra}&sort=name:asc&pagination[pageSize]=40`);
+  return data;
 }
-async function fetchSimilarSites(refSite) {
+
+/**
+ * Prefer main sites (no parent). Only if there aren't enough to make a good
+ * list (fewer than `maxEntries`) do we append sub-sites — main always first.
+ */
+async function fetchSitesByCategory(categorySlug, maxEntries) {
+  const f = `filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}`;
+  const main = await fetchSitesWhere(`filters[parent_site][$null]=true&${f}`);
+  let pool = main;
+  if (main.length < maxEntries) pool = [...main, ...(await fetchSitesWhere(`filters[parent_site][$notNull]=true&${f}`))];
+  return pool.slice(0, 40).map(toCandidate);
+}
+async function fetchSimilarSites(refSite, maxEntries) {
   const catSlugs = (refSite.categories ?? []).map((c) => c.slug).filter(Boolean);
   if (catSlugs.length === 0) return [];
-  const filt = catSlugs.map((s, i) => `filters[categories][slug][$in][${i}]=${encodeURIComponent(s)}`).join('&');
-  const { data } = await strapiFetch(`/sites?${SITE_FIELDS}&filters[isActive][$eq]=true&${filt}&sort=name:asc&pagination[pageSize]=40`);
-  return data.filter((s) => s.slug !== refSite.slug).map(toCandidate);
+  const f = catSlugs.map((s, i) => `filters[categories][slug][$in][${i}]=${encodeURIComponent(s)}`).join('&');
+  const notRef = (s) => s.slug !== refSite.slug;
+  const main = (await fetchSitesWhere(`filters[parent_site][$null]=true&${f}`)).filter(notRef);
+  let pool = main;
+  if (main.length < maxEntries) {
+    // Supplement with sub-sites, but never the reference site's own children.
+    const subs = (await fetchSitesWhere(`filters[parent_site][$notNull]=true&${f}`)).filter((s) => notRef(s) && s.parent_site?.slug !== refSite.slug);
+    pool = [...main, ...subs];
+  }
+  return pool.slice(0, 40).map(toCandidate);
 }
 async function fetchReviewForSite(slug) {
   const { data } = await strapiFetch(`/reviews?filters[site][slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&fields[0]=overallScore&fields[1]=description&pagination[pageSize]=1`);
@@ -205,14 +227,23 @@ async function scrapeSources(urls) {
         };
         const imgs = [];
         const og = document.querySelector('meta[property="og:image"]')?.content;
-        if (og) imgs.push({ src: og, alt: 'cover', w: 1200, h: 630, og: true });
+        if (og) imgs.push({ src: og, alt: 'cover', context: '', w: 1200, h: 630, og: true });
+        const heads = Array.from(document.querySelectorAll('h1,h2,h3,h4'));
+        const precedingHeading = (node) => {
+          let best = '';
+          for (const h of heads) {
+            if (h.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) best = h.innerText;
+            else break;
+          }
+          return best.slice(0, 120);
+        };
         document.querySelectorAll('img').forEach((img) => {
           const src = img.currentSrc || img.src;
           if (!src || src.startsWith('data:') || /\.svg(\?|$)/i.test(src)) return;
           const w = img.naturalWidth || img.width || 0;
           const h = img.naturalHeight || img.height || 0;
           if (w && h && (w < 300 || h < 200)) return; // skip icons/thumbnails
-          imgs.push({ src, alt: img.alt || '', w, h, og: false });
+          imgs.push({ src, alt: img.alt || '', context: precedingHeading(img), w, h, og: false });
         });
         return { content: pickText().replace(/\s+/g, ' ').trim().slice(0, 12000), images: imgs };
       });
@@ -258,7 +289,7 @@ function loadStructure(type) {
   return readFileSync(path, 'utf-8');
 }
 
-function buildUserPrompt({ job, context, images, candidates, catalog, reviews }) {
+function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
   let p = `# Toplist to write\n\n- Title: ${job.title}\n- Type: ${job.type}\n- Current year: ${CURRENT_YEAR} (write for this year; update any older years from sources)\n- Max ranked entries: ${job.maxEntries ?? 10}\n`;
 
   if (context) {
@@ -268,11 +299,6 @@ function buildUserPrompt({ job, context, images, candidates, catalog, reviews })
     if ((context.quotes || []).length) { p += `\nQuotes you may attribute (verbatim, with source):\n`; for (const q of context.quotes) p += `- "${q.text}" — ${q.source}\n`; }
   } else {
     p += `\n## (No usable external context — rely on our data below.)\n`;
-  }
-
-  if (images?.length) {
-    p += `\n## Available images (use ONLY these exact src URLs for <img>)\n`;
-    for (const im of images) p += `- ${im.src}${im.alt ? `  (alt: ${truncate(im.alt, 80)})` : ''}\n`;
   }
 
   if (candidates.length) {
@@ -315,19 +341,82 @@ function sanitizeWidgets(html, validIds) {
   return { html, removed };
 }
 
-/** Re-host inline <img> tags whose src is in the allowed set; drop the rest. */
-async function rehostInlineImages(html, allowed, slug) {
-  const matches = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/g)];
-  let kept = 0, dropped = 0, n = 0;
-  for (const m of matches) {
-    const [tag, src] = m;
-    if (!allowed.has(src)) { html = html.replace(tag, ''); dropped++; continue; }
-    const up = await uploadImageFromUrl(src, `${slug}-img-${++n}${extFromUrl(src)}`);
-    if (!up) { html = html.replace(tag, ''); dropped++; continue; }
-    html = html.replace(tag, tag.replace(/\bsrc="[^"]+"/, `src="${STRAPI_URL}${up.url}"`));
-    kept++;
+const normKey = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Identify a site from an H2 heading: exact name match first, then unambiguous includes. */
+function matchSite(text, catalog) {
+  const b = normKey(text);
+  if (b.length < 3) return null;
+  const exact = catalog.find((c) => normKey(c.name) === b);
+  if (exact) return exact;
+  const incl = catalog.filter((c) => { const a = normKey(c.name); return a.length > 3 && (b.includes(a) || a.includes(b)); });
+  if (!incl.length) return null;
+  // prefer the candidate whose normalized name is closest in length to the heading
+  incl.sort((x, y) => Math.abs(normKey(x.name).length - b.length) - Math.abs(normKey(y.name).length - b.length));
+  return incl[0];
+}
+
+/** Best-size source image for a site, matched by alt/nearby-heading/filename. */
+function bestSourceImage(site, images, used) {
+  const name = normKey(site.name);
+  const slugKey = normKey(site.slug);
+  const hit = images.filter((im) => {
+    if (im.og || used.has(im.src)) return false;
+    const hay = normKey(`${im.alt} ${im.context} ${im.src}`);
+    return (name.length > 2 && hay.includes(name)) || (slugKey.length > 3 && hay.includes(slugKey));
+  });
+  return hit.sort((a, b) => (b.w * b.h) - (a.w * a.h))[0] || null;
+}
+
+/** Resolve a site's own cover/logo media URL (cached); used as image fallback. */
+async function fetchSiteCoverUrl(slug, cache) {
+  if (cache.has(slug)) return cache.get(slug);
+  let url = null;
+  try {
+    const { data } = await strapiFetch(`/sites?filters[slug][$eq]=${encodeURIComponent(slug)}&populate[cover_image][fields][0]=url&populate[logo][fields][0]=url&pagination[pageSize]=1`);
+    url = data[0]?.cover_image?.url ?? data[0]?.logo?.url ?? null;
+  } catch { /* ignore */ }
+  cache.set(slug, url);
+  return url;
+}
+
+/**
+ * Insert one image above each ranked-site <h2>. Prefer a matched source image
+ * (re-hosted to our media); fall back to the site's own cover_image. Matches
+ * against the full catalog so any ranked site is covered. Returns provenance.
+ */
+async function insertSiteImages(html, catalog, candidates, images, slug, isDry) {
+  const report = []; // { site, source: 'scraped'|'site-cover'|'none' }
+  const used = new Set();
+  const coverCache = new Map(candidates.map((c) => [c.slug, c.coverUrl ?? null]));
+  const h2Re = /<h2[^>]*>([\s\S]*?)<\/h2>/g;
+  const tasks = [];
+  let m;
+  while ((m = h2Re.exec(html))) {
+    const heading = m[0];
+    const text = m[1].replace(/<[^>]+>/g, ' ').replace(/^\s*\d+[.)]\s*/, '').split(/[—\-:|]/)[0].trim();
+    const site = matchSite(text, catalog);
+    if (site && !tasks.some((t) => t.site.id === site.id)) tasks.push({ heading, site });
   }
-  return { html, kept, dropped };
+
+  for (const t of tasks) {
+    let imgUrl = null, source = 'none';
+    const match = bestSourceImage(t.site, images, used);
+    if (match) {
+      if (isDry) { used.add(match.src); imgUrl = match.src; source = 'scraped'; }
+      else {
+        const up = await uploadImageFromUrl(match.src, `${slug}-${normKey(t.site.slug)}${extFromUrl(match.src)}`);
+        if (up) { used.add(match.src); imgUrl = `${STRAPI_URL}${up.url}`; source = 'scraped'; }
+      }
+    }
+    if (!imgUrl) {
+      const coverUrl = await fetchSiteCoverUrl(t.site.slug, coverCache);
+      if (coverUrl) { imgUrl = `${STRAPI_URL}${coverUrl}`; source = 'site-cover'; }
+    }
+    report.push({ site: t.site.name, source });
+    if (imgUrl) html = html.replace(t.heading, `<img src="${imgUrl}" alt="${t.site.name}" />\n${t.heading}`);
+  }
+  return { html, report };
 }
 
 function pickCover(images) {
@@ -403,16 +492,18 @@ async function main() {
         }
       }
 
-      // Candidates
+      // Candidates (main sites preferred; sub-sites added only if too few)
+      const maxEntries = job.maxEntries ?? 10;
       let candidates = [];
       if (job.referenceSite) {
         const ref = await fetchSiteBySlug(job.referenceSite);
-        if (ref) candidates = await fetchSimilarSites(ref);
+        if (ref) candidates = await fetchSimilarSites(ref, maxEntries);
         else console.log(`  ⚠ referenceSite "${job.referenceSite}" not found.`);
       } else if (job.category) {
-        candidates = await fetchSitesByCategory(job.category);
+        candidates = await fetchSitesByCategory(job.category, maxEntries);
       }
-      console.log(`  candidates: ${candidates.length}`);
+      const mainN = candidates.filter((c) => !c.isSub).length;
+      console.log(`  candidates: ${candidates.length} (${mainN} main, ${candidates.length - mainN} sub)`);
 
       // Reviews (optional): reference site + the ranked candidates
       let reviews = [];
@@ -430,13 +521,12 @@ async function main() {
       const context = await consolidateSources(job, scraped);
       if (scraped.length) console.log(`  context: ${context ? 'consolidated ✓' : 'none usable'}${context?.discarded?.length ? ` (discarded ${context.discarded.length})` : ''}`);
 
-      // Images (dedup by src), cap the list shown to GPT
+      // Images (dedup by src)
       const seen = new Set();
       const allImages = scraped.flatMap((s) => s.images || []).filter((im) => (seen.has(im.src) ? false : (seen.add(im.src), true)));
-      const promptImages = allImages.slice(0, 12);
 
-      // Generate
-      const userPrompt = buildUserPrompt({ job, context, images: promptImages, candidates, catalog, reviews });
+      // Generate (GPT writes clean content; images are added by us, not GPT)
+      const userPrompt = buildUserPrompt({ job, context, candidates, catalog, reviews });
       console.log('  🤖 generating with GPT-5.5...');
       const gen = await generateToplist(userPrompt);
       if (!gen.title || !gen.content) throw new Error('GPT response missing title/content');
@@ -444,25 +534,28 @@ async function main() {
       let { html, removed } = sanitizeWidgets(gen.content, validIds);
       if (removed > 0) console.log(`  🧹 sanitized ${removed} widget(s) with unknown site IDs`);
 
+      // Insert one image above each ranked-site <h2>: source image (re-hosted) or our cover fallback
+      const imgRes = await insertSiteImages(html, catalog, candidates, allImages, slug, dryRun);
+      html = imgRes.html;
+      for (const r of imgRes.report) {
+        const label = r.source === 'scraped' ? 'image from source (uploaded)' : r.source === 'site-cover' ? 'fallback to our site cover' : 'no image found';
+        console.log(`  🖼️  ${r.site}: ${label}`);
+      }
+      const imgCounts = imgRes.report.reduce((a, r) => ((a[r.source] = (a[r.source] || 0) + 1), a), {});
+
       const faqs = Array.isArray(gen.faqs) ? gen.faqs.filter((f) => f?.question && f?.answer).map((f) => ({ question: f.question, answer: f.answer })) : [];
       const cover = pickCover(allImages);
 
       if (dryRun) {
         console.log('  · dry-run output:');
-        console.log(JSON.stringify({ metaTitle: gen.metaTitle, title: gen.title, slug, description: gen.description, faqs: faqs.length, coverCandidate: cover?.src ?? null, inlineImgs: (html.match(/<img\b/g) || []).length, contentPreview: html.slice(0, 400) }, null, 2));
+        console.log(JSON.stringify({ metaTitle: gen.metaTitle, title: gen.title, slug, description: gen.description, faqs: faqs.length, coverCandidate: cover?.src ?? null, siteImages: imgCounts, contentPreview: html.slice(0, 400) }, null, 2));
         continue;
       }
-
-      // Re-host inline images (allowed = scraped set), then cover
-      const allowed = new Set(allImages.map((i) => i.src));
-      const reh = await rehostInlineImages(html, allowed, slug);
-      html = reh.html;
-      if (reh.kept || reh.dropped) console.log(`  🖼️  inline images: ${reh.kept} kept, ${reh.dropped} dropped`);
 
       let coverId = null;
       if (cover) {
         const up = await uploadImageFromUrl(cover.src, `${slug}-cover${extFromUrl(cover.src)}`);
-        if (up) { coverId = up.id; console.log('  🖼️  cover uploaded'); }
+        if (up) { coverId = up.id; console.log('  🖼️  cover image uploaded'); }
       }
 
       const data = {
@@ -484,7 +577,9 @@ async function main() {
       const { data: createdArticle } = await createArticle(data);
       if (publishMode) await publishArticle(createdArticle.documentId);
       created++;
-      console.log(`  💾 ${publishMode ? 'published' : 'saved draft'}: ${slug} (${faqs.length} FAQs)`);
+      const fromSrc = imgCounts['scraped'] || 0, fromCover = imgCounts['site-cover'] || 0, noImg = imgCounts['none'] || 0;
+      console.log(`  💾 ${publishMode ? 'published' : 'saved draft'}: ${slug}`);
+      console.log(`     FAQs: ${faqs.length} | cover: ${coverId ? 'uploaded from source' : 'none'} | section images — from source: ${fromSrc}, from our cover: ${fromCover}, none: ${noImg}`);
     } catch (e) {
       failed++;
       console.log(`  ✗ ${e.message}`);
