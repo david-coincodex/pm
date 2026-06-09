@@ -15,6 +15,7 @@ import SectionTitle from '@/components/SectionTitle';
 import OffersTable from '@/components/site/OffersTable';
 import PaymentMethodPills from '@/components/site/PaymentMethodPills';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
+import FaqSection from '@/components/FaqSection';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 import ContentMeta from '@/components/ContentMeta';
 import { siteSettings } from '@/lib/siteSettings';
@@ -261,6 +262,8 @@ export default async function ReviewDetailPage({ params }: Props) {
       siteName={site.name}
       locale={locale}
     />
+
+    <FaqSection faqs={review.faqs} />
 
     <script
       type="application/ld+json"

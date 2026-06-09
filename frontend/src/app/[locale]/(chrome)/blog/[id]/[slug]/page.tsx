@@ -13,6 +13,7 @@ import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import RichText from '@/components/RichText';
 import SectionTitle from '@/components/SectionTitle';
 import ArticleHeroGrid from '@/components/ArticleHeroGrid';
+import FaqSection from '@/components/FaqSection';
 import ContentMeta from '@/components/ContentMeta';
 import SidebarCategorySites from '@/components/SidebarCategorySites';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
@@ -122,6 +123,8 @@ export default async function ArticlePage({ params }: Props) {
           </Container>
         </section>
       )}
+
+      <FaqSection faqs={article.faqs} />
 
       <script
         type="application/ld+json"

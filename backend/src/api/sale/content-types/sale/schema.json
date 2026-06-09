@@ -85,6 +85,12 @@
     "metaDescription": {
       "type": "text",
       "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "faqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.faq",
+      "pluginOptions": { "i18n": { "localized": true } }
     }
   }
 }

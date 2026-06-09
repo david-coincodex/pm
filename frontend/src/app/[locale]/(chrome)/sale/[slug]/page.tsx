@@ -12,6 +12,7 @@ import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SaleHero from '@/components/sale/SaleHero';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import FaqSection from '@/components/FaqSection';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -98,6 +99,8 @@ export default async function SalePage({ params }: Props) {
           </div>
         </Container>
       )}
+
+      <FaqSection faqs={sale.faqs} />
     </>
   );
 }

@@ -88,6 +88,12 @@
       "target": "api::author.author",
       "required": true,
       "inversedBy": "authoredArticles"
+    },
+    "faqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.faq",
+      "pluginOptions": { "i18n": { "localized": true } }
     }
   }
 }

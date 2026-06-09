@@ -67,6 +67,12 @@
       "relation": "manyToMany",
       "target": "api::site.site",
       "mappedBy": "categories"
+    },
+    "faqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.faq",
+      "pluginOptions": { "i18n": { "localized": true } }
     }
   }
 }

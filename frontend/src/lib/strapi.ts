@@ -57,6 +57,13 @@ export type Platform = {
   paymentMethods: Array<{ method: string }> | null;
 };
 
+/** A single FAQ entry from the shared `faqs` component. */
+export type Faq = {
+  id: number;
+  question: string;
+  answer: string;
+};
+
 export type Site = {
   id: number;
   documentId: string;
@@ -74,6 +81,7 @@ export type Site = {
   parent_site: Site | null;
   child_sites: Site[];
   platform: Platform | null;
+  faqs?: Faq[];
 };
 
 /** Resolve a Strapi media URL to an absolute URL */
@@ -171,6 +179,7 @@ export type Category = {
   content: string | null;
   cover_image: StrapiMedia | null;
   sites: Site[];
+  faqs?: Faq[];
 };
 
 /** Fetch a single category by slug with up to `limit` of its sites (with offers). */
@@ -375,13 +384,13 @@ export async function getTopDeals(limit = 4, excludeSlug?: string): Promise<Site
 /** Fetch the active site by slug with its offers and child sites. Falls back to 'en' if no translation exists. */
 export async function getDealBySiteSlug(slug: string, locale = 'en'): Promise<Site | null> {
   const res = await strapiGet<Site[]>(
-    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
+    `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&populate[15]=faqs&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=${encodeURIComponent(locale)}`,
     { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
   );
   if (res.data[0]) return res.data[0];
   if (locale !== 'en') {
     const fallback = await strapiGet<Site[]>(
-      `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
+      `/sites?populate[0]=logo&populate[1]=cover_image&populate[2]=offers&populate[3]=child_sites&populate[4]=child_sites.logo&populate[5]=child_sites.cover_image&populate[6]=gallery&populate[7]=platform&populate[8]=platform.logo&populate[9]=platform.paymentMethods&populate[10]=parent_site&populate[11]=parent_site.offers&populate[12]=parent_site.platform&populate[13]=parent_site.platform.logo&populate[14]=parent_site.platform.paymentMethods&populate[15]=faqs&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[isActive][$eq]=true&locale=en`,
       { next: { revalidate: 60 } } as Parameters<typeof strapiGet>[1]
     );
     return fallback.data[0] ?? null;
@@ -470,7 +479,7 @@ export async function getCategoriesGrid(): Promise<(Category & { siteCount: numb
 /** Fetch a category by slug (metadata only, no sites). */
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
   const res = await strapiGet<Category[]>(
-    `/categories?filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
+    `/categories?populate[0]=faqs&filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
     { next: { revalidate: 300 } } as Parameters<typeof strapiGet>[1]
   );
   return res.data[0] ?? null;
@@ -581,10 +590,11 @@ export type Article = {
   createdAt: string;
   updatedAt: string;
   locale: string;
+  faqs?: Faq[];
 };
 
 const ARTICLE_POPULATE =
-  'populate[0]=coverImage&populate[1]=categories&populate[2]=tags&populate[3]=author&populate[4]=author.avatar';
+  'populate[0]=coverImage&populate[1]=categories&populate[2]=tags&populate[3]=author&populate[4]=author.avatar&populate[5]=faqs';
 
 /** Scheduling filter: hide articles whose publishDate is in the future. */
 function articleScheduleFilter(): string {
@@ -732,10 +742,11 @@ export type Review = {
   modifiedDate: string | null;
   publishedAt: string | null;
   locale: string;
+  faqs?: Faq[];
 };
 
 const REVIEW_POPULATE =
-  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=author&populate[4]=author.avatar&populate[5]=paysiteScores&populate[6]=camsiteScores&populate[7]=site.gallery&populate[8]=site.offers&populate[9]=site.platform&populate[10]=site.platform.paymentMethods';
+  'populate[0]=site&populate[1]=site.logo&populate[2]=site.cover_image&populate[3]=author&populate[4]=author.avatar&populate[5]=paysiteScores&populate[6]=camsiteScores&populate[7]=site.gallery&populate[8]=site.offers&populate[9]=site.platform&populate[10]=site.platform.paymentMethods&populate[11]=faqs';
 
 /** Fetch all published reviews for a locale, newest first. */
 export async function getReviews(locale: string, limit = 100): Promise<Review[]> {
@@ -809,10 +820,12 @@ export type Sale = {
   content: Record<string, unknown>[] | null;
   metaTitle: string | null;
   metaDescription: string | null;
+  faqs?: Faq[];
 };
 
 const SALE_POPULATE =
   'populate[badgeImage]=true' +
+  '&populate[faqs]=true' +
   '&populate[featuredSites][populate][logo]=true&populate[featuredSites][populate][cover_image]=true&populate[featuredSites][populate][offers]=true' +
   '&populate[sites][populate][logo]=true&populate[sites][populate][cover_image]=true&populate[sites][populate][offers]=true' +
   '&populate[bundles][populate][sites][populate][logo]=true&populate[bundles][populate][sites][populate][cover_image]=true&populate[bundles][populate][sites][populate][offers]=true&populate[bundles][populate][offers]=true';

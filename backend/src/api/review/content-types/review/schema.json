@@ -76,6 +76,12 @@
     },
     "modifiedDate": {
       "type": "datetime"
+    },
+    "faqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.faq",
+      "pluginOptions": { "i18n": { "localized": true } }
     }
   }
 }

@@ -15,6 +15,7 @@ import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
 import SidebarCategorySites from '@/components/SidebarCategorySites';
 import CategoryGrid from '@/components/CategoryGrid';
+import FaqSection from '@/components/FaqSection';
 
 /** Extract category slug from a URL slug like "best-ai-porn-sites" → "ai-porn" */
 function parseCategorySlug(slug: string): string | null {
@@ -106,6 +107,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         </SidebarLayout>
       </Container>
       <CategoryGrid />
+      <FaqSection faqs={category.faqs} />
     </>
   );
 }

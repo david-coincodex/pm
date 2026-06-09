@@ -25,6 +25,7 @@ import TrackSiteView from '@/components/TrackSiteView';
 import RichText from '@/components/RichText';
 import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
+import FaqSection from '@/components/FaqSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
 import ImageGallery from '@/components/ImageGallery';
@@ -247,6 +248,8 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         siteName={site.name}
         locale={locale}
       />
+
+      <FaqSection faqs={site.faqs} />
 
       <script
         type="application/ld+json"

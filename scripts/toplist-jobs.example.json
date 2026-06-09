@@ -1,0 +1,34 @@
+[
+  {
+    "id": "best-teen-pornstars-2026",
+    "type": "general-toplist",
+    "title": "Best Teen Pornstars in 2026",
+    "slug": "best-teen-pornstars-2026",
+    "sources": [
+      "https://example.com/best-teen-pornstars",
+      "https://example.com/top-teen-performers-2026"
+    ],
+    "includeReviews": false,
+    "maxEntries": 10
+  },
+  {
+    "id": "similar-to-brazzers",
+    "type": "similar-to-site",
+    "title": "Sites Similar to Brazzers in 2026",
+    "slug": "sites-similar-to-brazzers",
+    "sources": ["https://example.com/brazzers-alternatives"],
+    "referenceSite": "brazzers",
+    "includeReviews": true,
+    "maxEntries": 8
+  },
+  {
+    "id": "best-bangbros-alternatives",
+    "type": "best-site-ads",
+    "title": "Best BangBros Alternatives in 2026",
+    "slug": "best-bangbros-alternatives",
+    "sources": ["https://example.com/bangbros-alternatives"],
+    "referenceSite": "bangbros",
+    "includeReviews": true,
+    "maxEntries": 8
+  }
+]
