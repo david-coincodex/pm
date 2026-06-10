@@ -50,9 +50,31 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const CURRENT_YEAR = new Date().getFullYear();
 
+// USD per 1M tokens. Override via env (OPENAI_PRICE_GPT55_IN, ..._OUT, ..._GPT4O_IN, ..._OUT).
+// ⚠ Token counts logged below are exact (from the API); the $ estimate is only as right as these rates — verify at https://openai.com/api/pricing/
+const PRICE = {
+  'gpt-5.5': { in: Number(process.env.OPENAI_PRICE_GPT55_IN ?? 1.25), out: Number(process.env.OPENAI_PRICE_GPT55_OUT ?? 10) },
+  'gpt-4o': { in: Number(process.env.OPENAI_PRICE_GPT4O_IN ?? 2.5), out: Number(process.env.OPENAI_PRICE_GPT4O_OUT ?? 10) },
+};
+const costOf = (model, usage) => {
+  const p = PRICE[model];
+  if (!p || !usage) return 0;
+  return ((usage.prompt_tokens || 0) * p.in + (usage.completion_tokens || 0) * p.out) / 1e6;
+};
+
 const SYSTEM_PROMPT = readFileSync(join(__dirname, 'toplist-prompt.md'), 'utf-8');
 const ELEMENTS_PROMPT = readFileSync(join(__dirname, 'toplist-elements.md'), 'utf-8');
 const CONSOLIDATE_PROMPT = readFileSync(join(__dirname, 'toplist-consolidate-prompt.md'), 'utf-8');
+
+// Cached AVN headline-award data (built by build-avn-awards.mjs); local lookup, no API cost.
+let AVN_AWARDS = null;
+function avnAwardsFor(name) {
+  if (AVN_AWARDS === null) {
+    try { AVN_AWARDS = JSON.parse(readFileSync(join(__dirname, 'data', 'avn-awards.json'), 'utf-8')); }
+    catch { AVN_AWARDS = {}; }
+  }
+  return AVN_AWARDS[(name || '').toLowerCase().replace(/[^a-z0-9]/g, '')]?.awards ?? null;
+}
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -260,7 +282,7 @@ async function scrapeSources(urls) {
 // ── Consolidate + validate scraped sources (GPT-4o) ────────────────────────────
 async function consolidateSources(job, scraped) {
   const usable = scraped.filter((s) => s.content && s.content.length > 200);
-  if (!usable.length) return null;
+  if (!usable.length) return { context: null, usage: null };
   const text = usable.map((s, i) => `### Source ${i + 1}: ${s.url}\n${s.content.slice(0, 8000)}`).join('\n\n---\n\n');
   try {
     const resp = await openai.chat.completions.create({
@@ -274,11 +296,11 @@ async function consolidateSources(job, scraped) {
       response_format: { type: 'json_object' },
     });
     const c = JSON.parse(resp.choices[0].message.content);
-    if (!c || (!c.summary && !(c.entries || []).length)) return null; // gibberish / unusable
-    return c;
+    if (!c || (!c.summary && !(c.entries || []).length)) return { context: null, usage: resp.usage }; // gibberish / unusable
+    return { context: c, usage: resp.usage };
   } catch (e) {
     console.log(`  ⚠ consolidation failed: ${e.message.slice(0, 60)}`);
-    return null;
+    return { context: null, usage: null };
   }
 }
 
@@ -295,8 +317,15 @@ function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
   if (context) {
     p += `\n## Consolidated research context (validated from external sources — paraphrase, do NOT copy)\n`;
     if (context.summary) p += `\nSummary: ${context.summary}\n`;
-    if ((context.entries || []).length) { p += `\nMentioned entities:\n`; for (const e of context.entries) p += `- ${e.name}: ${e.note}\n`; }
-    if ((context.quotes || []).length) { p += `\nQuotes you may attribute (verbatim, with source):\n`; for (const q of context.quotes) p += `- "${q.text}" — ${q.source}\n`; }
+    if ((context.entries || []).length) {
+      p += `\nMentioned entities:\n`;
+      for (const e of context.entries) {
+        p += `- ${e.name}: ${e.note}\n`;
+        if (e.awards?.length) p += `    AVN awards (verified — mention only these, with the year, never invent): ${e.awards.join('; ')}\n`;
+      }
+    }
+    const quotes = (context.quotes || []).filter((q) => !normKey(q.source || '').includes('pornmode')); // never quote our own site
+    if (quotes.length) { p += `\nQuotes you may attribute (verbatim, with source) — never quote pornmode (us):\n`; for (const q of quotes) p += `- "${q.text}" — ${q.source}\n`; }
   } else {
     p += `\n## (No usable external context — rely on our data below.)\n`;
   }
@@ -307,7 +336,7 @@ function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
     for (const c of candidates) {
       p += `- ${c.id} | ${c.name} | ${c.slug} | ${truncate(c.shortDescription, 160) ?? ''}\n`;
       if (c.highlights) p += `    highlights: ${truncate(c.highlights, 400)}\n`;
-      for (const q of c.opinionQuotes || []) p += `    quote: "${truncate(q.text, 200)}" — ${q.source}\n`;
+      for (const q of (c.opinionQuotes || []).filter((q) => !normKey(q.source || '').includes('pornmode'))) p += `    quote: "${truncate(q.text, 200)}" — ${q.source}\n`;
     }
   }
 
@@ -356,14 +385,14 @@ function matchSite(text, catalog) {
   return incl[0];
 }
 
-/** Best-size source image for a site, matched by alt/nearby-heading/filename. */
-function bestSourceImage(site, images, used) {
-  const name = normKey(site.name);
-  const slugKey = normKey(site.slug);
+/** Best-size source image matched to an entry by name/slug via alt/nearby-heading/filename. */
+function bestSourceImage(name, slug, images, used) {
+  const n = normKey(name);
+  const s = normKey(slug);
   const hit = images.filter((im) => {
     if (im.og || used.has(im.src)) return false;
     const hay = normKey(`${im.alt} ${im.context} ${im.src}`);
-    return (name.length > 2 && hay.includes(name)) || (slugKey.length > 3 && hay.includes(slugKey));
+    return (n.length > 2 && hay.includes(n)) || (s.length > 3 && hay.includes(s));
   });
   return hit.sort((a, b) => (b.w * b.h) - (a.w * a.h))[0] || null;
 }
@@ -381,40 +410,51 @@ async function fetchSiteCoverUrl(slug, cache) {
 }
 
 /**
- * Insert one image above each ranked-site <h2>. Prefer a matched source image
- * (re-hosted to our media); fall back to the site's own cover_image. Matches
- * against the full catalog so any ranked site is covered. Returns provenance.
+ * Insert one image above each ranked entry's <h2>. For each entry (a numbered
+ * heading or one matching a catalog site) it picks the best matching source
+ * image (by entry/site name) and re-hosts it; for catalog sites with no source
+ * match it falls back to the site's own cover_image. Works for both site lists
+ * and topical lists (e.g. pornstars). Returns per-entry provenance.
  */
 async function insertSiteImages(html, catalog, candidates, images, slug, isDry) {
-  const report = []; // { site, source: 'scraped'|'site-cover'|'none' }
+  const report = []; // { entry, source: 'scraped'|'site-cover'|'none' }
   const used = new Set();
   const coverCache = new Map(candidates.map((c) => [c.slug, c.coverUrl ?? null]));
+  // Only match headings to our catalog (and use a site's cover as fallback) for
+  // site-oriented jobs. On topical lists (e.g. pornstars) there are no candidates,
+  // so we never mis-match a performer to a site or insert a wrong site cover.
+  const allowSiteMatch = candidates.length > 0;
   const h2Re = /<h2[^>]*>([\s\S]*?)<\/h2>/g;
   const tasks = [];
   let m;
   while ((m = h2Re.exec(html))) {
     const heading = m[0];
-    const text = m[1].replace(/<[^>]+>/g, ' ').replace(/^\s*\d+[.)]\s*/, '').split(/[—\-:|]/)[0].trim();
-    const site = matchSite(text, catalog);
-    if (site && !tasks.some((t) => t.site.id === site.id)) tasks.push({ heading, site });
+    const inner = m[1].replace(/<[^>]+>/g, ' ').trim();
+    const ranked = /^\s*\d+[.)]/.test(inner);
+    const name = inner.replace(/^\s*\d+[.)]\s*/, '').split(/[—\-:|]/)[0].trim();
+    const site = allowSiteMatch ? matchSite(name, catalog) : null;
+    if (!name || (!ranked && !site)) continue; // skip Verdict/Conclusion/FAQ etc.
+    if (tasks.some((t) => normKey(t.name) === normKey(name))) continue;
+    tasks.push({ heading, name, site });
   }
 
   for (const t of tasks) {
     let imgUrl = null, source = 'none';
-    const match = bestSourceImage(t.site, images, used);
+    const match = bestSourceImage(t.site ? t.site.name : t.name, t.site ? t.site.slug : '', images, used);
     if (match) {
       if (isDry) { used.add(match.src); imgUrl = match.src; source = 'scraped'; }
       else {
-        const up = await uploadImageFromUrl(match.src, `${slug}-${normKey(t.site.slug)}${extFromUrl(match.src)}`);
+        const up = await uploadImageFromUrl(match.src, `${slug}-${normKey(t.name)}${extFromUrl(match.src)}`);
         if (up) { used.add(match.src); imgUrl = `${STRAPI_URL}${up.url}`; source = 'scraped'; }
       }
     }
-    if (!imgUrl) {
+    if (!imgUrl && t.site) {
       const coverUrl = await fetchSiteCoverUrl(t.site.slug, coverCache);
       if (coverUrl) { imgUrl = `${STRAPI_URL}${coverUrl}`; source = 'site-cover'; }
     }
-    report.push({ site: t.site.name, source });
-    if (imgUrl) html = html.replace(t.heading, `<img src="${imgUrl}" alt="${t.site.name}" />\n${t.heading}`);
+    report.push({ entry: t.name, source });
+    // function replacement → `$` in a URL/name can't be interpreted as a replacement pattern
+    if (imgUrl) html = html.replace(t.heading, () => `<img src="${imgUrl}" alt="${t.name}" />\n${t.heading}`);
   }
   return { html, report };
 }
@@ -437,7 +477,7 @@ async function generateToplist(userPrompt) {
   });
   const raw = response.choices[0]?.message?.content;
   if (!raw) throw new Error('No response from GPT-5.5');
-  return JSON.parse(raw);
+  return { data: JSON.parse(raw), usage: response.usage };
 }
 
 async function createArticle(data) {
@@ -475,7 +515,7 @@ async function main() {
   const validIds = new Set(catalog.map((s) => s.id));
   console.log(`Catalog: ${catalog.length} active sites. Current year: ${CURRENT_YEAR}.\n`);
 
-  let created = 0, skipped = 0, failed = 0;
+  let created = 0, skipped = 0, failed = 0, totalCost = 0;
 
   for (const job of jobs) {
     const slug = job.slug || slugify(job.title);
@@ -518,8 +558,15 @@ async function main() {
 
       // Scrape → consolidate → validate
       const scraped = await scrapeSources(job.sources);
-      const context = await consolidateSources(job, scraped);
+      const { context, usage: cUsage } = await consolidateSources(job, scraped);
       if (scraped.length) console.log(`  context: ${context ? 'consolidated ✓' : 'none usable'}${context?.discarded?.length ? ` (discarded ${context.discarded.length})` : ''}`);
+
+      // Attach verified AVN awards to any mentioned performer (local lookup, no API cost)
+      if (context?.entries?.length) {
+        let awarded = 0;
+        for (const e of context.entries) { const a = avnAwardsFor(e.name); if (a) { e.awards = a; awarded++; } }
+        if (awarded) console.log(`  🏆 AVN awards attached to ${awarded} performer(s)`);
+      }
 
       // Images (dedup by src)
       const seen = new Set();
@@ -528,8 +575,14 @@ async function main() {
       // Generate (GPT writes clean content; images are added by us, not GPT)
       const userPrompt = buildUserPrompt({ job, context, candidates, catalog, reviews });
       console.log('  🤖 generating with GPT-5.5...');
-      const gen = await generateToplist(userPrompt);
+      const { data: gen, usage: gUsage } = await generateToplist(userPrompt);
       if (!gen.title || !gen.content) throw new Error('GPT response missing title/content');
+
+      // Cost (exact tokens from the API; $ uses configurable PRICE rates)
+      const artCost = costOf('gpt-4o', cUsage) + costOf('gpt-5.5', gUsage);
+      totalCost += artCost;
+      const tok = (u) => (u ? `${u.prompt_tokens}→${u.completion_tokens}` : 'n/a');
+      console.log(`  💵 tokens consolidate(gpt-4o) ${tok(cUsage)} · generate(gpt-5.5) ${tok(gUsage)} | est. $${artCost.toFixed(4)}`);
 
       let { html, removed } = sanitizeWidgets(gen.content, validIds);
       if (removed > 0) console.log(`  🧹 sanitized ${removed} widget(s) with unknown site IDs`);
@@ -539,7 +592,7 @@ async function main() {
       html = imgRes.html;
       for (const r of imgRes.report) {
         const label = r.source === 'scraped' ? 'image from source (uploaded)' : r.source === 'site-cover' ? 'fallback to our site cover' : 'no image found';
-        console.log(`  🖼️  ${r.site}: ${label}`);
+        console.log(`  🖼️  ${r.entry}: ${label}`);
       }
       const imgCounts = imgRes.report.reduce((a, r) => ((a[r.source] = (a[r.source] || 0) + 1), a), {});
 
@@ -589,6 +642,7 @@ async function main() {
 
   console.log('\n━━━ Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`Jobs: ${jobs.length} | Created: ${created} | Skipped: ${skipped} | Failed: ${failed}`);
+  console.log(`Estimated OpenAI cost: $${totalCost.toFixed(4)} (${jobs.length ? '$' + (totalCost / jobs.length).toFixed(4) + '/article avg' : ''})`);
 }
 
 main().catch((e) => { console.error('Fatal error:', e); process.exit(1); });

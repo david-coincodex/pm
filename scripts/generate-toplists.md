@@ -8,6 +8,7 @@ Generates fresh "toplist" blog articles with GPT-5.5 from multiple external sour
 - `toplist-prompt.md` — GPT system prompt (role, SEO rules, current-year handling, JSON output schema)
 - `toplist-elements.md` — exact markup for our widgets/elements (SiteList, Pros/Cons, quote, image; SiteCard/CTA for general lists)
 - `toplist-consolidate-prompt.md` — GPT-4o prompt that distills + validates scraped sources (drops gibberish)
+- `build-avn-awards.mjs` + `data/avn-awards.json` — cached AVN headline awards (Female/Male Performer of the Year + Hall of Fame, with years) scraped from Wikipedia's award-list pages. Rebuild with `npm run build-avn-awards` (data changes ~yearly).
 - `toplist-structures/<type>.md` — per-type article structure. Add a new file to add a new type.
   - `general-toplist.md` — topical lists (e.g. "Best Teen Pornstars 2026")
   - `similar-to-site.md` — "Sites Similar to <site>"
@@ -61,6 +62,7 @@ Or via npm: `npm run generate-toplists -- <args>`.
 
 - Skips a job if an article with its slug already exists (unless `--force`).
 - **Current year:** the article is written for the current year; stale years (2024/2025) from sources are normalized.
+- **AVN awards:** performers mentioned in the consolidated context are matched against the cached AVN dataset (local lookup, no extra API cost); verified awards (with year) are passed to the model, which may only mention those — never invent one.
 - **Images:** a cover image is picked from the sources and re-hosted (sets `coverImage`). For each ranked-site `<h2>`, the script inserts one image **above the heading**: it first matches a source image to that site (by alt/nearby-heading/filename, best size) and re-hosts it; if none matches, it falls back to that **site's own `cover_image`** from our content-type. The run logs per-site provenance (source-uploaded / our-cover / none).
 - Embeds SiteCard/SiteList widgets only for sites in our catalog; a **sanitizer** strips any widget referencing an unknown site ID.
 - FAQs are saved to the article's `faqs` component (NOT inline in content).
