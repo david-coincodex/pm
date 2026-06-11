@@ -13,6 +13,7 @@ Generates fresh "toplist" blog articles with GPT-5.5 from multiple external sour
   - `general-toplist.md` — topical lists (e.g. "Best Teen Pornstars 2026")
   - `similar-to-site.md` — "Sites Similar to <site>"
   - `best-site-ads.md` — "Best <site> Alternatives"
+  - `best-network-sites.md` — "Best <site> Sites" — the reference site's own network channels, ranked by our review score (top-rated first). Set `referenceSite` to the main site and `includeReviews: true`.
 - `toplist-jobs.example.json` — example jobs config; copy to `toplist-jobs.json`
 
 ## Requirements
@@ -31,7 +32,7 @@ Array of jobs:
 | `slug` | no | we pass it (else slugified from title); never GPT-generated |
 | `sources` | no | external URLs to scrape for context |
 | `category` | no | scope candidate sites to a category slug |
-| `referenceSite` | no | site slug for similar-to / alternatives types (candidates = sites sharing its categories) |
+| `referenceSite` | no | site slug for similar-to / alternatives types (candidates = sites sharing its categories). For `best-network-sites`, candidates = this site's own network/child sites, ranked by our review score |
 | `includeReviews` | no | pass our reviews for the candidate sites as context (default false) |
 | `maxEntries` | no | max ranked entries (default 10) |
 | `categories` / `tags` | no | category/tag slugs to attach to the article |

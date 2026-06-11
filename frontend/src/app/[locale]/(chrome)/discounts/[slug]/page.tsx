@@ -12,6 +12,7 @@ import {
   type PaysiteScores,
   type CamsiteScores,
 } from '@/lib/strapi';
+import { buildDynamicFaqs } from '@/lib/dynamicFaqs';
 import { routing } from '@/i18n/routing';
 import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
@@ -217,6 +218,9 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
             </div>
           </div>
         )}
+
+        {/* FAQs — editorial Strapi FAQs first, then auto-generated dynamic offer FAQs */}
+        <FaqSection faqs={[...(site.faqs ?? []), ...buildDynamicFaqs(site)]} bare />
       </SidebarLayout>
 
       {/* People also bought */}
@@ -248,8 +252,6 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         siteName={site.name}
         locale={locale}
       />
-
-      <FaqSection faqs={site.faqs} />
 
       <script
         type="application/ld+json"

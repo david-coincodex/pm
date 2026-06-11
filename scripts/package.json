@@ -8,6 +8,8 @@
     "import-site-cover": "node import-site-cover-from-source.mjs",
     "import-site-gallery": "node import-site-gallery-from-source.mjs",
     "generate-toplists": "node generate-toplists.mjs",
+    "generate-faqs": "node generate-faqs.mjs",
+    "generate-cancel-guides": "node generate-cancel-guides.mjs",
     "build-avn-awards": "node build-avn-awards.mjs"
   },
   "engines": {

@@ -89,7 +89,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
                   </svg>
                 )}
                 {isLast ? (
-                  <span className={`font-medium truncate max-w-[200px] ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                  <span className={`font-medium truncate max-w-[200px] sm:max-w-none sm:overflow-visible sm:whitespace-normal ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                     {crumb.label}
                   </span>
                 ) : (

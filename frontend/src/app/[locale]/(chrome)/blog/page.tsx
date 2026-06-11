@@ -51,7 +51,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
         {articles.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400">{t('empty')}</p>
         ) : (
-          <ArticleHeroGrid articles={articles} locale={locale} blogBase={blogBase} />
+          <ArticleHeroGrid articles={articles} locale={locale} blogBase={blogBase} hero={page === 1} />
         )}
 
         {pagination.pageCount > 1 && (

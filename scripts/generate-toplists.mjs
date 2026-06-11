@@ -201,6 +201,21 @@ async function fetchReviewForSite(slug) {
   const r = data[0];
   return r ? { slug, overallScore: r.overallScore ?? null, description: r.description ?? null } : null;
 }
+/**
+ * "Best <site> sites": the reference site's own network — its child sites — ranked
+ * by our published review score (highest first). Used by the best-network-sites type.
+ */
+async function fetchNetworkSites(refSite, maxEntries) {
+  const f = `filters[parent_site][slug][$eq]=${encodeURIComponent(refSite.slug)}`;
+  const children = (await fetchSitesWhere(f)).map(toCandidate);
+  if (children.length === 0) return [];
+  const scored = await Promise.all(
+    children.map(async (c) => ({ ...c, score: (await fetchReviewForSite(c.slug))?.overallScore ?? null }))
+  );
+  // Highest-rated first; unrated sink to the bottom but stay eligible.
+  scored.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  return scored.slice(0, maxEntries);
+}
 async function resolveRelationIds(collection, slugs) {
   if (!slugs?.length) return [];
   const ids = [];
@@ -537,8 +552,11 @@ async function main() {
       let candidates = [];
       if (job.referenceSite) {
         const ref = await fetchSiteBySlug(job.referenceSite);
-        if (ref) candidates = await fetchSimilarSites(ref, maxEntries);
-        else console.log(`  ⚠ referenceSite "${job.referenceSite}" not found.`);
+        if (ref) {
+          candidates = job.type === 'best-network-sites'
+            ? await fetchNetworkSites(ref, maxEntries)   // the ref site's own network channels, top-rated first
+            : await fetchSimilarSites(ref, maxEntries);  // sites sharing its categories
+        } else console.log(`  ⚠ referenceSite "${job.referenceSite}" not found.`);
       } else if (job.category) {
         candidates = await fetchSitesByCategory(job.category, maxEntries);
       }

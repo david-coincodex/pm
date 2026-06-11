@@ -21,18 +21,23 @@ interface ArticleHeroGridProps {
   articles: Article[];
   locale: string;
   blogBase: string;
+  /** Show the featured hero row at the top. Disable on paginated pages (page 2+). */
+  hero?: boolean;
 }
 
-export default function ArticleHeroGrid({ articles, locale, blogBase }: ArticleHeroGridProps) {
+export default function ArticleHeroGrid({ articles, locale, blogBase, hero = true }: ArticleHeroGridProps) {
   if (articles.length === 0) return null;
 
   const [featured, ...rest] = articles;
-  const sidebar = rest.slice(0, 3);
-  const overflow = rest.slice(3);
+  const sidebar = hero ? rest.slice(0, 3) : [];
+  // With the hero row, the grid holds everything after the featured + sidebar.
+  // Without it, every article goes into the regular grid.
+  const gridArticles = hero ? rest.slice(3) : articles;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Hero row: 1 big + 3 sidebar */}
+      {/* Hero row: 1 big + 3 sidebar (page 1 only) */}
+      {hero && (
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Featured — spans 2 cols */}
         <Link
@@ -120,11 +125,12 @@ export default function ArticleHeroGrid({ articles, locale, blogBase }: ArticleH
           </div>
         )}
       </div>
+      )}
 
-      {/* Overflow grid */}
-      {overflow.length > 0 && (
+      {/* Regular card grid (all articles on page 2+, overflow on page 1) */}
+      {gridArticles.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {overflow.map((article) => (
+          {gridArticles.map((article) => (
             <Link
               key={article.id}
               href={`${blogBase}/${article.id}/${article.slug}`}

@@ -63,7 +63,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         <nav className="flex items-center gap-6">
           <NavLink href={routes.home()} label={t('pornDeals')} />
           <NavLink href={routes.bundles()} label={t('bundles')} />
-          <NavLink href={routes.category('cam-sites')} label={t('liveSex')} />
+          <NavLink href={routes.category('live-sex')} label={t('liveSex')} />
           <NavLink href={routes.reviews()} label={t('reviews')} />
           <NavLink href={routes.categories()} label={t('categories')} />
           <NavLink href={routes.blog()} label={t('blog')} />
@@ -159,7 +159,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           {[
             { href: routes.home(), label: t('pornDeals') },
             { href: routes.bundles(), label: t('bundles') },
-            { href: routes.category('cam-sites'), label: t('liveSex') },
+            { href: routes.category('live-sex'), label: t('liveSex') },
             { href: routes.reviews(), label: t('reviews') },
             { href: routes.categories(), label: t('categories') },
             { href: routes.blog(), label: t('blog') },

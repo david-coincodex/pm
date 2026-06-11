@@ -236,6 +236,9 @@ export default async function ReviewDetailPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        {/* FAQs — review content focused */}
+        <FaqSection faqs={review.faqs} bare />
       </SidebarLayout>
     </Container>
 
@@ -262,8 +265,6 @@ export default async function ReviewDetailPage({ params }: Props) {
       siteName={site.name}
       locale={locale}
     />
-
-    <FaqSection faqs={review.faqs} />
 
     <script
       type="application/ld+json"

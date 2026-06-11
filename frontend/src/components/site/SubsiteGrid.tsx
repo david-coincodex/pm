@@ -18,24 +18,24 @@ function SubsiteTile({ subsite, siteSlug }: { subsite: Site; siteSlug: string })
   return (
     <Link
       href={routes.subsite(siteSlug, subsite.slug)}
-      className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-center transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-center transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
     >
-      <div className="h-12 w-12 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
+      <div className="relative aspect-[3/2] w-full overflow-hidden rounded-t-xl bg-slate-100 dark:bg-slate-700">
         {image ? (
           <Image
             src={strapiMediaUrl(image)}
             alt={image.alternativeText ?? subsite.name}
-            width={48}
-            height={48}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 768px) 20vw, (min-width: 640px) 33vw, 50vw"
+            className="object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500">
+          <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500">
             {subsite.name.slice(0, 2).toUpperCase()}
           </div>
         )}
       </div>
-      <span className="line-clamp-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+      <span className="line-clamp-2 px-2 py-2 text-xs font-medium text-slate-700 dark:text-slate-300">
         {subsite.name}
       </span>
     </Link>
