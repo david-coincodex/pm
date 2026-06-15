@@ -35,6 +35,9 @@ node generate-faqs.mjs brazzers --site-only
 
 # overwrite existing FAQs, publish immediately
 node generate-faqs.mjs --all --force --publish
+
+# cheapest for big runs: OpenAI Batch API (~50% off, async) — submits one job, waits, writes
+node generate-faqs.mjs --all --batch --publish
 ```
 
 Or via npm: `npm run generate-faqs -- <args>`.
@@ -48,6 +51,7 @@ Or via npm: `npm run generate-faqs -- <args>`.
 | `--site-only` / `--review-only` | restrict to one flavour |
 | `--force` | overwrite existing FAQs (default: skip a target that already has FAQs) |
 | `--publish` | publish the updated draft (see caveat) |
+| `--batch` | generate via the OpenAI Batch API: **~50% cheaper**, asynchronous. Submits all sites as one job, polls until complete (minutes–hours), then writes/publishes. Ideal for `--all`. Mutually exclusive with `--dry-run`. |
 | `--dry-run` | print generated JSON, no writes |
 
 ## Behavior

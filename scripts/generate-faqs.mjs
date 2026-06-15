@@ -22,6 +22,8 @@
  *   --review-only    Only (re)generate + write review.faqs
  *   --force          Overwrite existing FAQs (default: skip a target that already has FAQs)
  *   --publish        Publish the updated draft (see caveat below)
+ *   --batch          Generate via the OpenAI Batch API (~50% cheaper, async): submits one
+ *                    job for all sites, polls until done, then writes/publishes. Best for --all.
  *   --dry-run        Print the generated JSON; no writes (no other flags required)
  *
  * Environment (scripts/.env):
@@ -86,6 +88,8 @@ const publishMode = args.includes('--publish');
 const dryRun = args.includes('--dry-run');
 const siteOnly = args.includes('--site-only');
 const reviewOnly = args.includes('--review-only');
+// --batch: one async OpenAI Batch job for all sites (~50% cheaper); submits, polls, then writes.
+const batchMode = args.includes('--batch');
 
 const slugs = args.filter((a) => !a.startsWith('--'));
 
@@ -94,9 +98,10 @@ if (siteOnly && reviewOnly) {
   process.exit(1);
 }
 if (!allMode && slugs.length === 0) {
-  console.error('Usage: node scripts/generate-faqs.mjs [--all | slug1 slug2 ...] [--site-only|--review-only] [--force] [--publish] [--dry-run]');
+  console.error('Usage: node scripts/generate-faqs.mjs [--all | slug1 slug2 ...] [--site-only|--review-only] [--force] [--publish] [--dry-run] [--batch]');
   process.exit(1);
 }
+if (batchMode && dryRun) { console.error('Error: --batch and --dry-run are mutually exclusive.'); process.exit(1); }
 
 const wantSite = !reviewOnly;
 const wantReview = !siteOnly;
@@ -199,9 +204,34 @@ function reviewContext(review) {
   return p;
 }
 
+// Verified, data-rich facts from the consolidated externalContext. These are the ONLY
+// numbers the review FAQs may cite (library size, video counts, quality, cadence, year).
+function factsContext(site) {
+  const ec = site.externalContext;
+  if (!ec || typeof ec !== 'object') return '';
+  const sf = ec.siteFacts || {};
+  const lines = [];
+  const add = (label, v) => { if (v && String(v).trim()) lines.push(`- ${label}: ${Array.isArray(v) ? v.join(', ') : v}`); };
+  add('Founded', sf.founded);
+  add('Network', sf.networkAffiliation);
+  add('Content volume', sf.contentVolume);
+  add('Update frequency', sf.updateFrequency);
+  add('Exclusive content', sf.exclusiveContent);
+  add('Video quality', sf.videoQuality);
+  add('Notable features', sf.notableFeatures);
+  add('Notable performers', sf.notablePerformers);
+  add('Content niches', sf.contentNiches);
+  if (ec.contentHighlights) lines.push(`- Highlights: ${stripHtml(ec.contentHighlights).slice(0, 400)}`);
+  if (Array.isArray(ec.knownIssues) && ec.knownIssues.length) lines.push(`- Known issues: ${ec.knownIssues.join('; ')}`);
+  if (!lines.length) return '';
+  return `## Verified data (externalContext — the ONLY source of numbers/facts you may cite)\n${lines.join('\n')}\n`;
+}
+
 function buildUserPrompt(site, review) {
   let p = '';
   p += siteContext(site);
+  const facts = factsContext(site);
+  if (facts) p += `\n${facts}`;                       // verified content data — for BOTH site & review FAQs
   if (wantReview) p += `\n${reviewContext(review)}`;
   p += `\n## Task\nWrite FAQs for "${site.name}" for ${CURRENT_YEAR}. Return ONLY valid JSON of the form:\n`;
   p += `{ ${wantSite ? '"siteFaqs": [{ "question": "...", "answer": "..." }]' : ''}${wantSite && wantReview ? ', ' : ''}${wantReview ? '"reviewFaqs": [{ "question": "...", "answer": "..." }]' : ''} }\n`;
@@ -210,20 +240,30 @@ function buildUserPrompt(site, review) {
   return p;
 }
 
-async function generateFaqs(site, review) {
+const MODEL = 'gpt-5.5';
+// gpt-5.5 is a reasoning model: max_completion_tokens covers reasoning + visible output.
+// 2500 was too low — reasoning alone could consume it, yielding empty content (finish_reason
+// "length"). Give ample headroom so the JSON answer is always emitted.
+const MAX_TOKENS = 6000;
+
+// Shared request body for both the sync call and the batch JSONL.
+function buildMessages(site, review) {
   // Combine both role-prompts so a single call has shared context; instruct which keys to emit.
   let system = '';
   if (wantSite) system += SITE_PROMPT;
   if (wantSite && wantReview) system += `\n\n---\n\n`;
   if (wantReview) system += REVIEW_PROMPT;
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: buildUserPrompt(site, review) },
+  ];
+}
 
+async function generateFaqs(site, review) {
   const response = await openai.chat.completions.create({
-    model: 'gpt-5.5',
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: buildUserPrompt(site, review) },
-    ],
-    max_completion_tokens: 2500,
+    model: MODEL,
+    messages: buildMessages(site, review),
+    max_completion_tokens: MAX_TOKENS,
     response_format: { type: 'json_object' },
   });
   const raw = response.choices[0]?.message?.content;
@@ -236,6 +276,100 @@ async function generateFaqs(site, review) {
   };
 }
 
+// Decide which flavours a target needs (respects --site-only/--review-only/--force).
+function workFor(review) {
+  const site = review.site;
+  const doSite = wantSite && (forceMode || !(site.faqs ?? []).length);
+  const doReview = wantReview && (forceMode || !(review.faqs ?? []).length);
+  return { site, review, doSite, doReview };
+}
+
+// Persist one site's generated FAQs (used by both sync and batch paths).
+async function writeFaqs({ site, review, doSite, doReview }, gen) {
+  let s = 0, r = 0;
+  if (doSite && gen.siteFaqs.length) {
+    await putFaqs('sites', site.documentId, gen.siteFaqs);
+    if (publishMode) await publishDoc('sites', site.documentId);
+    s = gen.siteFaqs.length;
+  }
+  if (doReview && gen.reviewFaqs.length) {
+    await putFaqs('reviews', review.documentId, gen.reviewFaqs);
+    if (publishMode) await publishDoc('reviews', review.documentId);
+    r = gen.reviewFaqs.length;
+  }
+  return { s, r };
+}
+
+// ── Batch path (OpenAI Batch API — ~50% cheaper, async) ─────────────────────────
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+async function runBatch(targets) {
+  const work = targets.map(workFor).filter((w) => w.doSite || w.doReview);
+  const skipped = targets.length - work.length;
+  if (work.length === 0) { console.log('Nothing to do (all have FAQs; use --force).'); return; }
+
+  // Build JSONL: one chat request per review, custom_id = review documentId (unique —
+  // slug could collide if a site has >1 published review, which the Batch API rejects).
+  const lines = work.map((w) => JSON.stringify({
+    custom_id: w.review.documentId,
+    method: 'POST',
+    url: '/v1/chat/completions',
+    body: { model: MODEL, messages: buildMessages(w.site, w.review), max_completion_tokens: MAX_TOKENS, response_format: { type: 'json_object' } },
+  }));
+  console.log(`Submitting batch: ${work.length} requests (${skipped} skipped)...`);
+
+  const inputFile = await openai.files.create({
+    file: new File([lines.join('\n') + '\n'], 'faqs-batch.jsonl', { type: 'application/jsonl' }),
+    purpose: 'batch',
+  });
+  let batch = await openai.batches.create({ input_file_id: inputFile.id, endpoint: '/v1/chat/completions', completion_window: '24h' });
+  console.log(`  batch id: ${batch.id} — polling (this can take minutes to hours; safe to leave running)`);
+
+  const DONE = ['completed', 'failed', 'expired', 'cancelled'];
+  while (!DONE.includes(batch.status)) {
+    await sleep(15000);
+    batch = await openai.batches.retrieve(batch.id);
+    const c = batch.request_counts || {};
+    console.log(`  status: ${batch.status} — ${c.completed || 0}/${c.total || 0} done${c.failed ? `, ${c.failed} failed` : ''}`);
+  }
+  if (batch.status !== 'completed') {
+    console.error(`Batch ${batch.status}. ${batch.errors ? JSON.stringify(batch.errors).slice(0, 300) : ''}`);
+    if (!batch.output_file_id) return;
+  }
+
+  // Download + parse results, map by custom_id (slug).
+  const out = await (await openai.files.content(batch.output_file_id)).text();
+  const byId = new Map();
+  for (const line of out.trim().split('\n')) { if (!line) continue; const o = JSON.parse(line); byId.set(o.custom_id, o); }
+  const workById = new Map(work.map((w) => [w.review.documentId, w]));
+
+  let siteWrites = 0, reviewWrites = 0, failed = 0, batchCost = 0;
+  for (const [cid, o] of byId) {
+    const w = workById.get(cid);
+    if (!w) continue;
+    const slug = w.site.slug;
+    try {
+      if (o.error || o.response?.status_code >= 300) throw new Error(o.error?.message || `status ${o.response?.status_code}`);
+      const body = o.response.body;
+      const content = body?.choices?.[0]?.message?.content || '';
+      const finish = body?.choices?.[0]?.finish_reason;
+      if (!content) throw new Error(`empty content (finish_reason: ${finish}${finish === 'length' ? ' — raise MAX_TOKENS' : ''})`);
+      const parsed = JSON.parse(content);
+      const gen = { siteFaqs: cleanFaqs(parsed.siteFaqs), reviewFaqs: cleanFaqs(parsed.reviewFaqs) };
+      batchCost += costOf(MODEL, body.usage) * 0.5; // Batch API ≈ 50% off
+      const { s, r } = await writeFaqs(w, gen);
+      if (s) siteWrites++;
+      if (r) reviewWrites++;
+      console.log(`  ✓ ${slug} — site:${s} review:${r}`);
+    } catch (e) { failed++; console.error(`  ✗ ${slug}: ${e.message}`); }
+  }
+
+  console.log('\n━━━ Batch summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`Requests: ${work.length} | site.faqs written: ${siteWrites} | review.faqs written: ${reviewWrites} | failed: ${failed} | skipped: ${skipped}`);
+  console.log(`Estimated OpenAI cost (batch ≈50% off): $${batchCost.toFixed(4)}`);
+  console.log(publishMode ? 'Mode: published' : 'Mode: draft (publish in admin or via document service — see header)');
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -245,6 +379,8 @@ async function main() {
   const targets = reviews.filter((r) => r.site?.documentId);
   console.log(`Found ${targets.length} site(s) with a published review.\n`);
   if (targets.length === 0) return;
+
+  if (batchMode) { await runBatch(targets); return; }
 
   let processed = 0, siteWrites = 0, reviewWrites = 0, skipped = 0, totalCost = 0;
   const errors = [];
