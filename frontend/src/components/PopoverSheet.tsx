@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 interface PopoverSheetProps {
   /** Trigger element. Pass a render function to receive the `open` state (e.g. for chevron rotation). */
@@ -16,6 +17,7 @@ interface PopoverSheetProps {
 }
 
 export default function PopoverSheet({ trigger, title, children, forceOpen, onClose }: PopoverSheetProps) {
+  const t = useTranslations('nav');
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = forceOpen !== undefined;
   const open = isControlled ? forceOpen : internalOpen;
@@ -79,7 +81,7 @@ export default function PopoverSheet({ trigger, title, children, forceOpen, onCl
                   type="button"
                   onClick={close}
                   className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
-                  aria-label="Close"
+                  aria-label={t('close')}
                 >
                   <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -108,7 +110,7 @@ export default function PopoverSheet({ trigger, title, children, forceOpen, onCl
                     type="button"
                     onClick={close}
                     className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
-                    aria-label="Close"
+                    aria-label={t('close')}
                   >
                     <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

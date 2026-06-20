@@ -27,6 +27,7 @@ interface SiteReviewCardProps {
 
 export default async function SiteReviewCard({ review }: SiteReviewCardProps) {
   const t = await getTranslations('reviews');
+  const tSeo = await getTranslations('pageSEO');
   const site = review.site;
   const image = site.cover_image ?? site.logo;
   const score = overallScore(review);
@@ -65,8 +66,8 @@ export default async function SiteReviewCard({ review }: SiteReviewCardProps) {
         </p>
         <Link href={href} className="text-base font-semibold text-slate-900 hover:underline dark:text-white line-clamp-2">
           {review.titleExtra
-            ? t('reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
-            : t('reviewTitle', { name: review.site.name })}
+            ? tSeo('reviews.reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
+            : tSeo('reviews.reviewTitle', { name: review.site.name })}
         </Link>
         {review.description && (
           <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-3">

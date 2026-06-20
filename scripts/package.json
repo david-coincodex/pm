@@ -10,7 +10,9 @@
     "generate-toplists": "node generate-toplists.mjs",
     "generate-faqs": "node generate-faqs.mjs",
     "generate-cancel-guides": "node generate-cancel-guides.mjs",
-    "build-avn-awards": "node build-avn-awards.mjs"
+    "build-avn-awards": "node build-avn-awards.mjs",
+    "translate-messages": "node translate-messages.mjs",
+    "translation-context": "node translation-context.mjs"
   },
   "engines": {
     "node": ">=18"

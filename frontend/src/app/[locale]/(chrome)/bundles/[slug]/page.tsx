@@ -26,11 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
   const bundle = await getBundleBySlug(slug, locale);
   if (!bundle) return {};
-  const t = await getTranslations({ locale, namespace: 'bundles' });
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const bundlePath = routes.bundle(bundle.slug);
 
   return {
-    title: t('pageMetaTitle', { name: bundle.name }),
+    title: t('bundles.detailMetaTitle', { name: bundle.name }),
     description: bundle.description ?? undefined,
     alternates: localizedAlternates(bundlePath, locale),
   };

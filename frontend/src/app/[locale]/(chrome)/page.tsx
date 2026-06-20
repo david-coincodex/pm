@@ -25,11 +25,11 @@ type Props = {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
-  const t = await getTranslations({ locale, namespace: "metadata" });
+  const t = await getTranslations({ locale, namespace: "pageSEO" });
   const page = parsePage(pageStr);
 
   return {
-    title: paginatedTitle(t("sitesTitle"), page),
+    title: paginatedTitle(t("sites.metaTitle"), page),
     alternates: paginatedAlternates(routes.home(), page, locale),
   };
 }
@@ -38,6 +38,7 @@ export default async function Home({ params, searchParams }: Props) {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const t = await getTranslations({ locale, namespace: "sites" });
+  const tSeo = await getTranslations({ locale, namespace: "pageSEO" });
 
   const page = parsePage(pageStr);
   const basePath = routes.home();
@@ -124,7 +125,7 @@ export default async function Home({ params, searchParams }: Props) {
       )}
 
       <Container className="py-10">
-        <SectionTitle as="h1" title={t("pageTitle")} subtitle={t("pageSubtitle")} />
+        <SectionTitle as="h1" title={tSeo("sites.pageTitle")} subtitle={tSeo("sites.pageSubtitle")} />
         <SiteCardGrid items={items} />
         {pagination.pageCount > 1 && (
           <Pagination

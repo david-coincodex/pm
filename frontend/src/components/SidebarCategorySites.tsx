@@ -7,7 +7,8 @@ import { siteSettings } from '@/lib/siteSettings';
 import SaleBadgeInline from '@/components/sale/SaleBadgeInline';
 
 interface SidebarCategorySitesProps {
-  title: string;
+  /** Optional override; defaults to the translated "Live Sex Deals" heading. */
+  title?: string;
   limit?: number;
   categoryId?: number;
   siteType?: Site['siteType'];
@@ -20,20 +21,23 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
       ? getSitesByCategoryId(categoryId, 1, limit).then((r) => r.sites)
       : Promise.resolve([] as Site[]);
 
-  const [sites, activeSale, t] = await Promise.all([
+  const [sites, activeSale, t, tSites] = await Promise.all([
     sitesPromise,
     getActiveSale(),
     getTranslations('discount'),
+    getTranslations('sites'),
   ]);
 
   if (!Array.isArray(sites) || sites.length === 0) return null;
+
+  const displayTitle = title ?? tSites('liveSexDeals');
 
   const isInCamCategory = categoryId === siteSettings.CAM_CATEGORY_ID;
 
   return (
     <aside className="flex flex-col gap-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-        {title}
+        {displayTitle}
       </h2>
       <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/60 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 overflow-hidden">
         {sites.map((site) => {
@@ -110,7 +114,7 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                     {/* Price row */}
                     {bestPrice !== undefined && (
                       <div className="mt-1 flex flex-wrap items-baseline gap-1 text-xs">
-                        <span className="text-slate-500 dark:text-slate-400">From</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('from')}</span>
                         {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
                           <span className="text-slate-500 line-through dark:text-slate-400">${bestFullPrice.toFixed(2)}</span>
                         )}

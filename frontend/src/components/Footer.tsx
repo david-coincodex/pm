@@ -101,7 +101,7 @@ export default async function Footer() {
             {t('copyright', { year })}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            This site is intended for adults 18+ only.
+            {t('adultDisclaimer')}
           </p>
         </div>
       </div>

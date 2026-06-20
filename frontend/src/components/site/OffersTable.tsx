@@ -20,6 +20,7 @@ interface OffersTableProps {
 
 export default function OffersTable({ offers }: OffersTableProps) {
   const t = useTranslations('discount');
+  const tOffer = useTranslations('offer');
 
   const subscriptionOffers = offers.filter((o) => o.offerKind === 'subscription');
   const creditsOffers = offers.filter((o) => o.offerKind === 'credits');
@@ -90,6 +91,15 @@ export default function OffersTable({ offers }: OffersTableProps) {
                   </tr>
                 ))}
               </tbody>
+              {creditsOffers.length === 0 && (
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/50">
+                    <td colSpan={6} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
+                      {tOffer('disclaimer')}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -132,14 +142,17 @@ export default function OffersTable({ offers }: OffersTableProps) {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/50">
+                  <td colSpan={3} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
+                    {tOffer('disclaimer')}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
       )}
-
-      <p className="text-xs text-slate-400 dark:text-slate-500">
-        We may earn a commission if you sign up through our links. This does not affect the price you pay.
-      </p>
     </div>
   );
 }

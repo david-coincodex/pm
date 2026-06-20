@@ -80,7 +80,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const site = await getDealBySiteSlug(slug, locale);
   if (!site) return {};
-  const t = await getTranslations({ locale, namespace: 'discount' });
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const sitePath = routes.site(site.slug);
 
   const now = new Date();
@@ -98,9 +98,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   if (discountedOffers.length > 0) {
     const cheapest = discountedOffers.reduce((a, b) => (a.price < b.price ? a : b));
     const percentage = Math.round((1 - cheapest.price / cheapest.full_price!) * 100);
-    metaTitle = String(t('pageMetaTitle' as never, { percentage, name: site.name, price: cheapest.price, month, year } as never));
+    metaTitle = String(t('discount.metaTitle' as never, { percentage, name: site.name, price: cheapest.price, month, year } as never));
   } else {
-    metaTitle = t('pageTitle', { name: site.name });
+    metaTitle = t('discount.metaTitleFallback', { name: site.name });
   }
 
   return {
@@ -115,10 +115,11 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
   const { locale, slug } = await params;
   const { offer: offerParam } = await searchParams;
 
-  const [site, t, tPlatform] = await Promise.all([
+  const [site, t, tPlatform, tSeo] = await Promise.all([
     getDealBySiteSlug(slug, locale),
     getTranslations({ locale, namespace: 'discount' }),
     getTranslations({ locale, namespace: 'platform' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
   if (!site) notFound();
@@ -172,7 +173,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         }
         header={
           <SidebarLayoutHeader
-            title={t('pageTitle', { name: site.name })}
+            title={tSeo('discount.pageTitle', { name: site.name })}
             description={site.short_description}
           />
         }

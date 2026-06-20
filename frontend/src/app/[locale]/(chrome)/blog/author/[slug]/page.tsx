@@ -56,11 +56,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const [author, t] = await Promise.all([
     getAuthorBySlug(slug),
-    getTranslations({ locale, namespace: 'blog' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   if (!author) return {};
 
-  const title = t('authorPageTitle', { name: author.name });
+  const title = t('blog.authorMetaTitle', { name: author.name });
   const basePath = routes.blogAuthor(slug);
 
   return {
@@ -74,9 +74,10 @@ export default async function AuthorPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [author, t] = await Promise.all([
+  const [author, t, tBc] = await Promise.all([
     getAuthorBySlug(slug),
     getTranslations({ locale, namespace: 'blog' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
 
   if (!author) notFound();
@@ -94,7 +95,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
       {nextHref && <link rel="next" href={nextHref} />}
 
       <BreadcrumbsSetter crumbs={[
-        { label: t('pageTitle'), href: routes.blog() },
+        { label: tBc('blog'), href: routes.blog() },
         { label: author.name, href: routes.blogAuthor(slug) },
       ]} />
 
@@ -104,7 +105,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
           sidebar={
             <div className="flex flex-col gap-8">
               <SidebarFeaturedSites />
-              <SidebarCategorySites categoryId={3} title="Live Sex Deals" limit={3} />
+              <SidebarCategorySites categoryId={3} limit={3} />
             </div>
           }
           header={<SidebarLayoutHeader title={author.name} description={author.bio ?? undefined} />}

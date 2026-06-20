@@ -18,11 +18,11 @@ type Props = {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
-  const t = await getTranslations({ locale, namespace: 'blog' });
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const page = parsePage(pageStr);
 
   return {
-    title: paginatedTitle(t('pageTitle'), page),
+    title: paginatedTitle(t('blog.metaTitle'), page),
     alternates: paginatedAlternates(routes.blog(), page, locale),
   };
 }
@@ -32,9 +32,10 @@ export default async function BlogPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [{ data: articles, pagination }, t] = await Promise.all([
+  const [{ data: articles, pagination }, t, tSeo] = await Promise.all([
     getArticlesPaginated(locale, page, PAGE_SIZE),
     getTranslations({ locale, namespace: 'blog' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
   const blogBase = routes.blog().slice(0, -1);
@@ -46,7 +47,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
       <Container className="py-10">
-        <SectionTitle as="h1" title={t('pageTitle')} />
+        <SectionTitle as="h1" title={tSeo('blog.pageTitle')} />
 
         {articles.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400">{t('empty')}</p>

@@ -18,12 +18,12 @@ type Props = {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
-  const t = await getTranslations({ locale, namespace: 'bundles' });
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const page = parsePage(pageStr);
 
   return {
-    title: paginatedTitle(t('pageTitle'), page),
-    description: t('pageSubtitle'),
+    title: paginatedTitle(t('bundles.metaTitle'), page),
+    description: t('bundles.pageSubtitle'),
     alternates: paginatedAlternates(routes.bundles(), page, locale),
   };
 }
@@ -34,12 +34,13 @@ export default async function BundlesPage({ params, searchParams }: Props) {
   const page = parsePage(pageStr);
   const basePath = routes.bundles();
 
-  const [{ bundles, pagination }, t] = await Promise.all([
+  const [{ bundles, pagination }, t, tSeo] = await Promise.all([
     getBundlesPaginated(page, PAGE_SIZE).catch(() => ({
       bundles: [],
       pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
     })),
     getTranslations({ locale, namespace: 'bundles' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
@@ -51,8 +52,8 @@ export default async function BundlesPage({ params, searchParams }: Props) {
       <Container className="py-10">
         <SectionTitle
           as="h1"
-          title={t('pageTitle')}
-          subtitle={t('pageSubtitle')}
+          title={tSeo('bundles.pageTitle')}
+          subtitle={tSeo('bundles.pageSubtitle')}
         />
         <BundleGrid bundles={bundles} locale={locale} emptyMessage={t('empty')} />
         {pagination.pageCount > 1 && (

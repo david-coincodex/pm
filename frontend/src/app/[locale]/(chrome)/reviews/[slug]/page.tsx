@@ -26,13 +26,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
   const [review, t] = await Promise.all([
     getReviewBySiteSlug(slug, locale),
-    getTranslations({ locale, namespace: 'reviews' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   if (!review) return {};
 
   const metaTitle = review.titleExtra
-    ? t('reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
-    : t('reviewTitle', { name: review.site.name });
+    ? t('reviews.reviewMetaTitle', { name: review.site.name, titleExtra: review.titleExtra })
+    : t('reviews.reviewMetaTitleFallback', { name: review.site.name });
   const reviewPath = routes.review(slug);
 
   return {
@@ -82,13 +82,14 @@ function buildOffersSchema(offers: { id: number; offerType: string | null; price
 export default async function ReviewDetailPage({ params }: Props) {
   const { locale, slug } = await params;
 
-  const [review, allReviews, bundles, t, tScores, tBc] = await Promise.all([
+  const [review, allReviews, bundles, t, tScores, tBc, tSeo] = await Promise.all([
     getReviewBySiteSlug(slug, locale),
     getReviews(locale, 5),
     getPublishedBundles(3),
     getTranslations({ locale, namespace: 'reviews' }),
     getTranslations({ locale, namespace: 'scores' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
   if (!review) notFound();
@@ -146,6 +147,19 @@ export default async function ReviewDetailPage({ params }: Props) {
     <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} siteSlug={site.slug} />
   ) : null;
 
+  // Offers table (incl. affiliate disclaimer) + payment methods — injected before the article's last H2.
+  const paymentMethods = site.platform?.paymentMethods?.map((pm) => pm.method) ?? [];
+  const pricingBlock = (activeOffers.length > 0 || paymentMethods.length > 0) ? (
+    <div className="not-prose">
+      {activeOffers.length > 0 && <OffersTable offers={activeOffers} />}
+      {paymentMethods.length > 0 && (
+        <div className="mt-6">
+          <PaymentMethodPills methods={paymentMethods} />
+        </div>
+      )}
+    </div>
+  ) : undefined;
+
   return (
     <>
       <BreadcrumbsSetter crumbs={[
@@ -155,7 +169,7 @@ export default async function ReviewDetailPage({ params }: Props) {
       <Container className="py-10 lg:py-14">
       <SidebarLayout
         sidebar={sidebar}
-        header={<SidebarLayoutHeader title={t('reviewTitle', { name: site.name })} description={review.description} />}
+        header={<SidebarLayoutHeader title={tSeo('reviews.reviewTitle', { name: site.name })} description={review.description} />}
       >
         {/* Gallery */}
         <div className="mb-8">
@@ -172,70 +186,14 @@ export default async function ReviewDetailPage({ params }: Props) {
           showUpdated={!!review.modifiedDate}
         />
 
-        {/* Main content */}
-        {review.content && (
+        {/* Main content — offers table, affiliate disclaimer & payment methods injected before the last H2 */}
+        {review.content ? (
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <RichText content={review.content} />
+            <RichText content={review.content} injectBeforeLastH2={pricingBlock} />
           </div>
-        )}
-
-        {/* Pricing & Payment Methods */}
-        {((site.offers ?? []).filter((o) => o.isActive).length > 0 ||
-          (site.platform?.paymentMethods ?? []).length > 0) && (
-          <div className="mt-12">
-            <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
-              {t('pricingTitle')}
-            </h2>
-            <p className="mb-6 text-base text-slate-600 dark:text-slate-400">
-              {t('pricingDescription', { siteName: site.name })}
-            </p>
-            {(site.offers ?? []).filter((o) => o.isActive).length > 0 && (
-              <OffersTable offers={(site.offers ?? []).filter((o) => o.isActive)} />
-            )}
-            {site.platform?.paymentMethods && site.platform.paymentMethods.length > 0 && (
-              <div className="mt-6">
-                <PaymentMethodPills methods={site.platform.paymentMethods.map((pm) => pm.method)} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Platform info */}
-        {site.platform && (
-          <div className="mt-10">
-            <h2 className="mb-5 text-xl font-bold text-slate-900 dark:text-white">
-              Operated by{' '}
-              {site.platform.website ? (
-                <a
-                  href={site.platform.website}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="text-emerald-600 hover:underline dark:text-emerald-400"
-                >
-                  {site.platform.name}
-                </a>
-              ) : (
-                <span className="text-emerald-600 dark:text-emerald-400">{site.platform.name}</span>
-              )}
-            </h2>
-            <div className="flex flex-wrap items-start gap-4">
-              {site.platform.logo && (
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
-                  <img
-                    src={strapiMediaUrl(site.platform.logo)}
-                    alt={site.platform.logo.alternativeText ?? site.platform.name}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              )}
-              {site.platform.description && (
-                <p className="min-w-0 flex-1 text-base text-slate-600 dark:text-slate-300">
-                  {site.platform.description}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        ) : pricingBlock ? (
+          <div className="mt-8">{pricingBlock}</div>
+        ) : null}
 
         {/* FAQs — review content focused */}
         <FaqSection faqs={review.faqs} bare />

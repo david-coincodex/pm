@@ -1,0 +1,8 @@
+{
+  "_comment": "Per-language preferred translations. Soft guidance injected into the prompt: the model still inflects each term to the correct grammatical form for its context. Add entries under a locale to enforce consistent terminology, then re-run: node translate-messages.mjs --language <loc> --fresh (optionally --scope <ns>). Remove the _comment key if your tooling is strict about it — translate-messages.mjs ignores unknown locale keys.",
+  "de": [
+    { "en": "deals", "preferred": "Angebote" },
+    { "en": "discount", "preferred": "Rabatt" },
+    { "en": "watchlist", "preferred": "Merkliste" }
+  ]
+}

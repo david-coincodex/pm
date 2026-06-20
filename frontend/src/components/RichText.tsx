@@ -1,4 +1,5 @@
 import parse, { type DOMNode, Element } from 'html-react-parser';
+import { isValidElement, type ReactNode } from 'react';
 import { getTranslations, getLocale } from 'next-intl/server';
 import ProsConsBlock from '@/components/rich-text/ProsConsBlock';
 import SiteCardInline from '@/components/rich-text/SiteCardInline';
@@ -80,9 +81,11 @@ function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, wid
 interface RichTextProps {
   content: unknown;
   className?: string;
+  /** Optional node spliced in immediately before the last top-level <h2> (appended if none). */
+  injectBeforeLastH2?: ReactNode;
 }
 
-export default async function RichText({ content, className = '' }: RichTextProps) {
+export default async function RichText({ content, className = '', injectBeforeLastH2 }: RichTextProps) {
   if (!content) return null;
 
   // CKEditor HTML string
@@ -95,9 +98,22 @@ export default async function RichText({ content, className = '' }: RichTextProp
     const widgetData = await prefetchWidgetData(content, locale);
     const prosLabel = t('pros');
     const consLabel = t('cons');
+    const parsed = parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) });
+
+    let body: ReactNode = parsed;
+    if (injectBeforeLastH2) {
+      const children: ReactNode[] = Array.isArray(parsed) ? [...parsed] : [parsed];
+      let lastH2 = -1;
+      children.forEach((c, i) => { if (isValidElement(c) && c.type === 'h2') lastH2 = i; });
+      const node = <div key="__rt-inject">{injectBeforeLastH2}</div>;
+      if (lastH2 >= 0) children.splice(lastH2, 0, node);
+      else children.push(node);
+      body = children;
+    }
+
     return (
       <div className={`rich-text-content space-y-4 max-w-none ${className}`}>
-        {parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) })}
+        {body}
       </div>
     );
   }

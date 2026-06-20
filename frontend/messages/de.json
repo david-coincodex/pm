@@ -1,17 +1,50 @@
 {
   "metadata": {
     "title": "pm",
-    "description": "Erwachsenenwebseiten-Verzeichnis",
-    "sitesTitle": "Webseiten"
+    "description": "Verzeichnis für Erwachsenenseiten"
+  },
+  "pageSEO": {
+    "sites": {
+      "metaTitle": "100+ Porno-Rabatte & Angebote",
+      "pageTitle": "Porno-Rabatte",
+      "pageSubtitle": "Die besten Angebote für Top-Erwachsenen-Websites, täglich aktualisiert."
+    },
+    "category": {
+      "metaTitle": "Beste {name}-Websites — Angebote & Rabatte",
+      "pageTitle": "Beste {name}-Websites",
+      "pageSubtitle": "Die besten {name}-Websites mit exklusiven Angeboten und Rabatten, regelmäßig aktualisiert."
+    },
+    "discount": {
+      "metaTitle": "{percentage}% Rabatt auf {name}: Nur ${price} im {month} {year}",
+      "metaTitleFallback": "{name} Rabatt",
+      "pageTitle": "{name} Rabatt"
+    },
+    "bundles": {
+      "metaTitle": "Porno-Website-Bundles",
+      "pageTitle": "Porno-Website-Bundles",
+      "pageSubtitle": "Kuratierte Sammlungen von Top-Erwachsenen-Websites — hol dir mehr für weniger Geld.",
+      "detailMetaTitle": "{name} — Bundle-Angebot"
+    },
+    "reviews": {
+      "metaTitle": "Testberichte zu Erwachsenen-Websites — PornMode",
+      "metaDescription": "Ausführliche Testberichte zu den besten Erwachsenen-Websites, mit Expertenbewertungen im Detail.",
+      "pageTitle": "Testberichte zu Erwachsenen-Websites",
+      "pageSubtitle": "Ausführliche Testberichte zu den besten Erwachsenen-Websites, mit Expertenbewertungen im Detail.",
+      "reviewMetaTitle": "{name} Testbericht: {titleExtra}",
+      "reviewMetaTitleFallback": "{name} Testbericht",
+      "reviewTitle": "{name} Testbericht"
+    },
+    "blog": {
+      "metaTitle": "Blog",
+      "pageTitle": "Blog",
+      "authorMetaTitle": "Artikel von {name}"
+    }
   },
   "category": {
-    "heading": "Die besten {name}-Seiten",
-    "defaultSubtitle": "Die besten {name}-Seiten mit exklusiven Angeboten und Rabatten.",
-    "pageMetaTitle": "Beste {name}-Seiten — Angebote & Rabatte",
-    "empty": "Noch keine Seiten in dieser Kategorie gefunden."
+    "empty": "Für diese Kategorie wurden noch keine Websites gefunden."
   },
   "nav": {
-    "pornDeals": "Porno-Deals",
+    "pornDeals": "Porno-Angebote",
     "bundles": "Bundles",
     "liveSex": "Live-Sex",
     "categories": "Kategorien",
@@ -19,11 +52,12 @@
     "reviews": "Bewertungen",
     "openMenu": "Menü öffnen",
     "closeMenu": "Menü schließen",
-    "search": "Suchen",
-    "allCategories": "Alle Kategorien"
+    "search": "Suche",
+    "allCategories": "Alle Kategorien",
+    "close": "Schließen"
   },
   "search": {
-    "placeholder": "Webseiten suchen…",
+    "placeholder": "Sites suchen…",
     "clearLabel": "Suche löschen",
     "noResults": "Keine Ergebnisse gefunden.",
     "recentlyViewed": "Zuletzt angesehen",
@@ -34,30 +68,29 @@
     "clearRecent": "Löschen"
   },
   "sites": {
-    "pageTitle": "Porn-Rabatte",
-    "pageSubtitle": "Die besten Angebote auf Top-Erwachsenenwebseiten, täglich aktualisiert.",
-    "lifetimeTitle": "Einmal zahlen, Porn für immer genießen",
-    "lifetimeSubtitle": "Einmalige Zahlung, unbegrenzter Zugang — keine wiederkehrenden Kosten.",
-    "camTitle": "Credits für Live-Sex-Seiten kaufen",
-    "camSubtitle": "Kaufe Credits und verbinde dich mit echten Performern, die jetzt live streamen.",
-    "aiSpotlightEyebrow": "KI-Porno-Angebote",
+    "lifetimeTitle": "Einmal zahlen, Pornos für immer genießen",
+    "lifetimeSubtitle": "Einmalzahlung, unbegrenzter Zugriff — keine wiederkehrenden Gebühren.",
+    "camTitle": "Credits auf Live-Sex-Websites erhalten",
+    "camSubtitle": "Lade Credits auf und verbinde dich mit echten Performern, die gerade live streamen.",
+    "aiSpotlightEyebrow": "AI-Porno-Angebote",
     "vrSpotlightEyebrow": "VR-Porno-Angebote",
-    "empty": "Keine Webseiten gefunden.",
-    "bonusSitesDescription": "Dein {siteName}-Abo beinhaltet {count} Bonus-Seiten, darunter {siteList} – alles im Preis eines einzigen Abonnements enthalten."
+    "empty": "Keine Websites gefunden.",
+    "bonusSitesDescription": "Deine {siteName}-Mitgliedschaft schaltet {count} Bonus-Websites frei, darunter {siteList} — alles ist im selben Abo enthalten.",
+    "liveSexDeals": "Live-Sex-Angebote"
   },
   "footer": {
     "copyright": "© {year} PornMode. Alle Rechte vorbehalten.",
-    "tagline": "Die besten Angebote auf Erwachsenenwebseiten, täglich aktualisiert.",
+    "tagline": "Die besten Angebote für Erwachsenenseiten, täglich aktualisiert.",
     "deals": "Angebote",
-    "pornDeals": "Porno-Deals",
+    "pornDeals": "Porno-Angebote",
     "bundles": "Bundles",
     "liveSex": "Live-Sex",
     "categories": "Kategorien",
     "allCategories": "Alle Kategorien",
-    "aiPorn": "KI-Porn",
-    "vrPorn": "VR-Porn",
+    "aiPorn": "AI-Porno",
+    "vrPorn": "VR-Porno",
     "premiumNetworks": "Premium-Netzwerke",
-    "artsyErotic": "Artistisch & Erotisch",
+    "artsyErotic": "Künstlerisch & erotisch",
     "camSites": "Cam-Seiten",
     "company": "Unternehmen",
     "about": "Über uns",
@@ -67,11 +100,12 @@
     "reviews": "Bewertungen",
     "legal": "Rechtliches",
     "terms": "Nutzungsbedingungen",
-    "privacy": "Datenschutzrichtlinie",
+    "privacy": "Datenschutzerklärung",
     "cookies": "Cookie-Richtlinie",
-    "disclaimer": "Haftungsausschluss für Erwachseneninhalte",
-    "affiliateDisclaimer": "Partner-Haftungsausschluss",
-    "language": "Sprache"
+    "disclaimer": "Disclaimer zu Inhalten für Erwachsene",
+    "affiliateDisclaimer": "Affiliate-Hinweis",
+    "language": "Sprache",
+    "adultDisclaimer": "Diese Website ist ausschließlich für Erwachsene ab 18 Jahren bestimmt."
   },
   "language": {
     "label": "Sprache",
@@ -85,12 +119,12 @@
     "imageOf": "{current} von {total}"
   },
   "site": {
-    "visitSite": "Seite besuchen"
+    "visitSite": "Website besuchen"
   },
   "platform": {
     "sectionTitle": "Plattform & Zahlungen",
     "operatedBy": "Betrieben von",
-    "website": "Webseite",
+    "website": "Website",
     "paymentMethods": "Akzeptierte Zahlungsmethoden",
     "american-express": "American Express",
     "cartes-bancaires": "Cartes Bancaires",
@@ -153,31 +187,37 @@
   "breadcrumbs": {
     "home": "Startseite",
     "discount": "Rabatte",
-    "sites": "Webseiten",
+    "sites": "Websites",
     "blog": "Blog",
     "offer": "Angebot",
     "reviews": "Bewertungen",
-    "bundles": "Bundles"
+    "bundles": "Pakete",
+    "label": "Breadcrumb"
+  },
+  "pagination": {
+    "label": "Seitennavigation",
+    "prev": "Zurück",
+    "next": "Weiter",
+    "prevPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite"
   },
   "discounts": {
     "pageTitle": "Rabatte",
     "empty": "Keine Rabatte verfügbar."
   },
   "discount": {
-    "pageTitle": "{name} Rabatt",
-    "pageMetaTitle": "{percentage}% {name} Rabatt: Nur ${price} im {month} {year}",
-    "offerType": "Plan",
+    "offerType": "Tarif",
     "price": "Unser Preis",
-    "regularPrice": "Normalpreis",
+    "regularPrice": "Regulärer Preis",
     "discount": "Rabatt",
-    "getDiscount": "Rabatt erhalten",
+    "getDiscount": "Rabatt sichern",
     "from": "Ab",
     "only": "Nur",
     "viewDeal": "Angebot ansehen",
     "allowsDownloads": "Downloads",
     "yes": "Ja",
     "no": "Nein",
-    "trial": "Probe",
+    "trial": "Testangebot",
     "monthly": "Monatlich",
     "quarterly": "Vierteljährlich",
     "yearly": "Jährlich",
@@ -188,134 +228,127 @@
     "liveBadge": "LIVE",
     "credits": "Credits",
     "peopleAlsoBought": "Andere kauften auch",
-    "whatsIncluded": "Was ist enthalten",
+    "whatsIncluded": "Was enthalten ist",
     "verifiedOn": "Verifiziert am {date}",
-    "ourReview": "Unser Test",
-    "readReview": "Vollständigen Test lesen",
-    "reviewTitle": "{name} Test",
-    "featuredSites": "Empfohlene Seiten"
+    "ourReview": "Unser Testbericht",
+    "readReview": "Vollständigen Testbericht lesen",
+    "reviewTitle": "{name}-Testbericht",
+    "featuredSites": "Empfohlene Sites",
+    "partOf": "Teil von {name}",
+    "percentOff": "{percentage}% Rabatt"
   },
   "blog": {
-    "pageTitle": "Blog",
     "empty": "Noch keine Artikel veröffentlicht.",
     "by": "Von",
     "editedBy": "Bearbeitet von",
     "readMore": "Weiterlesen",
     "on": "am",
     "updatedOn": "Aktualisiert am",
-    "peopleAlsoRead": "Das könnte dich auch interessieren",
+    "peopleAlsoRead": "Andere lasen auch",
     "viewAll": "Alle Artikel ansehen",
-    "authorPageTitle": "Artikel von {name}",
     "authorArticlesEmpty": "Noch keine Artikel von diesem Autor.",
-    "latestReviews": "Neueste Rezensionen von {name}"
+    "latestReviews": "Neueste Bewertungen von {name}"
   },
   "offer": {
-    "redirecting": "Du wirst zum Angebot weitergeleitet…",
+    "redirecting": "Wir leiten dich zum Angebot weiter…",
     "saving": "Du sparst {amount} {currency} mit diesem Angebot!",
     "goNow": "Jetzt weiter",
     "notFound": "Angebot nicht gefunden.",
     "credits": "Credits",
-    "disclaimer": "Wir erhalten möglicherweise eine Provision, wenn du dich über unsere Links anmeldest. Dies beeinflusst nicht den Preis, den du zahlst."
+    "disclaimer": "Wir erhalten möglicherweise eine Provision, wenn du dich über unsere Links registrierst. Dies beeinflusst nicht den Preis, den du zahlst."
   },
   "featured": {
-    "eyebrow": "Unsere Empfehlungen",
+    "eyebrow": "Wir empfehlen",
     "title": "Handverlesene Angebote, die ihr Geld wert sind",
-    "subtitle": "Unsere Redaktion wählt die besten aktuellen Angebote.",
+    "subtitle": "Unsere Redaktion kuratiert die Angebote mit dem besten Preis-Leistungs-Verhältnis, die derzeit verfügbar sind.",
     "from": "Ab"
   },
   "cam": {
     "liveBadge": "LIVE",
     "credits": "Credits",
-    "getCredits": "Credits kaufen",
+    "getCredits": "Credits sichern",
     "from": "Ab",
-    "viewDeal": "Zum Angebot"
+    "viewDeal": "Angebot ansehen"
   },
   "categorySpotlight": {
-    "viewAll": "Alle {name}-Seiten ansehen",
+    "viewAll": "Alle {name}-Sites durchsuchen",
     "from": "Ab"
   },
   "bundles": {
-    "eyebrow": "Kuratierte Bundles",
+    "eyebrow": "KURATIERTE BUNDLES",
     "title": "Bundle-Angebote",
     "subtitle": "Handverlesene Kombinationen der besten Seiten zu unschlagbaren Preisen.",
     "from": "Ab",
     "viewAll": "Alle Bundles ansehen",
-    "pageTitle": "Porn-Seiten-Bundles",
-    "pageSubtitle": "Kuratierte Sammlungen der besten Erwachsenenwebseiten.",
     "sites": "Seiten",
     "viewBundle": "Bundle ansehen",
     "empty": "Noch keine Bundles verfügbar.",
     "includedSites": "Enthaltene Seiten",
-    "whatsIncluded": "Was ist enthalten",
-    "pageMetaTitle": "{name} — Bundle-Angebot",
+    "whatsIncluded": "Was enthalten ist",
     "siteIncludedTitle": "{siteName} ist Teil dieser Bundles",
-    "siteIncludedSubtitle": "{siteName} zusammen mit anderen Top-Seiten zum Rabattpreis.",
-    "discoverTitle": "Bundle-Deals, die dir gefallen könnten",
+    "siteIncludedSubtitle": "Hol dir {siteName} zusammen mit anderen Top-Seiten mit Rabatt.",
+    "discoverTitle": "Bundle-Angebote, die dir gefallen könnten",
     "discoverSubtitle": "Kombiniere die besten Seiten und spare mehr mit unseren kuratierten Bundles.",
-    "getBundle": "Bundle holen",
+    "getBundle": "Bundle sichern",
     "includedCount": "{count, plural, one {# Seite} other {# Seiten}} enthalten"
   },
   "latestArticles": {
     "eyebrow": "Aus dem Blog",
     "title": "Neueste Artikel",
-    "viewAll": "Alle Artikel ansehen"  },
+    "viewAll": "Alle Artikel anzeigen"
+  },
   "categoryGrid": {
     "eyebrow": "Nach Kategorie stöbern",
     "title": "Mehr entdecken",
     "viewAll": "Alle anzeigen",
     "allCategories": "Alle Kategorien",
-    "sites": "{count, plural, one {# Seite} other {# Seiten}}"
+    "sites": "{count, plural, one {# Website} other {# Websites}}"
   },
   "reviews": {
-    "pageTitle": "Bewertungen von Erwachsenenwebseiten",
-    "pageMetaTitle": "Bewertungen von Erwachsenenwebseiten — PornMode",
-    "pageDescription": "Ausführliche Rezensionen der besten Erwachsenenwebseiten mit detaillierten Bewertungsübersichten.",
-    "overallScore": "Unser Urteil",
+    "overallScore": "Unsere Bewertung",
     "pros": "Vorteile",
     "cons": "Nachteile",
     "showMore": "+{count} mehr",
     "showLess": "Weniger anzeigen",
-    "readReview": "Rezension lesen",
-    "reviewTitle": "{name} Rezension",
-    "reviewMetaTitle": "{name} Rezension: {titleExtra}",
+    "readReview": "Review lesen",
     "by": "Von",
     "publishedOn": "Veröffentlicht",
     "updatedOn": "Aktualisiert",
-    "empty": "Noch keine Bewertungen veröffentlicht.",
-    "alsoRead": "Andere lesen auch",
+    "empty": "Noch keine Reviews veröffentlicht.",
+    "alsoRead": "Andere lasen auch",
     "pricingTitle": "Preise & Zahlungsmethoden",
-    "pricingDescription": "Hier findest du alle verfügbaren Abonnementpläne für {siteName} sowie die akzeptierten Zahlungsmethoden.",
+    "pricingDescription": "Nachfolgend findest du alle verfügbaren Abonnementpläne für {siteName} sowie die beim Checkout akzeptierten Zahlungsmethoden.",
     "buyNow": "Jetzt kaufen",
     "viewDeal": "Angebot ansehen"
   },
   "scores": {
     "contentQuality": "Inhaltsqualität",
-    "contentAmount": "Inhaltsmenge",
-    "value": "Preis-Leistung",
-    "updates": "Updates",
+    "contentAmount": "Inhaltsumfang",
+    "value": "Preis-Leistungs-Verhältnis",
+    "updates": "Aktualisierungen",
     "exclusivity": "Exklusivität",
     "features": "Funktionen",
     "downloads": "Downloads",
     "streaming": "Streaming",
-    "mobileExperience": "Mobile-Erfahrung",
+    "mobileExperience": "Mobile Nutzererfahrung",
     "modelVariety": "Model-Vielfalt",
     "streamQuality": "Stream-Qualität",
     "interactivity": "Interaktivität",
     "privacy": "Privatsphäre",
-    "privateShows": "Private Shows"
+    "privateShows": "Privatshows"
   },
   "upsell": {
-    "description": "Mitglieder, die dies gekauft haben, haben auch zugegriffen:",
-    "dealName": "Adult Time – Voller Netzwerkzugang",
-    "dealPrice": "7,95 €/Monat",
-    "dealOriginalPrice": "19,95 €/Monat",
+    "description": "Mitglieder, die dies gekauft haben, holten sich auch:",
+    "dealName": "Adult Time – Vollständiger Netzwerkzugang",
+    "dealPrice": "7,95 $/Monat",
+    "dealOriginalPrice": "19,95 $/Monat",
     "dealDiscount": "-60%",
-    "claimDeal": "Angebot sichern",
+    "claimDeal": "Dieses Angebot sichern",
     "feedbackTitle": "Hat der Rabatt funktioniert?",
     "feedbackYes": "Ja",
     "feedbackNo": "Nein",
     "feedbackThanks": "Danke für dein Feedback!",
-    "feedbackSorry": "Das tut uns leid. Unser Team kann helfen:",
+    "feedbackSorry": "Tut uns leid. Unser Team kann helfen:",
     "contactSupport": "Support kontaktieren"
   },
   "sale": {
@@ -324,11 +357,11 @@
     "hours": "Stunden",
     "minutes": "Minuten",
     "seconds": "Sekunden",
-    "expired": "Dieses Angebot ist abgelaufen.",
-    "featuredDeals": "Top-Angebote",
-    "allDeals": "Alle {saleName} Porno-Rabatte",
+    "expired": "Dieses Angebot ist beendet.",
+    "featuredDeals": "Hervorgehobene Angebote",
+    "allDeals": "Alle {saleName} Porn-Rabatte",
     "bundleDeals": "Bundle-Angebote",
-    "notFound": "Verkauf nicht gefunden."
+    "notFound": "Angebot nicht gefunden."
   },
   "richText": {
     "showMore": "{count} weitere anzeigen",

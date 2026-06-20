@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 interface PaginationProps {
   currentPage: number;
@@ -52,7 +53,8 @@ function paginationRange(currentPage: number, totalPages: number, siblingCount =
   return [1, DOTS, ...range(leftSibling, rightSibling), DOTS, totalPages];
 }
 
-export default function Pagination({ currentPage, totalPages, basePath = '/' }: PaginationProps) {
+export default async function Pagination({ currentPage, totalPages, basePath = '/' }: PaginationProps) {
+  const t = await getTranslations('pagination');
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
@@ -68,14 +70,14 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
   return (
     <nav
       className="mt-10 flex items-center justify-center gap-1.5"
-      aria-label="Pagination"
+      aria-label={t('label')}
     >
       {hasPrev ? (
-        <Link href={pageHref(currentPage - 1, basePath)} className={inactiveStyle} aria-label="Previous page">
-          ← Prev
+        <Link href={pageHref(currentPage - 1, basePath)} className={inactiveStyle} aria-label={t('prevPage')}>
+          ← {t('prev')}
         </Link>
       ) : (
-        <span className={disabledStyle} aria-disabled="true">← Prev</span>
+        <span className={disabledStyle} aria-disabled="true">← {t('prev')}</span>
       )}
 
       {pages.map((page, i) =>
@@ -95,11 +97,11 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
       )}
 
       {hasNext ? (
-        <Link href={pageHref(currentPage + 1, basePath)} className={inactiveStyle} aria-label="Next page">
-          Next →
+        <Link href={pageHref(currentPage + 1, basePath)} className={inactiveStyle} aria-label={t('nextPage')}>
+          {t('next')} →
         </Link>
       ) : (
-        <span className={disabledStyle} aria-disabled="true">Next →</span>
+        <span className={disabledStyle} aria-disabled="true">{t('next')} →</span>
       )}
     </nav>
   );

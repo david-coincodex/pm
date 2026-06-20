@@ -66,7 +66,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
   };
 
   return (
-    <nav aria-label="Breadcrumb" className="h-10 flex items-center relative z-20">
+    <nav aria-label={t('label')} className="h-10 flex items-center relative z-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -99,7 +99,7 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
         <div className="mt-1 flex items-center gap-1.5">
           {bestPrice !== undefined ? (
             <>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">From</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('from')}</span>
               {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
                 <span className="text-xs text-slate-400 line-through dark:text-slate-500">
                   ${bestFullPrice.toFixed(2)}

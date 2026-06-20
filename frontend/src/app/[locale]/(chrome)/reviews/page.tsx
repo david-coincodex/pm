@@ -18,12 +18,12 @@ type Props = {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
-  const t = await getTranslations({ locale, namespace: 'reviews' });
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const page = parsePage(pageStr);
 
   return {
-    title: paginatedTitle(t('pageMetaTitle'), page),
-    description: t('pageDescription'),
+    title: paginatedTitle(t('reviews.metaTitle'), page),
+    description: t('reviews.metaDescription'),
     alternates: paginatedAlternates(routes.reviews(), page, locale),
   };
 }
@@ -33,9 +33,10 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [{ data: reviews, pagination }, t] = await Promise.all([
+  const [{ data: reviews, pagination }, t, tSeo] = await Promise.all([
     getReviewsPaginated(locale, page, PAGE_SIZE),
     getTranslations({ locale, namespace: 'reviews' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   const reviewsWithSite = reviews.filter((review): review is Review & { site: NonNullable<Review['site']> } => Boolean(review.site));
 
@@ -47,7 +48,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
       <Container className="py-10 lg:py-14">
-        <SectionTitle as="h1" title={t('pageTitle')} subtitle={t('pageDescription')} />
+        <SectionTitle as="h1" title={tSeo('reviews.pageTitle')} subtitle={tSeo('reviews.pageSubtitle')} />
         <SiteCardGrid
           items={reviewsWithSite.map((review) => ({
             site: review.site,

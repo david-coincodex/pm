@@ -41,13 +41,13 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const [category, t] = await Promise.all([
     getCategoryBySlug(categorySlug),
-    getTranslations({ locale, namespace: 'category' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   if (!category) return {};
   const page = parsePage(pageStr);
   const categoryPath = routes.category(categorySlug);
   return {
-    title: paginatedTitle(t('pageMetaTitle', { name: category.name }), page),
+    title: paginatedTitle(t('category.metaTitle', { name: category.name }), page),
     description: category.description ?? undefined,
     alternates: paginatedAlternates(categoryPath, page, locale),
   };
@@ -67,7 +67,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const [category, { sites, pagination }, t] = await Promise.all([
     getCategoryBySlug(categorySlug),
     getSitesByCategorySlug(categorySlug, page, PAGE_SIZE),
-    getTranslations({ locale, namespace: 'category' }),
+    getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
   if (!category) notFound();
@@ -87,14 +87,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           sidebar={
             <div className="flex flex-col gap-8">
               <SidebarFeaturedSites />
-              <SidebarCategorySites categoryId={3} title="Live Sex Deals" limit={3} />
+              <SidebarCategorySites categoryId={3} limit={3} />
             </div>
           }
           header={
             <SectionTitle
               as="h1"
-              title={t('heading', { name: category.name })}
-              subtitle={category.description ?? t('defaultSubtitle', { name: category.name })}
+              title={t('category.pageTitle', { name: category.name })}
+              subtitle={category.description ?? t('category.pageSubtitle', { name: category.name })}
             />
           }
         >

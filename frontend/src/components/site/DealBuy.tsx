@@ -96,7 +96,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
             href={routes.site(parentSite.slug)}
             className="inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
           >
-            Part of {parentSite.name}
+            {t('partOf', { name: parentSite.name })}
           </Link>
         </div>
       )}
@@ -140,7 +140,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         )}
         {discount !== null && discount > 0 && (
           <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            {discount}% off
+            {t('percentOff', { percentage: discount })}
           </div>
         )}
       </div>

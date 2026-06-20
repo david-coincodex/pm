@@ -52,9 +52,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ArticlePage({ params }: Props) {
   const { locale, id } = await params;
 
-  const [article, t] = await Promise.all([
+  const [article, t, tBc] = await Promise.all([
     getArticleById(Number(id), locale),
     getTranslations({ locale, namespace: 'blog' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
 
   if (!article) notFound();
@@ -66,7 +67,7 @@ export default async function ArticlePage({ params }: Props) {
   return (
     <>
       <BreadcrumbsSetter crumbs={[
-        { label: t('pageTitle'), href: routes.blog() },
+        { label: tBc('blog'), href: routes.blog() },
         { label: article.title, href: routes.blogArticle(id, article.slug) },
       ]} />
       <Container className="py-10 lg:py-14">
@@ -75,7 +76,7 @@ export default async function ArticlePage({ params }: Props) {
           sidebar={
             <div className="flex flex-col gap-8">
               <SidebarFeaturedSites />
-              <SidebarCategorySites categoryId={3} title="Live Sex Deals" limit={3} />
+              <SidebarCategorySites categoryId={3} limit={3} />
             </div>
           }
           header={<SidebarLayoutHeader title={article.title} description={article.description} />}

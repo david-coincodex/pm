@@ -1,13 +1,46 @@
 {
   "metadata": {
     "title": "pm",
-    "description": "Adult site directory",
-    "sitesTitle": "100+ Porn Discounts & Deals"
+    "description": "Adult site directory"
+  },
+  "pageSEO": {
+    "sites": {
+      "metaTitle": "100+ Porn Discounts & Deals",
+      "pageTitle": "Porn Discounts",
+      "pageSubtitle": "The best deals on top adult sites, updated daily."
+    },
+    "category": {
+      "metaTitle": "Best {name} Sites — Deals & Discounts",
+      "pageTitle": "Best {name} Sites",
+      "pageSubtitle": "The top {name} sites with exclusive deals and discounts, updated regularly."
+    },
+    "discount": {
+      "metaTitle": "{percentage}% {name} Discount: Only ${price} in {month} {year}",
+      "metaTitleFallback": "{name} Discount",
+      "pageTitle": "{name} Discount"
+    },
+    "bundles": {
+      "metaTitle": "Porn Site Bundles",
+      "pageTitle": "Porn Site Bundles",
+      "pageSubtitle": "Curated collections of top adult sites — get more for less.",
+      "detailMetaTitle": "{name} — Bundle Deal"
+    },
+    "reviews": {
+      "metaTitle": "Adult Site Reviews — PornMode",
+      "metaDescription": "In-depth reviews of the best adult sites, with expert score breakdowns.",
+      "pageTitle": "Adult Site Reviews",
+      "pageSubtitle": "In-depth reviews of the best adult sites, with expert score breakdowns.",
+      "reviewMetaTitle": "{name} Review: {titleExtra}",
+      "reviewMetaTitleFallback": "{name} Review",
+      "reviewTitle": "{name} Review"
+    },
+    "blog": {
+      "metaTitle": "Blog",
+      "pageTitle": "Blog",
+      "authorMetaTitle": "Articles by {name}"
+    }
   },
   "category": {
-    "heading": "Best {name} Sites",
-    "defaultSubtitle": "The top {name} sites with exclusive deals and discounts, updated regularly.",
-    "pageMetaTitle": "Best {name} Sites — Deals & Discounts",
     "empty": "No sites found for this category yet."
   },
   "nav": {
@@ -20,7 +53,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "search": "Search",
-    "allCategories": "All Categories"
+    "allCategories": "All Categories",
+    "close": "Close"
   },
   "search": {
     "placeholder": "Search sites…",
@@ -34,8 +68,6 @@
     "clearRecent": "Clear"
   },
   "sites": {
-    "pageTitle": "Porn Discounts",
-    "pageSubtitle": "The best deals on top adult sites, updated daily.",
     "lifetimeTitle": "Pay Once, Enjoy Porn Forever",
     "lifetimeSubtitle": "One-time payment, unlimited access — no recurring charges.",
     "camTitle": "Get Credits on Live Sex Sites",
@@ -43,7 +75,8 @@
     "aiSpotlightEyebrow": "AI Porn Deals",
     "vrSpotlightEyebrow": "VR Porn Deals",
     "empty": "No sites found.",
-    "bonusSitesDescription": "Your {siteName} membership unlocks {count} bonus sites including {siteList} — all covered by the same subscription."
+    "bonusSitesDescription": "Your {siteName} membership unlocks {count} bonus sites including {siteList} — all covered by the same subscription.",
+    "liveSexDeals": "Live Sex Deals"
   },
   "footer": {
     "copyright": "© {year} PornMode. All rights reserved.",
@@ -71,7 +104,8 @@
     "cookies": "Cookie Policy",
     "disclaimer": "Adult Content Disclaimer",
     "affiliateDisclaimer": "Affiliate Disclaimer",
-    "language": "Language"
+    "language": "Language",
+    "adultDisclaimer": "This site is intended for adults 18+ only."
   },
   "language": {
     "label": "Language",
@@ -157,15 +191,21 @@
     "blog": "Blog",
     "offer": "Offer",
     "reviews": "Reviews",
-    "bundles": "Bundles"
+    "bundles": "Bundles",
+    "label": "Breadcrumb"
+  },
+  "pagination": {
+    "label": "Pagination",
+    "prev": "Prev",
+    "next": "Next",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   },
   "discounts": {
     "pageTitle": "Discounts",
     "empty": "No discounts available."
   },
   "discount": {
-    "pageTitle": "{name} Discount",
-    "pageMetaTitle": "{percentage}% {name} Discount: Only ${price} in {month} {year}",
     "offerType": "Plan",
     "price": "Our Price",
     "regularPrice": "Regular Price",
@@ -193,10 +233,11 @@
     "ourReview": "Our Review",
     "readReview": "Read full review",
     "reviewTitle": "{name} Review",
-    "featuredSites": "Featured Sites"
+    "featuredSites": "Featured Sites",
+    "partOf": "Part of {name}",
+    "percentOff": "{percentage}% off"
   },
   "blog": {
-    "pageTitle": "Blog",
     "empty": "No articles published yet.",
     "by": "By",
     "editedBy": "Edited by",
@@ -205,7 +246,6 @@
     "updatedOn": "Updated on",
     "peopleAlsoRead": "People Also Read",
     "viewAll": "View all articles",
-    "authorPageTitle": "Articles by {name}",
     "authorArticlesEmpty": "No articles by this author yet.",
     "latestReviews": "Latest reviews by {name}"
   },
@@ -240,14 +280,11 @@
     "subtitle": "Hand-picked combinations of the best sites at unbeatable prices.",
     "from": "From",
     "viewAll": "View all bundles",
-    "pageTitle": "Porn Site Bundles",
-    "pageSubtitle": "Curated collections of top adult sites — get more for less.",
     "sites": "sites",
     "viewBundle": "View bundle",
     "empty": "No bundles available yet.",
     "includedSites": "Included Sites",
     "whatsIncluded": "What's Included",
-    "pageMetaTitle": "{name} — Bundle Deal",
     "siteIncludedTitle": "{siteName} is part of these bundles",
     "siteIncludedSubtitle": "Get {siteName} together with other top sites at a discounted price.",
     "discoverTitle": "Bundle deals you might like",
@@ -268,17 +305,12 @@
     "sites": "{count, plural, one {# site} other {# sites}}"
   },
   "reviews": {
-    "pageTitle": "Adult Site Reviews",
-    "pageMetaTitle": "Adult Site Reviews — PornMode",
-    "pageDescription": "In-depth reviews of the best adult sites, with expert score breakdowns.",
     "overallScore": "Our score",
     "pros": "Pros",
     "cons": "Cons",
     "showMore": "+{count} more",
     "showLess": "Show less",
     "readReview": "Read Review",
-    "reviewTitle": "{name} Review",
-    "reviewMetaTitle": "{name} Review: {titleExtra}",
     "by": "By",
     "publishedOn": "Published",
     "updatedOn": "Updated",
