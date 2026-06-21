@@ -43,7 +43,7 @@ type Props = {
 };
 
 export async function generateStaticParams() {
-  const slugs = await getAllAuthorSlugs();
+  const slugs = await getAllAuthorSlugs().catch(() => []);
   return routing.locales.flatMap((locale) =>
     slugs.map((slug) => ({ locale, slug }))
   );
