@@ -5,7 +5,7 @@ import { resolveRedirect } from './lib/redirects';
 
 const intlMiddleware = createMiddleware(routing);
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   // Server-side 301 redirects (with wildcard support) take precedence over locale routing.
   const destination = resolveRedirect(
     request.nextUrl.pathname,
