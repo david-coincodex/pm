@@ -1,0 +1,136 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  # ── 1. Build both images and push to GHCR ───────────────────────────────────
+  build-and-push:
+    name: Build & push images
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          target: production
+          push: true
+          # NEXT_PUBLIC_* is inlined into the client bundle at build time, so the
+          # public CMS origin must be passed here (not just at runtime).
+          build-args: |
+            NEXT_PUBLIC_STRAPI_URL=https://cms-staging.pornmode.com
+          tags: |
+            ghcr.io/david-coincodex/pm-frontend:latest
+            ghcr.io/david-coincodex/pm-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/david-coincodex/pm-backend:latest
+            ghcr.io/david-coincodex/pm-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  # ── 2. Deploy to staging server via SSH ──────────────────────────────────────
+  deploy:
+    name: Deploy to staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+      # Write the .env file locally; rsync copies it (never echoed to logs)
+      - name: Write .env file
+        env:
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          DATABASE_NAME: ${{ vars.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ vars.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        run: |
+          {
+            echo "APP_KEYS=$APP_KEYS"
+            echo "API_TOKEN_SALT=$API_TOKEN_SALT"
+            echo "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET"
+            echo "TRANSFER_TOKEN_SALT=$TRANSFER_TOKEN_SALT"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "ENCRYPTION_KEY=$ENCRYPTION_KEY"
+            echo "DATABASE_NAME=$DATABASE_NAME"
+            echo "DATABASE_USERNAME=$DATABASE_USERNAME"
+            echo "DATABASE_PASSWORD=$DATABASE_PASSWORD"
+          } > .env.deploy
+
+      - name: Rsync compose file and .env to server
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }} \
+            "mkdir -p /opt/promode"
+
+          rsync -az --checksum \
+            -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+            .env.deploy \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:/opt/promode/
+
+          rsync -az --checksum \
+            -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+            docker-compose.prod.yml \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:/opt/promode/docker-compose.yml
+
+      - name: Pull images and restart services
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }} bash << 'ENDSSH'
+              set -e
+              cd /opt/promode
+              mv .env.deploy .env
+
+              echo "${{ secrets.GITHUB_TOKEN }}" | \
+                docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+              docker compose pull
+              docker compose up -d --remove-orphans
+          ENDSSH
+
+      - name: Clean up local secrets
+        if: always()
+        run: rm -f private_key.pem .env.deploy
