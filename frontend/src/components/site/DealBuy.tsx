@@ -117,7 +117,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
             >
               {offer.offerKind === 'credits'
                 ? `${offer.credits} ${t('credits')}`
-                : t(OFFER_TYPE_LABEL[offer.offerType!] as keyof typeof OFFER_TYPE_LABEL)}
+                : t(OFFER_TYPE_LABEL[offer.offerType!] as Parameters<typeof t>[0])}
             </button>
           ))}
         </div>

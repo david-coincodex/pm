@@ -70,6 +70,7 @@ export type Site = {
   name: string;
   slug: string;
   url: string;
+  isActive: boolean;
   short_description: string | null;
   description: Record<string, unknown>[] | null;
   siteType: 'paysite' | 'camsite' | 'datingsite' | 'tubesite';

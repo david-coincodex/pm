@@ -1,4 +1,4 @@
-import { getFeaturedDeals, getDiscountPercent, getTranslations as _ } from '@/lib/strapi';
+import { getFeaturedDeals, getDiscountPercent } from '@/lib/strapi';
 import { getTranslations } from 'next-intl/server';
 import SiteCard from '@/components/site/SiteCard';
 import SidebarCarouselShell from '@/components/SidebarCarouselShell';
