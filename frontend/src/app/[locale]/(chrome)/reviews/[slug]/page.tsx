@@ -13,7 +13,6 @@ import ImageGallery from '@/components/ImageGallery';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SectionTitle from '@/components/SectionTitle';
 import OffersTable from '@/components/site/OffersTable';
-import PaymentMethodPills from '@/components/site/PaymentMethodPills';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import FaqSection from '@/components/FaqSection';
 import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
@@ -147,16 +146,10 @@ export default async function ReviewDetailPage({ params }: Props) {
     <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} siteSlug={site.slug} />
   ) : null;
 
-  // Offers table (incl. affiliate disclaimer) + payment methods — injected before the article's last H2.
-  const paymentMethods = site.platform?.paymentMethods?.map((pm) => pm.method) ?? [];
-  const pricingBlock = (activeOffers.length > 0 || paymentMethods.length > 0) ? (
-    <div className="not-prose">
-      {activeOffers.length > 0 && <OffersTable offers={activeOffers} />}
-      {paymentMethods.length > 0 && (
-        <div className="mt-6">
-          <PaymentMethodPills methods={paymentMethods} />
-        </div>
-      )}
+  // Offers table (incl. affiliate disclaimer) — injected before the article's last H2.
+  const pricingBlock = activeOffers.length > 0 ? (
+    <div className="not-prose mb-8">
+      <OffersTable offers={activeOffers} />
     </div>
   ) : undefined;
 

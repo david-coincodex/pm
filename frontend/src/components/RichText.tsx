@@ -29,6 +29,12 @@ const ELEMENT_CLASSES: Record<string, string> = {
   td: 'border border-slate-200 dark:border-slate-700 px-3 py-2',
 };
 
+// Rich-text CTA button: the CKEditor "Button Style" decorator marks the <a> with `data-button`;
+// we map it to Tailwind utilities at render — no bespoke CSS and no descendant selector that
+// could leak into nested components. (Literal here so Tailwind generates these utilities.)
+const RT_BUTTON_CLASSES =
+  'inline-flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white no-underline transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600';
+
 function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, widgetData: WidgetData, locale: string) {
   if (!(domNode instanceof Element)) return;
 
@@ -65,11 +71,19 @@ function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, wid
     return <SiteCardInlineList sites={sites} initialShow={initialShow} />;
   }
 
-  // Standard element styling
-  const classes = ELEMENT_CLASSES[domNode.name];
-  if (classes) {
-    const existing = domNode.attribs.class ?? '';
-    domNode.attribs.class = existing ? `${existing} ${classes}` : classes;
+  // Button-style links: content marks the <a> with `data-button` (CKEditor "Button Style"
+  // decorator); map it to Tailwind utilities here.
+  const isButtonLink = domNode.name === 'a' && domNode.attribs['data-button'] != null;
+  if (isButtonLink) {
+    delete domNode.attribs['data-button'];
+    domNode.attribs.class = RT_BUTTON_CLASSES;
+  } else {
+    // Standard element styling
+    const classes = ELEMENT_CLASSES[domNode.name];
+    if (classes) {
+      const existing = domNode.attribs.class ?? '';
+      domNode.attribs.class = existing ? `${existing} ${classes}` : classes;
+    }
   }
 
   // Add rel to links
@@ -99,23 +113,32 @@ export default async function RichText({ content, className = '', injectBeforeLa
     const prosLabel = t('pros');
     const consLabel = t('cons');
     const parsed = parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) });
+    const wrapperClass = `rich-text-content space-y-4 max-w-none ${className}`;
 
-    let body: ReactNode = parsed;
+    // When injecting a custom node, render it as a SIBLING outside .rich-text-content (and the
+    // page's `prose` wrapper) so it's treated as a standalone component, not article content.
     if (injectBeforeLastH2) {
       const children: ReactNode[] = Array.isArray(parsed) ? [...parsed] : [parsed];
       let lastH2 = -1;
       children.forEach((c, i) => { if (isValidElement(c) && c.type === 'h2') lastH2 = i; });
-      const node = <div key="__rt-inject">{injectBeforeLastH2}</div>;
-      if (lastH2 >= 0) children.splice(lastH2, 0, node);
-      else children.push(node);
-      body = children;
+      if (lastH2 >= 0) {
+        return (
+          <>
+            <div className={wrapperClass}>{children.slice(0, lastH2)}</div>
+            {injectBeforeLastH2}
+            <div className={wrapperClass}>{children.slice(lastH2)}</div>
+          </>
+        );
+      }
+      return (
+        <>
+          <div className={wrapperClass}>{children}</div>
+          {injectBeforeLastH2}
+        </>
+      );
     }
 
-    return (
-      <div className={`rich-text-content space-y-4 max-w-none ${className}`}>
-        {body}
-      </div>
-    );
+    return <div className={wrapperClass}>{parsed}</div>;
   }
 
   // Legacy blocks format (array) — not expected from CKEditor

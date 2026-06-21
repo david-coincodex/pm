@@ -148,7 +148,13 @@ export default {
             buttonStyle: {
               mode: 'manual',
               label: 'Button Style',
-              classes: ['inline-flex', 'items-center', 'justify-center', 'rounded-lg', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700'],
+              // Mark the link with a semantic data attribute only — no classes/CSS in content.
+              // The frontend RichText (src/components/RichText.tsx) detects `data-button` and maps
+              // it to Tailwind utility classes at render. Don't put utility classes (e.g.
+              // `inline-flex`) here: they collide with unrelated component styling.
+              attributes: {
+                'data-button': 'true',
+              },
             },
           },
         },
@@ -171,7 +177,7 @@ export default {
 The above configuration has been successfully implemented in `/backend/src/admin/app.tsx` and provides two link decorators:
 
 1. **External (nofollow, blank)** - Adds `target="_blank"` and `rel="nofollow noopener noreferrer"` attributes
-2. **Button Style** - Applies Tailwind CSS button styling classes
+2. **Button Style** - Adds a `data-button` attribute; the frontend `RichText` component maps it to Tailwind button utilities at render (no classes or CSS stored in content)
 
 These appear as toggleable options in the "Link properties" panel when editing a link in the CKEditor.
   }
