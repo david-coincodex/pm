@@ -25,7 +25,7 @@ import { dirname } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 const dotenv = _require('dotenv');
-dotenv.config({ path: `${__dirname}/.env` });
+dotenv.config({ path: `${__dirname}/.env`, quiet: true });
 import OpenAI from 'openai';
 
 const STRAPI_URL = process.env.STRAPI_URL || 'http://localhost:1339';

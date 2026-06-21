@@ -37,7 +37,7 @@ import OpenAI from 'openai';
 const _require = createRequire(import.meta.url);
 const dotenv = _require('dotenv');
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: `${__dirname}/.env` });
+dotenv.config({ path: `${__dirname}/.env`, quiet: true });
 
 // ── Paths ────────────────────────────────────────────────────────────────────────
 const MESSAGES_DIR = join(__dirname, '..', 'frontend', 'messages');

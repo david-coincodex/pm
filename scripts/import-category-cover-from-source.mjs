@@ -38,7 +38,7 @@ import { unlink, writeFile } from 'fs/promises';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-require('dotenv').config({ path: `${__dirname}/.env` });
+require('dotenv').config({ path: `${__dirname}/.env`, quiet: true });
 
 const STRAPI_URL = process.env.STRAPI_URL || 'http://localhost:1339';
 const TOKEN = process.env.STRAPI_TOKEN;
