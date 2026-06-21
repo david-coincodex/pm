@@ -21,7 +21,11 @@ FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=builder /app/dist            ./dist
+# Promote the build OUTPUT to the app root (not ./dist). Strapi has no
+# tsconfig.json here, so it loads as a JS project from /app/config, /app/src,
+# /app/build — copying into ./dist would hide them and Strapi would boot with
+# no database config ("db.config.connection is undefined").
+COPY --from=builder /app/dist            ./
 COPY --from=builder /app/node_modules    ./node_modules
 COPY --from=builder /app/package*.json   ./
 COPY --from=builder /app/public          ./public
