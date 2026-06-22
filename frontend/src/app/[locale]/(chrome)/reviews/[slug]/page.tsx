@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { getReviewBySiteSlug, getReviews, getPublishedBundles, PaysiteScores, CamsiteScores, strapiMediaUrl, type Review } from '@/lib/strapi';
+import { getReviewBySiteSlug, getReviews, getPublishedBundles, getMaxDiscountPercent, PaysiteScores, CamsiteScores, strapiMediaUrl, type Review } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
@@ -141,9 +141,10 @@ export default async function ReviewDetailPage({ params }: Props) {
 
   const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
   const bestOffer = activeOffers.sort((a, b) => a.price - b.price)[0] ?? null;
+  const maxDiscount = getMaxDiscountPercent(activeOffers) ?? undefined;
 
   const sidebar = overall !== null ? (
-    <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} siteSlug={site.slug} />
+    <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} discountPercent={maxDiscount} siteSlug={site.slug} />
   ) : null;
 
   // Offers table (incl. affiliate disclaimer) — injected before the article's last H2.
