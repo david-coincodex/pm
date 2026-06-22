@@ -6,13 +6,6 @@ import type { Offer } from '@/lib/strapi';
 import { getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 
-const OFFER_TYPE_LABEL: Record<string, string> = {
-  trial: 'trial',
-  monthly: 'monthly',
-  quarterly: 'quarterly',
-  yearly: 'yearly',
-  lifetime: 'lifetime',
-};
 
 interface OffersTableProps {
   offers: Offer[];
@@ -53,7 +46,7 @@ export default function OffersTable({ offers }: OffersTableProps) {
                 {subscriptionOffers.map((offer) => (
                   <tr key={offer.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-white capitalize">
-                      {String(t(OFFER_TYPE_LABEL[offer.offerType!] as never))}
+                      {offer.offerType && offer.offerType !== 'credits' ? t(offer.offerType) : ''}
                     </td>
                     <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
                       ${offer.price.toFixed(2)}
