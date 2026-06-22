@@ -194,31 +194,6 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         {/* Bonus child sites */}
         <SubsiteGrid subsites={site.child_sites ?? []} siteName={site.name} siteSlug={site.slug} />
 
-        {/* Platform info */}
-        {site.platform && (
-          <div className="mt-10">
-            <h2 className="mb-5 text-xl font-bold text-slate-900 dark:text-white">
-              Operated by{' '}
-              <span className="text-emerald-600 dark:text-emerald-400">{site.platform.name}</span>
-            </h2>
-            <div className="flex flex-wrap items-start gap-4">
-              {site.platform.logo && (
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
-                  <img
-                    src={strapiMediaUrl(site.platform.logo)}
-                    alt={site.platform.logo.alternativeText ?? site.platform.name}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              )}
-              {site.platform.description && (
-                <p className="flex-1 min-w-0 text-base text-slate-600 dark:text-slate-300">
-                  {site.platform.description}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* FAQs — editorial Strapi FAQs first, then auto-generated dynamic offer FAQs */}
         <FaqSection faqs={[...(site.faqs ?? []), ...buildDynamicFaqs(site)]} bare />

@@ -44,9 +44,8 @@ function SubsiteTile({ subsite, siteSlug }: { subsite: Site; siteSlug: string })
 
 export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGridProps) {
   const t = useTranslations('sites');
-  // Site has no `isActive`; treat a subsite as active when it has at least one active offer
-  // (matches the pattern used elsewhere, e.g. getLifetimeDeals).
-  const active = subsites.filter((s) => (s.offers ?? []).some((o) => o.isActive));
+  // child_sites carry their own `isActive` (offers aren't populated for them).
+  const active = subsites.filter((s) => s.isActive);
 
   if (active.length === 0) return null;
 
