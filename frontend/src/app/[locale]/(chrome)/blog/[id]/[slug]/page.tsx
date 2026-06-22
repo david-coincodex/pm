@@ -115,7 +115,7 @@ export default async function ArticlePage({ params }: Props) {
           {article.content && <RichText content={article.content} />}
 
           {/* FAQ — below the content, inside the main container */}
-          <FaqSection faqs={article.faqs} bare hideTitle />
+          <FaqSection faqs={article.faqs} bare />
         </SidebarLayout>
       </Container>
 

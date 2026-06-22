@@ -31,13 +31,6 @@ const TYPE_ORDER: NonNullable<Offer['offerType']>[] = [
   'lifetime',
 ];
 
-const OFFER_TYPE_LABEL: Record<string, string> = {
-  trial: 'trial',
-  monthly: 'monthly',
-  quarterly: 'quarterly',
-  yearly: 'yearly',
-  lifetime: 'lifetime',
-};
 
 interface DealBuyProps {
   offers: Offer[];
@@ -117,7 +110,9 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
             >
               {offer.offerKind === 'credits'
                 ? `${offer.credits} ${t('credits')}`
-                : t(OFFER_TYPE_LABEL[offer.offerType!] as Parameters<typeof t>[0])}
+                : offer.offerType && offer.offerType !== 'credits'
+                  ? t(offer.offerType)
+                  : ''}
             </button>
           ))}
         </div>

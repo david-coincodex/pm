@@ -47,7 +47,8 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
     for (const segment of segments) {
       accumulated += `/${segment}`;
       if (nonLinkableSegments.has(segment)) continue;
-      const key = segment as Parameters<typeof t.has>[0];
+      // `segment` is dynamic; t.has() guards existence, the cast satisfies the typed key param.
+      const key = segment as Parameters<typeof t>[0];
       const label = t.has(key) ? t(key) : humanize(segment);
       crumbs.push({ label, href: accumulated });
     }

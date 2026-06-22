@@ -44,6 +44,7 @@ function SubsiteTile({ subsite, siteSlug }: { subsite: Site; siteSlug: string })
 
 export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGridProps) {
   const t = useTranslations('sites');
+  // child_sites carry their own `isActive` (offers aren't populated for them).
   const active = subsites.filter((s) => s.isActive);
 
   if (active.length === 0) return null;
@@ -52,7 +53,7 @@ export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGri
   const visible = hasOverflow ? active.slice(0, 4) : active;
   const overflowCount = active.length - 4;
 
-  const previewNames = active.slice(0, 3).map((s) => s.name).join(', ');
+  const previewNames = active.slice(0, 5).map((s) => s.name).join(', ');
 
   return (
     <div className="mt-10">
@@ -62,8 +63,11 @@ export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGri
         Bonus Sites With This {siteName} Deal
       </h2>
 
-      <p className="mb-5 text-base text-slate-600 dark:text-slate-300">
+      <p className="mb-3 text-base text-slate-600 dark:text-slate-300">
         {t('bonusSitesDescription', { siteName, count: active.length, siteList: previewNames })}
+      </p>
+      <p className="mb-5 text-base text-slate-600 dark:text-slate-300">
+        {t('bonusSitesValue', { siteName })}
       </p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
