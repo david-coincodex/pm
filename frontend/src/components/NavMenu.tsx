@@ -57,7 +57,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
       {/* ── Desktop bar ─────────────────────────────────── */}
       <div className="hidden h-16 items-center gap-6 md:flex">
         <Link href={routes.home()} className="shrink-0 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-          Porn<span className="text-emerald-600">Mode</span>
+          Porn<span className="text-emerald-500">Mode</span>
         </Link>
 
         <nav className="flex items-center gap-6">
@@ -101,7 +101,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         {/* Center: logo (absolute center within this bar) */}
         <div className="absolute inset-x-0 flex justify-center pointer-events-none">
           <Link href={routes.home()} className="pointer-events-auto text-xl font-black tracking-tight text-slate-900 dark:text-white">
-            Porn<span className="text-emerald-600">Mode</span>
+            Porn<span className="text-emerald-500">Mode</span>
           </Link>
         </div>
 
@@ -140,7 +140,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         {/* Drawer header */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-5 dark:border-slate-800">
           <Link href={routes.home()} onClick={() => setDrawerOpen(false)} className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-            Porn<span className="text-emerald-600">Mode</span>
+            Porn<span className="text-emerald-500">Mode</span>
           </Link>
           <button
             type="button"

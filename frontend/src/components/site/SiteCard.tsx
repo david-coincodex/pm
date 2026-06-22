@@ -117,7 +117,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                     ${bestFullPrice.toFixed(2)}
                   </span>
                 )}
-                <span className={`text-base font-bold ${isDark ? 'text-emerald-600' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                <span className={`text-base font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   ${bestPrice.toFixed(2)}
                 </span>
               </>
@@ -139,7 +139,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
               </Link>
               <Link
                 href={routes.site(site.slug)}
-                className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+                className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
               >
                 {isCam ? t('getCredits') : t('buyNow')}
               </Link>
@@ -157,14 +157,14 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                   href={routes.offer(bestOfferId)}
                   target="_blank"
                   rel="nofollow noopener noreferrer"
-                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                 >
                   {isCam ? t('getCredits') : t('buyNow')}
                 </Link>
               ) : (
                 <Link
                   href={href}
-                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                 >
                   {isCam ? t('getCredits') : t('buyNow')}
                 </Link>

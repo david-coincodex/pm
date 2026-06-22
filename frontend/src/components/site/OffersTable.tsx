@@ -56,14 +56,14 @@ export default function OffersTable({ offers }: OffersTableProps) {
                     </td>
                     <td className="px-4 py-3">
                       {discountLabel(offer) && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-600/20 dark:text-emerald-400">
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                           {discountLabel(offer)}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {offer.allowsDownloads === true && (
-                        <svg className="h-4 w-4 text-emerald-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                           <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
                         </svg>
                       )}

@@ -46,13 +46,13 @@ export default function SectionTitle({
         {link && linkLabel && (
           <Link
             href={link}
-            className="shrink-0 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-400"
+            className="shrink-0 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             {linkLabel} →
           </Link>
         )}
       </div>
-      <div className="mt-3 h-1 w-12 rounded-full bg-emerald-600" />
+      <div className="mt-3 h-1 w-12 rounded-full bg-emerald-500" />
     </div>
   );
 }

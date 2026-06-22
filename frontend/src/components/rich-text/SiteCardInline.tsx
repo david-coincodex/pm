@@ -127,14 +127,14 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
               href={routes.offer(bestOffer.id)}
               target="_blank"
               rel="nofollow noopener noreferrer"
-              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
             </Link>
           ) : (
             <Link
               href={href}
-              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
             </Link>

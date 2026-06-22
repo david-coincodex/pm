@@ -134,7 +134,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
           </div>
         )}
         {discount !== null && discount > 0 && (
-          <div className="mt-3 inline-flex items-center rounded-full bg-emerald-600/10 px-3 py-1 text-sm font-semibold text-emerald-600 dark:bg-emerald-600/20 dark:text-emerald-400">
+          <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
             {t('percentOff', { percentage: discount })}
           </div>
         )}
@@ -146,7 +146,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         target="_blank"
         rel="nofollow noopener noreferrer"
         onClick={() => setShowUpsell(true)}
-        className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+        className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
       >
         {t('buyNow')}
       </Link>
@@ -168,7 +168,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         <ul className="mt-5 space-y-2">
           {dealIncludes.split('\n').map((item) => item.trim()).filter(Boolean).map((item, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
               </svg>
               {item}

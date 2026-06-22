@@ -114,7 +114,7 @@ export default function SidebarCarouselShell({ title, children }: SidebarCarouse
                 onClick={() => goTo(idx)}
                 className={`block h-1 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'w-6 bg-emerald-600'
+                    ? 'w-6 bg-emerald-500'
                     : 'w-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'
                 }`}
               />

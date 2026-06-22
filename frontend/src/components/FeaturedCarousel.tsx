@@ -36,7 +36,7 @@ export default async function FeaturedCarousel({ items, locale = 'en' }: Feature
     <section className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <span className="inline-block rounded-full bg-emerald-600/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-600">
+          <span className="inline-block rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-400">
             {t('eyebrow')}
           </span>
           <h2 className="mt-3 text-2xl font-bold text-white sm:text-3xl">{t('title')}</h2>
@@ -48,7 +48,7 @@ export default async function FeaturedCarousel({ items, locale = 'en' }: Feature
             <Link
               key={i}
               href={routes.site(item.site.slug)}
-              className="group flex-none w-[82vw] snap-start overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 transition-colors hover:border-emerald-700 sm:w-[44vw] lg:flex-1 lg:w-auto"
+              className="group flex-none w-[82vw] snap-start overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 transition-colors hover:border-emerald-500 sm:w-[44vw] lg:flex-1 lg:w-auto"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-slate-700">
                 {item.site.coverUrl ? (
@@ -68,7 +68,7 @@ export default async function FeaturedCarousel({ items, locale = 'en' }: Feature
                   </div>
                 )}
                 {item.discountPercent !== undefined && (
-                  <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white shadow">
+                  <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-3 py-1 text-sm font-bold text-white shadow">
                     {item.discountPercent}%
                   </span>
                 )}
@@ -81,7 +81,7 @@ export default async function FeaturedCarousel({ items, locale = 'en' }: Feature
                 {item.bestPrice !== undefined && (
                   <div className="mt-3 flex items-center gap-1.5">
                     <span className="text-xs text-slate-500">{t('from')}</span>
-                    <span className="text-base font-bold text-emerald-600">
+                    <span className="text-base font-bold text-emerald-400">
                       {item.currency} {item.bestPrice.toFixed(2)}
                     </span>
                   </div>

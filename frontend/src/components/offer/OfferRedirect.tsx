@@ -97,7 +97,7 @@ export default function OfferRedirect({ offer }: OfferRedirectProps) {
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
-            className="text-emerald-600 transition-[stroke-dashoffset] duration-1000 ease-linear"
+            className="text-emerald-500 transition-[stroke-dashoffset] duration-1000 ease-linear"
           />
         </svg>
         <span className="text-4xl font-extrabold tabular-nums text-slate-900 dark:text-white">
@@ -111,7 +111,7 @@ export default function OfferRedirect({ offer }: OfferRedirectProps) {
           href={offer.affiliateLink}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="rounded-xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
+          className="rounded-xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
         >
           {t('goNow')}
         </a>
