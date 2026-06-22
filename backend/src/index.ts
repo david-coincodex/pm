@@ -17,6 +17,35 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: any }) {
+    // Grant the Public role read access (find/findOne) on every api:: content type. The frontend
+    // fetches Strapi anonymously (no token), so on a fresh DB the Public role has no permissions
+    // and every request returns 403 → SSR crashes with "Forbidden". Idempotent + non-destructive:
+    // only missing permissions are created, so manual changes / already-configured DBs are untouched.
+    try {
+      const publicRole = await strapi
+        .query('plugin::users-permissions.role')
+        .findOne({ where: { type: 'public' }, populate: { permissions: true } });
+      if (publicRole) {
+        const existing = new Set((publicRole.permissions ?? []).map((p: any) => p.action));
+        const apiUids = Object.keys(strapi.contentTypes).filter((uid: string) => uid.startsWith('api::'));
+        let created = 0;
+        for (const uid of apiUids) {
+          for (const verb of ['find', 'findOne']) {
+            const action = `${uid}.${verb}`;
+            if (!existing.has(action)) {
+              await strapi
+                .query('plugin::users-permissions.permission')
+                .create({ data: { action, role: publicRole.id } });
+              created++;
+            }
+          }
+        }
+        if (created) strapi.log.info(`[bootstrap] Granted ${created} public read permission(s).`);
+      }
+    } catch (error) {
+      strapi.log.warn(`[bootstrap] Could not grant public permissions: ${(error as Error).message}`);
+    }
+
     // `overallScore` and `displayTitle` are auto-computed (see review lifecycles).
     // Strapi hardcodes `editable: true` in field metadata and has no schema flag
     // for read-only, so we enforce it on the stored content-manager configuration
