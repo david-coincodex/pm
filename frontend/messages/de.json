@@ -75,7 +75,8 @@
     "aiSpotlightEyebrow": "AI-Porno-Angebote",
     "vrSpotlightEyebrow": "VR-Porno-Angebote",
     "empty": "Keine Websites gefunden.",
-    "bonusSitesDescription": "Deine {siteName}-Mitgliedschaft schaltet {count} Bonus-Websites frei, darunter {siteList} — alles ist im selben Abo enthalten.",
+    "bonusSitesDescription": "Eine {siteName}-Mitgliedschaft schaltet weit mehr als nur eine Seite frei — dasselbe Abo gibt dir vollen Zugriff auf alle {count} Seiten im {siteName}-Netzwerk, darunter {siteList} und viele mehr.",
+    "bonusSitesValue": "Jede Bonus-Seite unten ist in deinem {siteName}-Angebot enthalten, sodass ein einziger Preis die gesamte Sammlung abdeckt — keine separaten Anmeldungen und keine zusätzlichen Gebühren.",
     "liveSexDeals": "Live-Sex-Angebote"
   },
   "footer": {
