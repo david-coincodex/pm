@@ -48,7 +48,7 @@ function PriceTag({ price, fullPrice }: { price?: number; fullPrice?: number | n
   return (
     <div className="flex items-center gap-2">
       {discount && (
-        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+        <span className="rounded bg-emerald-600/10 px-1.5 py-0.5 text-xs font-bold text-emerald-600 dark:bg-emerald-600/25 dark:text-emerald-400">
           {discount}%
         </span>
       )}

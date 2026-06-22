@@ -82,7 +82,7 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
         {displayed.map((img, i) => (
           <button
             key={img.id}
-            className={`relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${getGridClasses(displayed.length, i)}`}
+            className={`relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${getGridClasses(displayed.length, i)}`}
             onClick={() => setLightboxIndex(i)}
             aria-label={img.alternativeText ?? `Image ${i + 1}`}
           >

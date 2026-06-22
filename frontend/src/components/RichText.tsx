@@ -20,7 +20,7 @@ const ELEMENT_CLASSES: Record<string, string> = {
   ol: 'list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300',
   li: 'text-slate-700 dark:text-slate-300',
   a: 'text-emerald-600 hover:underline dark:text-emerald-400',
-  blockquote: 'border-l-4 border-emerald-400 pl-4 italic text-slate-600 dark:border-emerald-600 dark:text-slate-400',
+  blockquote: 'border-l-4 border-emerald-600 pl-4 italic text-slate-600 dark:border-emerald-600 dark:text-slate-400',
   code: 'rounded bg-slate-100 px-1 py-0.5 font-mono text-sm dark:bg-slate-800',
   pre: 'overflow-x-auto rounded-lg bg-slate-100 p-4 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200',
   img: 'rounded-lg max-w-full h-auto',
@@ -33,7 +33,7 @@ const ELEMENT_CLASSES: Record<string, string> = {
 // we map it to Tailwind utilities at render — no bespoke CSS and no descendant selector that
 // could leak into nested components. (Literal here so Tailwind generates these utilities.)
 const RT_BUTTON_CLASSES =
-  'inline-flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white no-underline transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600';
+  'inline-flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white no-underline transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-600 dark:hover:bg-emerald-600';
 
 function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, widgetData: WidgetData, locale: string) {
   if (!(domNode instanceof Element)) return;

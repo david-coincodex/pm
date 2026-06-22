@@ -28,13 +28,13 @@ interface ReviewScoreCardProps {
 }
 
 function scoreBarColor(score: number): string {
-  if (score >= 8) return 'bg-emerald-500';
+  if (score >= 8) return 'bg-emerald-600';
   if (score >= 6) return 'bg-amber-400';
   return 'bg-red-400';
 }
 
 function scoreColor(score: number): string {
-  if (score >= 8) return '#10b981'; // emerald-500
+  if (score >= 8) return '#059669'; // emerald-600 (brand green)
   if (score >= 6) return '#f59e0b'; // amber-400
   return '#ef4444'; // red-400
 }
@@ -109,7 +109,7 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
         <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
           {discountPercent != null && discountPercent > 0 && (
             <div className="mb-2 flex justify-center">
-              <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white dark:bg-emerald-500">
+              <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white dark:bg-emerald-600">
                 {td('percentOff', { percentage: discountPercent })}
               </span>
             </div>
@@ -138,7 +138,7 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
               href={routes.offer(bestOffer.id)}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow transition hover:bg-emerald-500"
+              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow transition hover:bg-emerald-700"
             >
               {t('buyNow')}
             </Link>

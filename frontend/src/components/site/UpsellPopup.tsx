@@ -52,7 +52,7 @@ export default function UpsellPopup({ open, onClose }: UpsellPopupProps) {
 
       {phase === 'thanks' && (
         <div className="text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-600/20 dark:text-emerald-400">
             <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
             </svg>
@@ -63,7 +63,7 @@ export default function UpsellPopup({ open, onClose }: UpsellPopupProps) {
           <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
             {t('description')}
           </p>
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+          <div className="mb-4 rounded-xl border border-emerald-600/20 bg-emerald-600/5 p-4 dark:border-emerald-600/40 dark:bg-emerald-600/15">
             <p className="text-base font-bold text-slate-900 dark:text-white">
               {t('dealName')}
             </p>
@@ -74,14 +74,14 @@ export default function UpsellPopup({ open, onClose }: UpsellPopupProps) {
               <span className="text-sm text-slate-400 line-through">
                 {t('dealOriginalPrice')}
               </span>
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+              <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-600/25 dark:text-emerald-400">
                 {t('dealDiscount')}
               </span>
             </div>
           </div>
           <a
             href="/adult-time/"
-            className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-3.5 text-base font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+            className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-3.5 text-base font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-600 dark:hover:bg-emerald-600"
           >
             {t('claimDeal')}
           </a>

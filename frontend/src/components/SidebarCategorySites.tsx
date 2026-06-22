@@ -137,7 +137,7 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                       href={routes.offer(bestOffer.id)}
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-center text-xs font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                      className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-center text-xs font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-600"
                     >
                       {isInCamCategory ? t('getCredits') : t('buyNow')}
                     </Link>
