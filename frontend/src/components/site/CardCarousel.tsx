@@ -10,6 +10,8 @@ interface CardCarouselProps {
   /** Number of cards — drives the mobile dot indicator. */
   count: number;
   variant?: 'light' | 'dark';
+  /** Tailwind bg class(es) for the active dot. Defaults to the brand green. */
+  activeDotClassName?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ interface CardCarouselProps {
  * A dot indicator below tracks the active card and lets users tap to jump.
  * Desktop (lg+): the inner row becomes a static CSS grid (no scroll, no dots).
  */
-export default function CardCarousel({ children, columns, count, variant }: CardCarouselProps) {
+export default function CardCarousel({ children, columns, count, variant, activeDotClassName }: CardCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
@@ -29,11 +31,14 @@ export default function CardCarousel({ children, columns, count, variant }: Card
       raf = 0;
       const cards = Array.from(el.children) as HTMLElement[];
       if (!cards.length) return;
-      const viewportCenter = el.scrollLeft + el.clientWidth / 2;
+      // Use viewport coords (getBoundingClientRect) for both scroller and cards so the
+      // math is independent of offsetParent — offsetLeft breaks when an ancestor is positioned.
+      const viewportCenter = el.getBoundingClientRect().left + el.clientWidth / 2;
       let idx = 0;
       let best = Infinity;
       cards.forEach((c, i) => {
-        const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - viewportCenter);
+        const r = c.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - viewportCenter);
         if (d < best) {
           best = d;
           idx = i;
@@ -82,7 +87,7 @@ export default function CardCarousel({ children, columns, count, variant }: Card
               onClick={() => scrollToCard(i)}
               className={`h-2 rounded-full transition-all ${
                 i === active
-                  ? 'w-5 bg-emerald-600 dark:bg-emerald-400'
+                  ? `w-5 ${activeDotClassName ?? 'bg-emerald-600 dark:bg-emerald-400'}`
                   : `w-2 ${isDark ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'}`
               }`}
             />

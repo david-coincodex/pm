@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { getCategoryWithSites, strapiMediaUrl, getDiscountPercent } from '@/lib/strapi';
 import Container from '@/components/Container';
+import CardCarousel from '@/components/site/CardCarousel';
 import { routes } from '@/lib/routes';
 import { themes, type SpotlightTheme } from '@/lib/themes';
 
@@ -55,61 +56,67 @@ export default async function CategorySpotlight({ categorySlug, eyebrow, theme =
           </div>
 
           {/* Right: deal cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:w-3/5">
-            {category.sites.map((site) => {
-              const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
-              const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
-              const bestOffer = sorted[0];
-              const discountPercent = bestOffer ? getDiscountPercent(bestOffer) : null;
-              const image = site.cover_image ?? site.logo;
+          <div className="lg:w-3/5">
+            <CardCarousel columns={3} count={category.sites.length} variant="dark" activeDotClassName={c.progressBar}>
+              {category.sites.map((site) => {
+                const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
+                const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
+                const bestOffer = sorted[0];
+                const discountPercent = bestOffer ? getDiscountPercent(bestOffer) : null;
+                const image = site.cover_image ?? site.logo;
 
-              return (
-                <Link
-                  key={site.id}
-                  href={routes.site(site.slug)}
-                  className={`group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition ${c.cardHover} hover:bg-white/10`}
-                >
-                  {/* Cover */}
-                  <div className="relative aspect-video w-full overflow-hidden bg-slate-800">
-                    {image ? (
-                      <Image
-                        src={strapiMediaUrl(image)}
-                        alt={image.alternativeText ?? site.name}
-                        width={image.width}
-                        height={image.height}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-80"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                return (
+                  <div
+                    key={site.id}
+                    className="w-[85%] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-auto"
+                  >
+                    <Link
+                      href={routes.site(site.slug)}
+                      className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition ${c.cardHover} hover:bg-white/10`}
+                    >
+                      {/* Cover */}
+                      <div className="relative aspect-video w-full overflow-hidden bg-slate-800">
+                        {image ? (
+                          <Image
+                            src={strapiMediaUrl(image)}
+                            alt={image.alternativeText ?? site.name}
+                            width={image.width}
+                            height={image.height}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-80"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-slate-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                        {discountPercent !== null && (
+                          <span className={`absolute right-2 top-2 rounded-full ${c.discountBadge} px-2 py-1 text-xs font-bold text-white shadow`}>
+                            {discountPercent}%
+                          </span>
+                        )}
                       </div>
-                    )}
-                    {discountPercent !== null && (
-                      <span className={`absolute right-2 top-2 rounded-full ${c.discountBadge} px-2 py-1 text-xs font-bold text-white shadow`}>
-                        {discountPercent}%
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Info */}
-                  <div className="flex flex-1 flex-col gap-1 p-3">
-                    <p className="text-sm font-semibold text-white transition-colors group-hover:text-white/80">
-                      {site.name}
-                    </p>
-                    {bestOffer && (
-                      <p className="text-xs text-slate-400">
-                        {t('from')}{' '}
-                        <span className={`font-bold ${c.accentText}`}>
-                          ${bestOffer.price.toFixed(2)}
-                        </span>
-                      </p>
-                    )}
+                      {/* Info */}
+                      <div className="flex flex-1 flex-col gap-1 p-3">
+                        <p className="text-sm font-semibold text-white transition-colors group-hover:text-white/80">
+                          {site.name}
+                        </p>
+                        {bestOffer && (
+                          <p className="text-xs text-slate-400">
+                            {t('from')}{' '}
+                            <span className={`font-bold ${c.accentText}`}>
+                              ${bestOffer.price.toFixed(2)}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </Link>
                   </div>
-                </Link>
-              );
-            })}
+                );
+              })}
+            </CardCarousel>
           </div>
         </div>
       </Container>

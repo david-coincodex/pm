@@ -69,7 +69,7 @@ export default async function BundleCard({ bundle, locale = 'en' }: BundleCardPr
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-slate-900 group-hover:underline dark:text-white">{bundle.name}</h3>
+            <h3 className="min-w-0 flex-1 truncate font-semibold text-slate-900 group-hover:underline dark:text-white">{bundle.name}</h3>
             <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
               {totalSites} {t('sites')}
             </span>

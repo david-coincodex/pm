@@ -35,10 +35,10 @@ export default function ArticleHeroGrid({ articles, locale, blogBase, hero = tru
   const gridArticles = hero ? rest.slice(3) : articles;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3 sm:gap-6">
       {/* Hero row: 1 big + 3 sidebar (page 1 only) */}
       {hero && (
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
         {/* Featured — spans 2 cols */}
         <Link
           href={`${blogBase}/${featured.id}/${featured.slug}`}
@@ -127,40 +127,50 @@ export default function ArticleHeroGrid({ articles, locale, blogBase, hero = tru
       </div>
       )}
 
-      {/* Regular card grid (all articles on page 2+, overflow on page 1) */}
+      {/* Regular card grid (all articles on page 2+, overflow on page 1).
+          Mobile: horizontal cards matching the featured sidebar above (image left, text right).
+          sm+: vertical cards in a 2/4-column grid. */}
       {gridArticles.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {gridArticles.map((article) => (
             <Link
               key={article.id}
               href={`${blogBase}/${article.id}/${article.slug}`}
-              className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+              className="group flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:flex-col"
             >
-              <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-700">
+              {/* Image: mobile = fixed-width side; sm+ = full-width aspect-video top */}
+              <div className="relative w-28 shrink-0 self-stretch overflow-hidden bg-slate-100 dark:bg-slate-700 sm:aspect-video sm:w-full sm:self-auto">
                 {article.coverImage ? (
                   <Image
                     src={strapiMediaUrl(article.coverImage)}
                     alt={article.coverImage.alternativeText ?? article.title}
                     fill
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 112px, (max-width: 1024px) 50vw, 25vw"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">
-                    <PlaceholderIcon className="h-8 w-8" />
+                    <PlaceholderIcon className="h-7 w-7 sm:h-8 sm:w-8" />
                   </div>
                 )}
+                {/* sm+ only: emerald badge overlaid on the cover */}
                 {article.categories?.[0] && (
-                  <span className="absolute left-2 top-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="absolute left-2 top-2 hidden rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white sm:block">
                     {article.categories[0].name}
                   </span>
                 )}
               </div>
-              <div className="flex flex-1 flex-col gap-1 p-3">
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-3 sm:justify-start sm:gap-1">
+                {/* Mobile only: inline badge chip, matching the sidebar cards */}
+                {article.categories?.[0] && (
+                  <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 sm:hidden">
+                    {article.categories[0].name}
+                  </span>
+                )}
                 <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 transition-colors group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-400">
                   {article.title}
                 </h3>
-                <p className="mt-auto pt-1 text-xs text-slate-400 dark:text-slate-500">
+                <p className="pt-1 text-xs text-slate-400 dark:text-slate-500 sm:mt-auto">
                   {article.publishedAt ? formatDate(article.publishedAt, locale) : ''}
                 </p>
               </div>

@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import type { Bundle } from '@/lib/strapi';
 import BundleCard from '@/components/bundle/BundleCard';
+import CardCarousel from '@/components/site/CardCarousel';
 import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 
@@ -49,11 +50,16 @@ export default async function SiteBundlesSection({
           <p className="mt-2 text-base text-slate-300">{subtitle}</p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <CardCarousel columns={3} count={bundles.length} variant="dark">
           {bundles.map((bundle) => (
-            <BundleCard key={bundle.id} bundle={bundle} locale={locale} />
+            <div
+              key={bundle.id}
+              className="w-[85%] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-auto"
+            >
+              <BundleCard bundle={bundle} locale={locale} />
+            </div>
           ))}
-        </div>
+        </CardCarousel>
 
         <div className="mt-8 text-center">
           <Link
