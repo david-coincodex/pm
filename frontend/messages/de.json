@@ -236,7 +236,8 @@
     "reviewTitle": "{name}-Testbericht",
     "featuredSites": "Empfohlene Sites",
     "partOf": "Teil von {name}",
-    "percentOff": "{percentage}% Rabatt"
+    "percentOff": "{percentage}% Rabatt",
+    "off": "Rabatt"
   },
   "blog": {
     "empty": "Noch keine Artikel veröffentlicht.",

@@ -1,5 +1,6 @@
 'use client';
 
+import { type MouseEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
@@ -25,6 +26,12 @@ export default function OffersTable({ offers }: OffersTableProps) {
     return pct ? `${pct}%` : null;
   };
 
+  // Make the whole row clickable by triggering its own offer link (keeps locale, new tab, rel).
+  const handleRowClick = (e: MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).closest('a')) return; // let direct link clicks through
+    e.currentTarget.querySelector('a')?.click();
+  };
+
   return (
     <div className="space-y-6 mt-8">
       {/* Subscription offers table */}
@@ -33,10 +40,10 @@ export default function OffersTable({ offers }: OffersTableProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
+                <tr className="whitespace-nowrap border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
                   <th className="px-4 py-3">{t('offerType')}</th>
-                  <th className="px-4 py-3">{t('price')}</th>
-                  <th className="px-4 py-3">{t('regularPrice')}</th>
+                  <th className="px-4 py-3 text-right">{t('price')}</th>
+                  <th className="px-4 py-3 text-right">{t('regularPrice')}</th>
                   <th className="px-4 py-3">{t('discount')}</th>
                   <th className="px-4 py-3">{t('allowsDownloads')}</th>
                   <th className="px-4 py-3"></th>
@@ -44,14 +51,14 @@ export default function OffersTable({ offers }: OffersTableProps) {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {subscriptionOffers.map((offer) => (
-                  <tr key={offer.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                  <tr key={offer.id} onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-white capitalize">
                       {offer.offerType && offer.offerType !== 'credits' ? t(offer.offerType) : ''}
                     </td>
-                    <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                       ${offer.price.toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 text-slate-400 line-through">
+                    <td className="px-4 py-3 text-right text-slate-400 line-through">
                       {offer.full_price ? `$${offer.full_price.toFixed(2)}` : '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -73,7 +80,7 @@ export default function OffersTable({ offers }: OffersTableProps) {
                         href={routes.offer(offer.id)}
                         target="_blank"
                         rel="nofollow noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,16 +111,16 @@ export default function OffersTable({ offers }: OffersTableProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
-                  <th className="px-4 py-3">{t('price')}</th>
+                <tr className="whitespace-nowrap border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
+                  <th className="px-4 py-3 text-right">{t('price')}</th>
                   <th className="px-4 py-3">{t('credits')}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {creditsOffers.map((offer) => (
-                  <tr key={offer.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
+                  <tr key={offer.id} onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                    <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                       ${offer.price.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
@@ -124,7 +131,7 @@ export default function OffersTable({ offers }: OffersTableProps) {
                         href={routes.offer(offer.id)}
                         target="_blank"
                         rel="nofollow noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

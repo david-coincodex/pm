@@ -236,7 +236,8 @@
     "reviewTitle": "{name} Review",
     "featuredSites": "Featured Sites",
     "partOf": "Part of {name}",
-    "percentOff": "{percentage}% off"
+    "percentOff": "{percentage}% off",
+    "off": "off"
   },
   "blog": {
     "empty": "No articles published yet.",

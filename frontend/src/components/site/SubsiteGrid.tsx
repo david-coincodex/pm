@@ -13,12 +13,12 @@ interface SubsiteGridProps {
   siteSlug: string;
 }
 
-function SubsiteTile({ subsite, siteSlug }: { subsite: Site; siteSlug: string }) {
+function SubsiteTile({ subsite, siteSlug, className = '' }: { subsite: Site; siteSlug: string; className?: string }) {
   const image = subsite.logo ?? subsite.cover_image;
   return (
     <Link
       href={routes.subsite(siteSlug, subsite.slug)}
-      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-center transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+      className={`flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-center transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800 ${className}`}
     >
       <div className="relative aspect-[3/2] w-full overflow-hidden rounded-t-xl bg-slate-100 dark:bg-slate-700">
         {image ? (
@@ -49,9 +49,11 @@ export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGri
 
   if (active.length === 0) return null;
 
-  const hasOverflow = active.length > 5;
-  const visible = hasOverflow ? active.slice(0, 4) : active;
-  const overflowCount = active.length - 4;
+  const total = active.length;
+  // Desktop: up to 5 tiles (more box when > 5 → 4 + more). Mobile: up to 4 (more box when > 4 → 3 + more).
+  const desktopOverflow = total > 5;
+  const mobileOverflow = total > 4;
+  const visible = desktopOverflow ? active.slice(0, 4) : active.slice(0, 5);
 
   const previewNames = active.slice(0, 5).map((s) => s.name).join(', ');
 
@@ -71,18 +73,24 @@ export default function SubsiteGrid({ subsites, siteName, siteSlug }: SubsiteGri
       </p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-        {visible.map((subsite) => (
-          <SubsiteTile key={subsite.id} subsite={subsite} siteSlug={siteSlug} />
+        {visible.map((subsite, i) => (
+          <SubsiteTile
+            key={subsite.id}
+            subsite={subsite}
+            siteSlug={siteSlug}
+            className={mobileOverflow && i >= 3 ? 'max-sm:hidden' : ''}
+          />
         ))}
-        {hasOverflow && (
+        {mobileOverflow && (
           <PopoverSheet
-            title={`All ${active.length} Bonus Sites`}
+            title={`All ${total} Bonus Sites`}
             trigger={
               <button
                 type="button"
-                className="flex h-full min-h-[5rem] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-400 dark:hover:bg-slate-700"
+                className={`flex h-full min-h-[5rem] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xl font-bold text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-400 dark:hover:bg-slate-700${desktopOverflow ? '' : ' sm:hidden'}`}
               >
-                +{overflowCount}
+                <span className="sm:hidden">+{total - 3}</span>
+                <span className="hidden sm:inline">+{total - 4}</span>
               </button>
             }
           >

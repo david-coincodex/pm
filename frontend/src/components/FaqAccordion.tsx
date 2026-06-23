@@ -16,7 +16,7 @@ export default function FaqAccordion({ items }: { items: Faq[] }) {
     <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
       {items.map((faq) => (
         <details key={faq.id} className="group" open={!collapsed}>
-          <summary className="flex cursor-pointer items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-slate-900 dark:text-white [&::-webkit-details-marker]:hidden">
             {faq.question}
             <svg
               className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-open:rotate-180"

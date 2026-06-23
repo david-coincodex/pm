@@ -81,7 +81,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
   const isCredits = selected.offerKind === 'credits';
 
   return (
-    <div className="rounded-none border-y border-slate-200 bg-white px-0 py-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
+    <div className="relative rounded-none border-b border-slate-200 bg-white px-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
       {/* Parent site tag */}
       {parentSite && (
         <div className="mb-4 flex justify-center">
@@ -94,9 +94,20 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         </div>
       )}
 
-      {/* Offer selector */}
+      {/* Discount badge — floated in the top-right corner so it doesn't add height to the options row */}
+      {discount !== null && discount > 0 && (
+        <span
+          className="absolute right-0 top-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-emerald-100 px-4 py-2 leading-none text-emerald-700 md:right-6 md:top-6 dark:bg-emerald-900/30 dark:text-emerald-400"
+          aria-label={t('percentOff', { percentage: discount })}
+        >
+          <span className="text-2xl font-extrabold">{discount}%</span>
+          <span className="mt-0.5 text-xs font-semibold uppercase tracking-wide">{t('off')}</span>
+        </span>
+      )}
+
+      {/* Offer options — reserve right space for the floated discount badge */}
       {allSorted.length > 1 && (
-        <div className="mb-5 flex flex-wrap justify-center gap-2">
+        <div className={`mb-4 flex flex-wrap gap-2${discount !== null && discount > 0 ? ' pr-28' : ''}`}>
           {allSorted.map((offer) => (
             <button
               key={offer.id}
@@ -118,24 +129,19 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         </div>
       )}
 
-      {/* Price display */}
-      <div className="mb-6 text-center">
+      {/* Price: "From <full price>" then the discounted price */}
+      <div className="mb-6">
+        {!isCredits && fullPrice > selected.price && (
+          <div className="mb-1 text-sm text-slate-400">
+            {t('from')} <span className="line-through">${fullPrice.toFixed(2)}</span>
+          </div>
+        )}
         <div className="text-5xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
           ${selected.price.toFixed(2)}
         </div>
         {isCredits && selected.credits && (
-          <div className="mt-2 text-base font-semibold text-slate-700 dark:text-slate-200">
+          <div className="mt-1 text-base font-semibold text-slate-700 dark:text-slate-200">
             {selected.credits} {t('credits')}
-          </div>
-        )}
-        {!isCredits && fullPrice > selected.price && (
-          <div className="mt-2 text-sm text-slate-400 line-through">
-            ${fullPrice.toFixed(2)}
-          </div>
-        )}
-        {discount !== null && discount > 0 && (
-          <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            {t('percentOff', { percentage: discount })}
           </div>
         )}
       </div>
@@ -165,7 +171,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
 
       {/* Deal includes */}
       {dealIncludes && (
-        <ul className="mt-5 space-y-2">
+        <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-1">
           {dealIncludes.split('\n').map((item) => item.trim()).filter(Boolean).map((item, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
               <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

@@ -23,8 +23,23 @@ export default function PopoverSheet({ trigger, title, children, forceOpen, onCl
   const open = isControlled ? forceOpen : internalOpen;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [render, setRender] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Mount immediately on open then animate in; on close, animate out before unmounting.
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => setShow(true)); });
+      return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+    }
+    setShow(false);
+    const id = setTimeout(() => setRender(false), 200);
+    return () => clearTimeout(id);
+  }, [open]);
 
   const close = useCallback(() => {
     if (isControlled) {
@@ -62,17 +77,17 @@ export default function PopoverSheet({ trigger, title, children, forceOpen, onCl
     <div ref={wrapRef} className={triggerNode ? 'relative inline-block' : ''}>
       {triggerNode && <div className="h-full" onClick={toggle}>{triggerNode}</div>}
 
-      {open && mounted && createPortal(
+      {render && mounted && createPortal(
         <>
           {/* Overlay */}
           <div
-            className="fixed inset-0 z-40 bg-black/50 md:bg-black/40 md:backdrop-blur-sm"
+            className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-200 motion-reduce:transition-none md:bg-black/40 ${show ? 'opacity-100' : 'opacity-0'}`}
             onClick={close}
             aria-hidden="true"
           />
 
           {/* ── Mobile: bottom sheet ── */}
-          <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-2xl border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 md:hidden">
+          <div className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-2xl border-t border-slate-200 bg-white transition-transform duration-200 ease-out motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 md:hidden ${show ? 'translate-y-0' : 'translate-y-full'}`}>
             <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
             {title && (
               <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
@@ -100,7 +115,7 @@ export default function PopoverSheet({ trigger, title, children, forceOpen, onCl
             onClick={close}
           >
             <div
-              className="flex max-h-[80vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+              className={`flex max-h-[80vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition duration-150 ease-out motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 ${show ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
               onClick={(e) => e.stopPropagation()}
             >
               {title && (
