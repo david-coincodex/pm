@@ -1,4 +1,5 @@
 import SiteCard from './SiteCard';
+import CardCarousel from './CardCarousel';
 import { Site } from '@/lib/strapi';
 import { getTranslations } from 'next-intl/server';
 
@@ -44,18 +45,14 @@ export default async function SiteCardRow({
   }
 
   return (
-    // Mobile/tablet: flex row with horizontal scroll
-    // Desktop (lg+): switches to CSS grid — inline style sets column count dynamically
-    <div
-      className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3
-                 lg:grid lg:snap-none lg:overflow-visible lg:pb-0 lg:gap-6"
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-    >
+    // Mobile/tablet: snap-scroll one card per swipe (peek of the next) + dot indicator.
+    // Desktop (lg+): CardCarousel's inner row becomes a CSS grid (no scroll/dots).
+    <CardCarousel columns={columns} count={items.length} variant={variant}>
       {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review }) => (
-        // Mobile: 1 full card + peek  |  sm: 2 equal cards  |  lg: auto (grid takes over)
+        // Mobile: ~1 card + a bit more peek  |  sm: 2 equal cards  |  lg: auto (grid takes over)
         <div
           key={site.id}
-          className="w-[calc(100%-2.5rem)] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-auto"
+          className="w-[85%] shrink-0 snap-start sm:w-[calc(50%-0.5rem)] lg:w-auto"
         >
           <SiteCard
             site={site}
@@ -69,6 +66,6 @@ export default async function SiteCardRow({
           />
         </div>
       ))}
-    </div>
+    </CardCarousel>
   );
 }
