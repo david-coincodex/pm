@@ -73,7 +73,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Container>
+      <Container padded={false}>
         <ol className="flex items-center gap-1.5 text-sm">
           {crumbs.map((crumb, i) => {
             const isLast = i === crumbs.length - 1;

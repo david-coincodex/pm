@@ -35,7 +35,7 @@ export default async function SaleHero({ sale }: SaleHeroProps) {
         style={{ backgroundColor: sale.themeColor + '18' }}
       />
 
-      <Container className="relative">
+      <Container className="relative" padded={false}>
         {/* Title + description + countdown */}
         <div className="mb-10 flex flex-col items-center gap-4 text-center">
           {sale.badgeLabel && (

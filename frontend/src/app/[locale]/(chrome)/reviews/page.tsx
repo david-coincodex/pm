@@ -47,7 +47,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Container className="py-10 lg:py-14">
+      <Container>
         <SectionTitle as="h1" title={tSeo('reviews.pageTitle')} subtitle={tSeo('reviews.pageSubtitle')} />
         <SiteCardGrid
           items={reviewsWithSite.map((review) => ({

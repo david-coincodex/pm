@@ -70,7 +70,7 @@ export default async function ArticlePage({ params }: Props) {
         { label: tBc('blog'), href: routes.blog() },
         { label: article.title, href: routes.blogArticle(id, article.slug) },
       ]} />
-      <Container className="py-10 lg:py-14">
+      <Container>
         <SidebarLayout
           reversed
           sidebar={
@@ -121,7 +121,7 @@ export default async function ArticlePage({ params }: Props) {
 
       {relatedArticles.length > 0 && (
         <section className="pt-0 pb-10 lg:pb-14">
-          <Container>
+          <Container padded={false}>
             <SectionTitle title={t('peopleAlsoRead')} link={blogBase} linkLabel={t('viewAll')} />
             <ArticleHeroGrid articles={relatedArticles} locale={locale} blogBase={blogBase} />
           </Container>

@@ -160,7 +160,7 @@ export default async function ReviewDetailPage({ params }: Props) {
         { label: tBc('reviews'), href: routes.reviews() },
         { label: site.name, href: routes.review(slug) },
       ]} />
-      <Container className="py-10 lg:py-14">
+      <Container>
       <SidebarLayout
         sidebar={sidebar}
         header={<SidebarLayoutHeader title={tSeo('reviews.reviewTitle', { name: site.name })} description={review.description} />}
@@ -195,7 +195,7 @@ export default async function ReviewDetailPage({ params }: Props) {
     </Container>
 
       {relatedReviews.length > 0 && (
-        <Container className="pt-0 pb-10 lg:pb-14">
+        <Container className="pt-0 pb-10 lg:pb-14" padded={false}>
           <div>
             <SectionTitle title={t('alsoRead')} />
             <SiteCardGrid

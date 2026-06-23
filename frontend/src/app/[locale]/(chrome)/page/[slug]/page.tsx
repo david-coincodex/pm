@@ -36,7 +36,7 @@ export default async function CmsPage({ params }: Props) {
       <BreadcrumbsSetter crumbs={[
         { label: cmsPage.h1 ?? cmsPage.title, href: routes.page(slug) },
       ]} />
-      <Container className="py-10 lg:py-14">
+      <Container>
       <SidebarLayout reversed sidebar={<div />}>
         <h1 className="mb-8 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           {cmsPage.h1 ?? cmsPage.title}

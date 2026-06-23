@@ -81,7 +81,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       ]} />
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Container className="py-10 lg:py-14">
+      <Container>
         <SidebarLayout
           reversed
           sidebar={

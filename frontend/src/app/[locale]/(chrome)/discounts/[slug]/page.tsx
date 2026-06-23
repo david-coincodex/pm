@@ -151,7 +151,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
     <BreadcrumbsSetter crumbs={[
       { label: site.name, href: routes.site(slug) },
     ]} />
-    <Container className="py-10 lg:py-14">
+    <Container>
       <TrackSiteView site={{
         slug: site.slug,
         name: site.name,

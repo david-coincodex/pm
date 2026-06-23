@@ -99,7 +99,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
         { label: author.name, href: routes.blogAuthor(slug) },
       ]} />
 
-      <Container className="py-10 lg:py-14">
+      <Container>
         <SidebarLayout
           reversed
           sidebar={

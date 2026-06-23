@@ -14,7 +14,7 @@ export default async function CategoryGrid() {
 
   return (
     <section className="py-10 lg:py-14">
-      <Container>
+      <Container padded={false}>
         <SectionTitle
           title={t('title')}
           tag={t('eyebrow')}

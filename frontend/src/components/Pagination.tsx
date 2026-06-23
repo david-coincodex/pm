@@ -58,7 +58,10 @@ export default async function Pagination({ currentPage, totalPages, basePath = '
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const pages = paginationRange(currentPage, totalPages);
+  // Fewer page numbers on mobile (no sibling window) so the bar fits narrow screens;
+  // a richer window on sm+.
+  const mobilePages = paginationRange(currentPage, totalPages, 0);
+  const desktopPages = paginationRange(currentPage, totalPages, 1);
 
   const linkBase =
     'inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors';
@@ -67,41 +70,46 @@ export default async function Pagination({ currentPage, totalPages, basePath = '
   const disabledStyle = `${linkBase} border border-slate-100 bg-white text-slate-300 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600`;
   const dotsStyle = `${linkBase} text-slate-400 dark:text-slate-500 pointer-events-none select-none`;
 
+  const renderPages = (pages: (number | typeof DOTS)[]) =>
+    pages.map((page, i) =>
+      page === DOTS ? (
+        <span key={`dots-${i}`} className={dotsStyle} aria-hidden="true">
+          {DOTS}
+        </span>
+      ) : page === currentPage ? (
+        <span key={page} className={activeStyle} aria-current="page">
+          {page}
+        </span>
+      ) : (
+        <Link key={page} href={pageHref(page, basePath)} className={inactiveStyle}>
+          {page}
+        </Link>
+      ),
+    );
+
   return (
     <nav
-      className="mt-10 flex items-center justify-center gap-1.5"
+      className="mt-10 flex items-center justify-center gap-1 sm:gap-1.5"
       aria-label={t('label')}
     >
       {hasPrev ? (
         <Link href={pageHref(currentPage - 1, basePath)} className={inactiveStyle} aria-label={t('prevPage')}>
-          ← {t('prev')}
+          <span aria-hidden="true">←</span><span className="hidden sm:inline">&nbsp;{t('prev')}</span>
         </Link>
       ) : (
-        <span className={disabledStyle} aria-disabled="true">← {t('prev')}</span>
+        <span className={disabledStyle} aria-disabled="true"><span aria-hidden="true">←</span><span className="hidden sm:inline">&nbsp;{t('prev')}</span></span>
       )}
 
-      {pages.map((page, i) =>
-        page === DOTS ? (
-          <span key={`dots-${i}`} className={dotsStyle} aria-hidden="true">
-            {DOTS}
-          </span>
-        ) : page === currentPage ? (
-          <span key={page} className={activeStyle} aria-current="page">
-            {page}
-          </span>
-        ) : (
-          <Link key={page} href={pageHref(page, basePath)} className={inactiveStyle}>
-            {page}
-          </Link>
-        ),
-      )}
+      {/* Mobile: compact set; sm+: richer set */}
+      <div className="flex items-center gap-1 sm:hidden">{renderPages(mobilePages)}</div>
+      <div className="hidden items-center gap-1.5 sm:flex">{renderPages(desktopPages)}</div>
 
       {hasNext ? (
         <Link href={pageHref(currentPage + 1, basePath)} className={inactiveStyle} aria-label={t('nextPage')}>
-          {t('next')} →
+          <span className="hidden sm:inline">{t('next')}&nbsp;</span><span aria-hidden="true">→</span>
         </Link>
       ) : (
-        <span className={disabledStyle} aria-disabled="true">{t('next')} →</span>
+        <span className={disabledStyle} aria-disabled="true"><span className="hidden sm:inline">{t('next')}&nbsp;</span><span aria-hidden="true">→</span></span>
       )}
     </nav>
   );

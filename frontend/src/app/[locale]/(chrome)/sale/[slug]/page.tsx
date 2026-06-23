@@ -75,7 +75,7 @@ export default async function SalePage({ params }: Props) {
 
       {/* ── All deals ────────────────────────────────────── */}
       {allItems.length > 0 && (
-        <Container className={hasFeatured ? 'pt-14 pb-14' : 'py-14'}>
+        <Container className={hasFeatured ? 'pt-14 pb-14' : 'py-14'} padded={false}>
           {hasFeatured && <SectionTitle title={t('allDeals', { saleName: sale.title })} />}
           <SiteCardGrid items={allItems} />
         </Container>
@@ -93,7 +93,7 @@ export default async function SalePage({ params }: Props) {
 
       {/* ── Content blocks ───────────────────────────────── */}
       {sale.content && (
-        <Container className="py-10 lg:py-14">
+        <Container className="py-10 lg:py-14" padded={false}>
           <div className="prose prose-slate dark:prose-invert max-w-none">
             <RichText content={sale.content} />
           </div>

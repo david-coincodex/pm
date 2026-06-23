@@ -17,7 +17,10 @@ export default function SidebarLayout({ sidebar, children, header, className = '
       {header && (
         <div className="lg:hidden">{header}</div>
       )}
-      <aside className={`shrink-0 lg:sticky lg:top-24 ${reversed ? 'lg:order-2' : ''}`}>{sidebar}</aside>
+      {/* Reversed (sidebar-right) layouts drop the sidebar below the content on mobile.
+          Base has no container gap, so add the standard mobile gap (mt-10) and reset it at
+          md+ where the container's md:gap-8 / lg:gap-10 takes over. */}
+      <aside className={`shrink-0 lg:sticky lg:top-24 ${reversed ? 'order-last mt-10 md:mt-0 lg:order-2' : ''}`}>{sidebar}</aside>
       <main className={reversed ? 'lg:order-1' : ''}>
         {header && <div className="hidden lg:block">{header}</div>}
         {children}

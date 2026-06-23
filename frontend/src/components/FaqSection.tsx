@@ -39,7 +39,7 @@ export default function FaqSection({ faqs, bare = false, className = '' }: FaqSe
 
   return (
     <section className={`py-10 lg:py-14 ${className}`}>
-      <Container>{body}</Container>
+      <Container padded={false}>{body}</Container>
     </section>
   );
 }

@@ -43,12 +43,15 @@ export default function SidebarCarouselShell({ title, children }: SidebarCarouse
     return clear;
   }, [activeIndex, run, clear]);
 
-  // Sync mobile scroll when activeIndex changes.
+  // Sync mobile scroll when activeIndex changes. Scroll the container's scrollLeft only —
+  // scrollIntoView also scrolls the page vertically, yanking the viewport up on auto-advance.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const child = el.children[activeIndex] as HTMLElement | undefined;
-    child?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    if (!child) return;
+    const target = el.scrollLeft + child.getBoundingClientRect().left - el.getBoundingClientRect().left;
+    el.scrollTo({ left: target, behavior: 'smooth' });
   }, [activeIndex]);
 
   const pause = useCallback(() => {
@@ -101,9 +104,9 @@ export default function SidebarCarouselShell({ title, children }: SidebarCarouse
         ))}
       </div>
 
-      {/* Progress bar (desktop) */}
+      {/* Progress bar */}
       {count > 1 && (
-        <div className="hidden lg:flex items-center justify-center gap-1.5">
+        <div className="flex items-center justify-center gap-1.5">
           {children.map((_, idx) => {
             const isActive = idx === activeIndex;
             return (

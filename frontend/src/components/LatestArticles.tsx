@@ -20,7 +20,7 @@ export default async function LatestArticles({ locale, limit = 8 }: LatestArticl
 
   return (
     <section className="pb-10 lg:pb-14">
-      <Container>
+      <Container padded={false}>
         <SectionTitle
           title={t('title')}
           tag={t('eyebrow')}

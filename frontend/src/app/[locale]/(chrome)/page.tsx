@@ -124,7 +124,7 @@ export default async function Home({ params, searchParams }: Props) {
         </section>
       )}
 
-      <Container className="py-10 lg:py-14">
+      <Container className="py-10 lg:py-14" padded={false}>
         <SectionTitle as="h1" title={tSeo("sites.pageTitle")} subtitle={tSeo("sites.pageSubtitle")} />
         <SiteCardGrid items={items} />
         {pagination.pageCount > 1 && (
@@ -142,7 +142,7 @@ export default async function Home({ params, searchParams }: Props) {
         {page === 1 && <CategorySpotlight categorySlug="ai-porn" eyebrow={t('aiSpotlightEyebrow')} theme="purple" />}
 
         {camSites.length > 0 && (
-          <Container>
+          <Container padded={false}>
             <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} />
             <SiteCardGrid items={camSites.map((site) => {
               const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
@@ -165,7 +165,7 @@ export default async function Home({ params, searchParams }: Props) {
         )}
 
         {lifetimeDeals.length > 0 && (
-          <Container>
+          <Container padded={false}>
             <SectionTitle as="h2" title={t("lifetimeTitle")} subtitle={t("lifetimeSubtitle")} />
             <SiteCardGrid items={lifetimeDeals} />
           </Container>
