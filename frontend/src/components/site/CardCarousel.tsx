@@ -69,8 +69,9 @@ export default function CardCarousel({ children, columns, count, variant, active
       <div
         ref={scrollerRef}
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3
+                   -mx-4 px-4 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6
                    [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-                   lg:grid lg:snap-none lg:overflow-visible lg:pb-0 lg:gap-6"
+                   lg:mx-0 lg:grid lg:snap-none lg:overflow-visible lg:pb-0 lg:px-0 lg:gap-6"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       >
         {children}
