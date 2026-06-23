@@ -116,7 +116,7 @@ export default async function Home({ params, searchParams }: Props) {
       {nextHref && <link rel="next" href={nextHref} />}
 
       {page === 1 && featuredItems.length > 0 && (
-        <section className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
+        <section className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:py-14">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <FeaturedHeader locale={locale} />
             <SiteCardRow items={featuredItems.slice(0, 3)} columns={3} variant="dark" />
@@ -124,7 +124,7 @@ export default async function Home({ params, searchParams }: Props) {
         </section>
       )}
 
-      <Container className="py-10">
+      <Container className="py-10 lg:py-14">
         <SectionTitle as="h1" title={tSeo("sites.pageTitle")} subtitle={tSeo("sites.pageSubtitle")} />
         <SiteCardGrid items={items} />
         {pagination.pageCount > 1 && (
@@ -139,10 +139,10 @@ export default async function Home({ params, searchParams }: Props) {
       {page === 1 && <CategorySpotlight categorySlug="ai-porn" eyebrow={t('aiSpotlightEyebrow')} theme="purple" />}
 
       {(lifetimeDeals.length > 0 || camSites.length > 0) && (
-        <Container className="pb-14">
+        <Container className="py-10 lg:py-14">
           {camSites.length > 0 && (
             <>
-              <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} className="mt-12" />
+              <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} />
               <SiteCardGrid items={camSites.map((site) => {
                 const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
                 const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
@@ -164,8 +164,8 @@ export default async function Home({ params, searchParams }: Props) {
       {bundles.length > 0 && <BundleShowcase bundles={bundles} />}
 
       {lifetimeDeals.length > 0 && (
-        <Container className="pb-14">
-          <SectionTitle as="h2" title={t("lifetimeTitle")} subtitle={t("lifetimeSubtitle")} className="mt-12" />
+        <Container className="py-10 lg:py-14">
+          <SectionTitle as="h2" title={t("lifetimeTitle")} subtitle={t("lifetimeSubtitle")} />
           <SiteCardGrid items={lifetimeDeals} />
         </Container>
       )}

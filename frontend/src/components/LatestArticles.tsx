@@ -19,7 +19,7 @@ export default async function LatestArticles({ locale, limit = 8 }: LatestArticl
   const blogBase = routes.blog().slice(0, -1);
 
   return (
-    <section className="py-14">
+    <section className="py-10 lg:py-14">
       <Container>
         <SectionTitle
           title={t('title')}

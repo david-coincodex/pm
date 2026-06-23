@@ -195,8 +195,8 @@ export default async function ReviewDetailPage({ params }: Props) {
     </Container>
 
       {relatedReviews.length > 0 && (
-        <Container>
-          <div className="mt-16">
+        <Container className="pt-0 pb-10 lg:pb-14">
+          <div>
             <SectionTitle title={t('alsoRead')} />
             <SiteCardGrid
               items={relatedReviews.map((r) => {

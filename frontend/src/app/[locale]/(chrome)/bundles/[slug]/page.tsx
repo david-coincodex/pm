@@ -59,7 +59,7 @@ export default async function BundleDetailPage({ params }: Props) {
         { label: tBc('bundles'), href: routes.bundles() },
         { label: bundle.name, href: routes.bundle(slug) },
       ]} />
-      <Container className="py-10">
+      <Container className="py-10 lg:py-14">
 
       {/* Hero cover image */}
       {bundle.cover_image && (

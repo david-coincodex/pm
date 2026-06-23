@@ -49,7 +49,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Container className="py-10">
+      <Container className="py-10 lg:py-14">
         <SectionTitle
           as="h1"
           title={tSeo('bundles.pageTitle')}

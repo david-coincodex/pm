@@ -144,7 +144,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
 
           {/* Latest reviews — page 1 only */}
           {authorReviews.length > 0 && (
-            <div className="mt-12">
+            <div className="mt-10 lg:mt-14">
               <SectionTitle as="h3" title={t('latestReviews', { name: author.name })} />
               <SiteCardGrid
                 items={authorReviews.map((review) => ({

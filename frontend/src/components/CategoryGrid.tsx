@@ -13,7 +13,7 @@ export default async function CategoryGrid() {
   if (categories.length === 0) return null;
 
   return (
-    <section className="py-14">
+    <section className="py-10 lg:py-14">
       <Container>
         <SectionTitle
           title={t('title')}

@@ -76,7 +76,7 @@ export default function BundleShowcase({ bundles, theme = 'amber' }: BundleShowc
 
   return (
     <section
-      className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-14"
+      className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:py-14"
       onMouseEnter={pause}
       onMouseLeave={resume}
     >

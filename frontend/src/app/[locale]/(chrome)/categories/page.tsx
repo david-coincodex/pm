@@ -12,7 +12,7 @@ export default async function CategoriesPage() {
 
   return (
     <main>
-      <section className="py-14">
+      <section className="py-10 lg:py-14">
         <Container>
           <SectionTitle as="h1" title={t('allCategories') || 'All Categories'} />
 

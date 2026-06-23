@@ -93,7 +93,7 @@ export default async function SalePage({ params }: Props) {
 
       {/* ── Content blocks ───────────────────────────────── */}
       {sale.content && (
-        <Container className="py-14">
+        <Container className="py-10 lg:py-14">
           <div className="prose prose-slate dark:prose-invert max-w-none">
             <RichText content={sale.content} />
           </div>

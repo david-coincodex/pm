@@ -120,7 +120,7 @@ export default async function ArticlePage({ params }: Props) {
       </Container>
 
       {relatedArticles.length > 0 && (
-        <section className="py-14">
+        <section className="pt-0 pb-10 lg:pb-14">
           <Container>
             <SectionTitle title={t('peopleAlsoRead')} link={blogBase} linkLabel={t('viewAll')} />
             <ArticleHeroGrid articles={relatedArticles} locale={locale} blogBase={blogBase} />

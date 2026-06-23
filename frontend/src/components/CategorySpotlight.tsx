@@ -24,7 +24,7 @@ export default async function CategorySpotlight({ categorySlug, eyebrow, theme =
   const c = themes[theme];
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-14">
+    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:py-14">
       <Container>
         <div className="relative flex flex-col gap-10 lg:flex-row lg:items-center">
           {/* Left: category info */}
