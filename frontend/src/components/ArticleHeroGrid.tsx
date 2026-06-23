@@ -91,15 +91,15 @@ export default function ArticleHeroGrid({ articles, locale, blogBase, hero = tru
                 href={`${blogBase}/${article.id}/${article.slug}`}
                 className="group flex min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
               >
-                {/* Image fills full height of the card row */}
-                <div className="relative w-28 shrink-0 self-stretch overflow-hidden bg-slate-100 dark:bg-slate-700">
+                {/* Square thumbnail on the left */}
+                <div className="relative aspect-square w-36 shrink-0 self-center overflow-hidden bg-slate-100 dark:bg-slate-700">
                   {article.coverImage ? (
                     <Image
                       src={strapiMediaUrl(article.coverImage)}
                       alt={article.coverImage.alternativeText ?? article.title}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="112px"
+                      sizes="144px"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">
@@ -138,15 +138,15 @@ export default function ArticleHeroGrid({ articles, locale, blogBase, hero = tru
               href={`${blogBase}/${article.id}/${article.slug}`}
               className="group flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:flex-col"
             >
-              {/* Image: mobile = fixed-width side; sm+ = full-width aspect-video top */}
-              <div className="relative w-28 shrink-0 self-stretch overflow-hidden bg-slate-100 dark:bg-slate-700 sm:aspect-video sm:w-full sm:self-auto">
+              {/* Image: mobile = square thumbnail on the side; sm+ = full-width aspect-video top */}
+              <div className="relative aspect-square w-36 shrink-0 self-center overflow-hidden bg-slate-100 dark:bg-slate-700 sm:aspect-video sm:w-full sm:self-auto">
                 {article.coverImage ? (
                   <Image
                     src={strapiMediaUrl(article.coverImage)}
                     alt={article.coverImage.alternativeText ?? article.title}
                     fill
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 640px) 112px, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 144px, (max-width: 1024px) 50vw, 25vw"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">

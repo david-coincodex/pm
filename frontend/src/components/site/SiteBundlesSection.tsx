@@ -32,7 +32,7 @@ export default async function SiteBundlesSection({
     : t('discoverSubtitle');
 
   return (
-    <section className="mt-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:mt-14 lg:py-14">
+    <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:py-14">
       {/* Decorative orbs */}
       <div
         aria-hidden="true"

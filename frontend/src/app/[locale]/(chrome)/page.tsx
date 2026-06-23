@@ -8,7 +8,7 @@ import Pagination from "@/components/Pagination";
 import SiteCardRow from "@/components/site/SiteCardRow";
 import FeaturedHeader from "@/components/FeaturedHeader";
 import CategorySpotlight from "@/components/CategorySpotlight";
-import BundleShowcase from "@/components/BundleShowcase";
+import SiteBundlesSection from "@/components/site/SiteBundlesSection";
 import CategoryGrid from "@/components/CategoryGrid";
 import LatestArticles from "@/components/LatestArticles";
 import SectionTitle from "@/components/SectionTitle";
@@ -136,41 +136,43 @@ export default async function Home({ params, searchParams }: Props) {
         )}
       </Container>
 
-      {page === 1 && <CategorySpotlight categorySlug="ai-porn" eyebrow={t('aiSpotlightEyebrow')} theme="purple" />}
+      {/* Conditional sections — a flex column so the gap between them stays uniform
+          (single, never doubled) no matter which bands/blocks are hidden. */}
+      <div className="flex flex-col gap-10 lg:gap-14">
+        {page === 1 && <CategorySpotlight categorySlug="ai-porn" eyebrow={t('aiSpotlightEyebrow')} theme="purple" />}
 
-      {(lifetimeDeals.length > 0 || camSites.length > 0) && (
-        <Container className="py-10 lg:py-14">
-          {camSites.length > 0 && (
-            <>
-              <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} />
-              <SiteCardGrid items={camSites.map((site) => {
-                const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
-                const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
-                const bestOffer = sorted[0];
-                return {
-                  site,
-                  bestPrice: bestOffer?.price,
-                  currency: 'USD',
-                  bestOfferId: bestOffer?.id,
-                  discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
-                  isCamSite: true,
-                };
-              })} />
-            </>
-          )}
-        </Container>
-      )}
+        {camSites.length > 0 && (
+          <Container>
+            <SectionTitle as="h2" title={t("camTitle")} subtitle={t("camSubtitle")} />
+            <SiteCardGrid items={camSites.map((site) => {
+              const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
+              const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
+              const bestOffer = sorted[0];
+              return {
+                site,
+                bestPrice: bestOffer?.price,
+                currency: 'USD',
+                bestOfferId: bestOffer?.id,
+                discountPercent: getMaxDiscountPercent(activeOffers) ?? undefined,
+                isCamSite: true,
+              };
+            })} />
+          </Container>
+        )}
 
-      {bundles.length > 0 && <BundleShowcase bundles={bundles} />}
+        {bundles.length > 0 && (
+          <SiteBundlesSection bundles={bundles} siteIncluded={false} siteName="" locale={locale} />
+        )}
 
-      {lifetimeDeals.length > 0 && (
-        <Container className="py-10 lg:py-14">
-          <SectionTitle as="h2" title={t("lifetimeTitle")} subtitle={t("lifetimeSubtitle")} />
-          <SiteCardGrid items={lifetimeDeals} />
-        </Container>
-      )}
+        {lifetimeDeals.length > 0 && (
+          <Container>
+            <SectionTitle as="h2" title={t("lifetimeTitle")} subtitle={t("lifetimeSubtitle")} />
+            <SiteCardGrid items={lifetimeDeals} />
+          </Container>
+        )}
 
-      {page === 1 && <CategorySpotlight categorySlug="vr-porn" eyebrow={t('vrSpotlightEyebrow')} theme="cyan" />}
+        {page === 1 && <CategorySpotlight categorySlug="vr-porn" eyebrow={t('vrSpotlightEyebrow')} theme="cyan" />}
+      </div>
 
       {page === 1 && <CategoryGrid />}
 

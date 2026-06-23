@@ -11,7 +11,7 @@ export default async function Footer() {
     <footer className="mt-auto border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
       {/* Main footer content */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-10 lg:grid-cols-4">
 
           {/* Brand */}
           <div>
