@@ -85,7 +85,6 @@ export default async function AuthorPage({ params, searchParams }: Props) {
   const { data: articles, pagination } = await getArticlesByAuthor(slug, locale, page, PAGE_SIZE);
   const authorReviews = page === 1 ? await getReviewsByAuthor(slug, locale, 4) : [];
 
-  const blogBase = routes.blog().slice(0, -1);
   const basePath = routes.blogAuthor(slug);
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
@@ -131,7 +130,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
           {articles.length === 0 ? (
             <p className="text-slate-500 dark:text-slate-400">{t('authorArticlesEmpty')}</p>
           ) : (
-            <ArticleCardList articles={articles} locale={locale} blogBase={blogBase} />
+            <ArticleCardList articles={articles} locale={locale} />
           )}
 
           {pagination.pageCount > 1 && (

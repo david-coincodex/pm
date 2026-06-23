@@ -4,7 +4,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import ProsConsBlock from '@/components/rich-text/ProsConsBlock';
 import SiteCardInline from '@/components/rich-text/SiteCardInline';
 import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
-import ArticleCardInline from '@/components/rich-text/ArticleCardInline';
+import ArticleCard from '@/components/ArticleCard';
 import { prefetchWidgetData, type WidgetData } from '@/lib/richTextWidgets';
 import { type Site, type Article } from '@/lib/strapi';
 
@@ -58,7 +58,7 @@ function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, wid
     const id = domNode.attribs['data-article-id'];
     const article = widgetData.get(`article-card:${id}`) as Article | undefined;
     if (!article) return <></>;
-    return <ArticleCardInline article={article} locale={locale} />;
+    return <ArticleCard variant="compact" article={article} locale={locale} className="not-prose my-4" />;
   }
 
   // Widget: Site Card List

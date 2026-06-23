@@ -27,7 +27,7 @@ export default async function LatestArticles({ locale, limit = 8 }: LatestArticl
           link={blogBase}
           linkLabel={t('viewAll')}
         />
-        <ArticleHeroGrid articles={articles} locale={locale} blogBase={blogBase} />
+        <ArticleHeroGrid articles={articles} locale={locale} />
       </Container>
     </section>
   );

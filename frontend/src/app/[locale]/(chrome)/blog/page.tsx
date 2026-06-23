@@ -38,7 +38,6 @@ export default async function BlogPage({ params, searchParams }: Props) {
     getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
-  const blogBase = routes.blog().slice(0, -1);
   const basePath = routes.blog();
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
@@ -52,7 +51,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
         {articles.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400">{t('empty')}</p>
         ) : (
-          <ArticleHeroGrid articles={articles} locale={locale} blogBase={blogBase} hero={page === 1} />
+          <ArticleHeroGrid articles={articles} locale={locale} hero={page === 1} />
         )}
 
         {pagination.pageCount > 1 && (

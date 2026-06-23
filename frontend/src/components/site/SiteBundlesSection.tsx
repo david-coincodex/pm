@@ -50,7 +50,7 @@ export default async function SiteBundlesSection({
           <p className="mt-2 text-base text-slate-300">{subtitle}</p>
         </div>
 
-        <CardCarousel columns={3} count={bundles.length} variant="dark">
+        <CardCarousel columns={3} count={bundles.length} variant="dark" activeDotClassName="bg-amber-400">
           {bundles.map((bundle) => (
             <div
               key={bundle.id}
