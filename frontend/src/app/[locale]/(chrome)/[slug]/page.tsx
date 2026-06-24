@@ -11,7 +11,7 @@ import SectionTitle from '@/components/SectionTitle';
 import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
 import Pagination from '@/components/Pagination';
 import RichText from '@/components/RichText';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
 import SidebarCategorySites from '@/components/SidebarCategorySites';
 import CategoryGrid from '@/components/CategoryGrid';
@@ -40,7 +40,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   if (!categorySlug) return {};
 
   const [category, t] = await Promise.all([
-    getCategoryBySlug(categorySlug),
+    getCategoryBySlug(categorySlug).catch(() => null),
     getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   if (!category) return {};
@@ -64,9 +64,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const PAGE_SIZE = 12;
   const basePath = routes.category(categorySlug);
 
+  // Guard the Strapi fetches: a backend error/timeout for this category must degrade gracefully
+  // (empty sites, or notFound if the category itself can't load) rather than crash the page (500).
   const [category, { sites, pagination }, t] = await Promise.all([
-    getCategoryBySlug(categorySlug),
-    getSitesByCategorySlug(categorySlug, page, PAGE_SIZE),
+    getCategoryBySlug(categorySlug).catch(() => null),
+    getSitesByCategorySlug(categorySlug, page, PAGE_SIZE).catch(() => ({
+      sites: [],
+      pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
+    })),
     getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
 
@@ -76,12 +81,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: category.name, href: routes.category(categorySlug) },
       ]} />
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Container>
+      <Container padded={false} className="pt-6 lg:pt-12">
         <SidebarLayout
           reversed
           sidebar={

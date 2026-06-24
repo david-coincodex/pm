@@ -3,15 +3,20 @@ import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCategoriesGrid, strapiMediaUrl } from '@/lib/strapi';
 import Container from '@/components/Container';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SectionTitle from '@/components/SectionTitle';
 import { routes } from '@/lib/routes';
 
 export default async function CategoriesPage() {
-  const t = await getTranslations('categoryGrid');
+  const [t, tBc] = await Promise.all([
+    getTranslations('categoryGrid'),
+    getTranslations('breadcrumbs'),
+  ]);
   const categories = await getCategoriesGrid().catch(() => []);
 
   return (
     <main>
+      <Breadcrumbs crumbs={[{ label: tBc('categories'), href: routes.categories() }]} />
       <section>
         <Container>
           <SectionTitle as="h1" title={t('allCategories') || 'All Categories'} />

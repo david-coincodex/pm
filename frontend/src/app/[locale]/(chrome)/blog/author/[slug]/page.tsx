@@ -25,7 +25,7 @@ function computeScore(review: Review): number | null {
 import { routes } from '@/lib/routes';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import Container from '@/components/Container';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SidebarLayout from '@/components/SidebarLayout';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import ArticleCardList from '@/components/ArticleCardList';
@@ -93,7 +93,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
 
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: tBc('blog'), href: routes.blog() },
         { label: author.name, href: routes.blogAuthor(slug) },
       ]} />

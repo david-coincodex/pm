@@ -4,6 +4,7 @@ import { getReviewsPaginated, type Review } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SectionTitle from '@/components/SectionTitle';
 import Pagination from '@/components/Pagination';
@@ -33,10 +34,11 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [{ data: reviews, pagination }, t, tSeo] = await Promise.all([
+  const [{ data: reviews, pagination }, t, tSeo, tBc] = await Promise.all([
     getReviewsPaginated(locale, page, PAGE_SIZE),
     getTranslations({ locale, namespace: 'reviews' }),
     getTranslations({ locale, namespace: 'pageSEO' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
   const reviewsWithSite = reviews.filter((review): review is Review & { site: NonNullable<Review['site']> } => Boolean(review.site));
 
@@ -47,6 +49,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
+      <Breadcrumbs crumbs={[{ label: tBc('reviews'), href: routes.reviews() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('reviews.pageTitle')} subtitle={tSeo('reviews.pageSubtitle')} />
         <SiteCardGrid

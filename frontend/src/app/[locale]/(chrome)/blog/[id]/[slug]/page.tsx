@@ -7,7 +7,7 @@ import { routes } from '@/lib/routes';
 import { localizedAlternates } from '@/lib/pagination';
 import { siteSettings } from '@/lib/siteSettings';
 import Container from '@/components/Container';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SidebarLayout from '@/components/SidebarLayout';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
 import RichText from '@/components/RichText';
@@ -66,7 +66,7 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: tBc('blog'), href: routes.blog() },
         { label: article.title, href: routes.blogArticle(id, article.slug) },
       ]} />

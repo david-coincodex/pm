@@ -193,6 +193,7 @@
     "offer": "Offer",
     "reviews": "Reviews",
     "bundles": "Bundles",
+    "categories": "Categories",
     "label": "Breadcrumb"
   },
   "pagination": {
@@ -292,7 +293,30 @@
     "discoverTitle": "Bundle deals you might like",
     "discoverSubtitle": "Combine the best sites and save more with our curated bundles.",
     "getBundle": "Get bundle",
-    "includedCount": "{count, plural, one {# site} other {# sites}} included"
+    "includedCount": "{count, plural, one {# site} other {# sites}} included",
+    "faqTitle": "Frequently Asked Questions",
+    "faqItems": [
+      {
+        "question": "What is a bundle?",
+        "answer": "A bundle groups several adult sites together under a single discounted deal. Instead of paying for each site separately, you unlock all the sites in the bundle through one offer — usually from the same network or studio."
+      },
+      {
+        "question": "How do bundle deals work?",
+        "answer": "Each bundle links to a discounted offer for a network or group of sites. You click through to the provider, sign up for the bundle plan, and get access to every site included — always for less than a single standalone membership."
+      },
+      {
+        "question": "Are bundles cheaper than subscribing to each site individually?",
+        "answer": "Always. Bundles are designed to give you access to multiple sites for one price, so the cost per site is far lower than buying each membership on its own. The more sites a bundle includes, the bigger the saving."
+      },
+      {
+        "question": "Do I get access to every site in the bundle?",
+        "answer": "Yes. A bundle membership unlocks all of the sites listed in that deal with a single login. The exact sites included are shown on each bundle's page."
+      },
+      {
+        "question": "How are billing and cancellation handled?",
+        "answer": "Billing, renewals, and cancellations are handled by the site or network you subscribe to — not by us. We only list and link to the deals, so check the provider's account settings or terms for how to manage or cancel your membership."
+      }
+    ]
   },
   "latestArticles": {
     "eyebrow": "From the Blog",

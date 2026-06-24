@@ -6,7 +6,7 @@ import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import RichText from '@/components/RichText';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -33,7 +33,7 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: cmsPage.h1 ?? cmsPage.title, href: routes.page(slug) },
       ]} />
       <Container>

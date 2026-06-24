@@ -15,7 +15,7 @@ import SectionTitle from '@/components/SectionTitle';
 import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import FaqSection from '@/components/FaqSection';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import ContentMeta from '@/components/ContentMeta';
 import { siteSettings } from '@/lib/siteSettings';
 
@@ -156,7 +156,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: tBc('reviews'), href: routes.reviews() },
         { label: site.name, href: routes.review(slug) },
       ]} />

@@ -193,6 +193,7 @@
     "offer": "Angebot",
     "reviews": "Bewertungen",
     "bundles": "Pakete",
+    "categories": "Kategorien",
     "label": "Breadcrumb"
   },
   "pagination": {
@@ -292,7 +293,30 @@
     "discoverTitle": "Bundle-Angebote, die dir gefallen könnten",
     "discoverSubtitle": "Kombiniere die besten Seiten und spare mehr mit unseren kuratierten Bundles.",
     "getBundle": "Bundle sichern",
-    "includedCount": "{count, plural, one {# Seite} other {# Seiten}} enthalten"
+    "includedCount": "{count, plural, one {# Seite} other {# Seiten}} enthalten",
+    "faqTitle": "Häufig gestellte Fragen",
+    "faqItems": [
+      {
+        "question": "Was ist ein Bundle?",
+        "answer": "Ein Bundle fasst mehrere Erotik-Seiten in einem einzigen vergünstigten Angebot zusammen. Statt jede Seite einzeln zu bezahlen, schaltest du über ein Angebot alle Seiten des Bundles frei — meist vom selben Netzwerk oder Studio."
+      },
+      {
+        "question": "Wie funktionieren Bundle-Angebote?",
+        "answer": "Jedes Bundle verweist auf ein vergünstigtes Angebot für ein Netzwerk oder eine Gruppe von Seiten. Du gelangst zum Anbieter, meldest dich für den Bundle-Tarif an und erhältst Zugang zu allen enthaltenen Seiten — immer günstiger als eine einzelne Mitgliedschaft."
+      },
+      {
+        "question": "Sind Bundles günstiger als einzelne Abos?",
+        "answer": "Immer. Bundles bieten Zugang zu mehreren Seiten zu einem Preis, sodass die Kosten pro Seite deutlich niedriger sind als beim Einzelkauf. Je mehr Seiten ein Bundle enthält, desto größer die Ersparnis."
+      },
+      {
+        "question": "Erhalte ich Zugang zu allen Seiten im Bundle?",
+        "answer": "Ja. Eine Bundle-Mitgliedschaft schaltet alle im Angebot aufgeführten Seiten mit einem einzigen Login frei. Welche Seiten enthalten sind, steht auf der Seite des jeweiligen Bundles."
+      },
+      {
+        "question": "Wie laufen Abrechnung und Kündigung ab?",
+        "answer": "Abrechnung, Verlängerungen und Kündigungen werden vom jeweiligen Anbieter abgewickelt — nicht von uns. Wir listen und verlinken nur die Angebote. Details zur Verwaltung oder Kündigung findest du in den Kontoeinstellungen oder AGB des Anbieters."
+      }
+    ]
   },
   "latestArticles": {
     "eyebrow": "Aus dem Blog",

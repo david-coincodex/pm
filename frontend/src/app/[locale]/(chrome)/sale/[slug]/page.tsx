@@ -11,7 +11,7 @@ import SectionTitle from '@/components/SectionTitle';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import SaleHero from '@/components/sale/SaleHero';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import FaqSection from '@/components/FaqSection';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
@@ -67,7 +67,7 @@ export default async function SalePage({ params }: Props) {
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs variant="dark" crumbs={[
         { label: sale.title, href: routes.sale(sale.slug) },
       ]} />
       {/* ── Hero (title, description, countdown, featured deals) ── */}

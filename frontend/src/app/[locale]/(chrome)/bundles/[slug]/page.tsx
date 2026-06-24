@@ -11,7 +11,7 @@ import { localizedAlternates } from '@/lib/pagination';
 import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/site/DealBuy';
 import RichText from '@/components/RichText';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -24,7 +24,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const bundle = await getBundleBySlug(slug, locale);
+  const bundle = await getBundleBySlug(slug, locale).catch(() => null);
   if (!bundle) return {};
   const t = await getTranslations({ locale, namespace: 'pageSEO' });
   const bundlePath = routes.bundle(bundle.slug);
@@ -38,8 +38,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BundleDetailPage({ params }: Props) {
   const { locale, slug } = await params;
+  // Guard the Strapi fetch: a backend error/timeout must degrade to notFound (404), not crash (500).
   const [bundle, t, dt, tBc] = await Promise.all([
-    getBundleBySlug(slug, locale),
+    getBundleBySlug(slug, locale).catch(() => null),
     getTranslations({ locale, namespace: 'bundles' }),
     getTranslations({ locale, namespace: 'discount' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),
@@ -51,11 +52,11 @@ export default async function BundleDetailPage({ params }: Props) {
     .filter((o) => o.isActive)
     .sort((a, b) => a.priority - b.priority);
 
-  const dealIncludes = bundle.sites.map((s) => s.name).join('\n');
+  const dealIncludes = (bundle.sites ?? []).map((s) => s.name).join('\n');
 
   return (
     <>
-      <BreadcrumbsSetter crumbs={[
+      <Breadcrumbs crumbs={[
         { label: tBc('bundles'), href: routes.bundles() },
         { label: bundle.name, href: routes.bundle(slug) },
       ]} />
@@ -101,7 +102,7 @@ export default async function BundleDetailPage({ params }: Props) {
             {t('includedSites')}
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {bundle.sites.map((site) => {
+            {(bundle.sites ?? []).map((site) => {
               const image = site.cover_image ?? site.logo;
               const bestOffer = (site.offers ?? [])
                 .filter((o) => o.isActive)

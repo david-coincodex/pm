@@ -28,7 +28,7 @@ import OffersTable from '@/components/site/OffersTable';
 import SiteBundlesSection from '@/components/site/SiteBundlesSection';
 import FaqSection from '@/components/FaqSection';
 import SidebarLayoutHeader from '@/components/SidebarLayoutHeader';
-import BreadcrumbsSetter from '@/components/BreadcrumbsSetter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import ImageGallery from '@/components/ImageGallery';
 import { siteSettings } from '@/lib/siteSettings';
 
@@ -148,7 +148,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
   return (
     <>
-    <BreadcrumbsSetter crumbs={[
+    <Breadcrumbs crumbs={[
       { label: site.name, href: routes.site(slug) },
     ]} />
     <Container>

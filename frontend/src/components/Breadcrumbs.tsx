@@ -1,65 +1,29 @@
-'use client';
-
-import { useTranslations, useLocale } from 'next-intl';
-import { Link, usePathname } from '@/i18n/navigation';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import Container from './Container';
-import { useBreadcrumbsContext } from './BreadcrumbsProvider';
 import { routing } from '@/i18n/routing';
 import { siteSettings } from '@/lib/siteSettings';
-
-function humanize(slug: string): string {
-  return slug
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}
-
-/** Path prefixes whose first page section has a dark background.
- *  Breadcrumbs on these routes will automatically use the dark variant. */
-const DARK_HERO_PREFIXES = ['/sale/'];
+import type { Crumb } from '@/lib/breadcrumbs';
 
 interface BreadcrumbsProps {
-  /** Override the colour variant. Defaults to auto-detection from pathname. */
+  /** Trail after Home (Home is prepended automatically). Rendered server-side. */
+  crumbs: Crumb[];
+  /** Colour variant. Use 'dark' when the breadcrumbs sit over a dark hero. */
   variant?: 'light' | 'dark';
 }
 
-export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
-  const pathname = usePathname();
-  const t = useTranslations('breadcrumbs');
-  const locale = useLocale();
-  const { crumbs: contextCrumbs } = useBreadcrumbsContext();
+export default async function Breadcrumbs({ crumbs, variant = 'light' }: BreadcrumbsProps) {
+  const t = await getTranslations('breadcrumbs');
+  const locale = await getLocale();
+  const isDark = variant === 'dark';
 
-  const isDark =
-    variant === 'dark' ||
-    (variant !== 'light' && DARK_HERO_PREFIXES.some((prefix) => pathname.startsWith(prefix)));
-
-  if (pathname === '/') return null;
-
-  let crumbs: { label: string; href: string }[];
-
-  if (contextCrumbs !== null) {
-    crumbs = [{ label: t('home'), href: '/' }, ...contextCrumbs];
-  } else {
-    const segments = pathname.split('/').filter(Boolean);
-    const nonLinkableSegments = new Set(['page', 'discounts']);
-    crumbs = [{ label: t('home'), href: '/' }];
-    let accumulated = '';
-    for (const segment of segments) {
-      accumulated += `/${segment}`;
-      if (nonLinkableSegments.has(segment)) continue;
-      // `segment` is dynamic; t.has() guards existence, the cast satisfies the typed key param.
-      const key = segment as Parameters<typeof t>[0];
-      const label = t.has(key) ? t(key) : humanize(segment);
-      crumbs.push({ label, href: accumulated });
-    }
-  }
-
+  const all: Crumb[] = [{ label: t('home'), href: '/' }, ...crumbs];
   const localePrefix = locale === routing.defaultLocale ? '' : `/${locale}`;
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: crumbs.map((crumb, i) => ({
+    itemListElement: all.map((crumb, i) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: crumb.label,
@@ -68,15 +32,24 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
   };
 
   return (
-    <nav aria-label={t('label')} className="h-10 flex items-center relative z-20">
+    <nav aria-label={t('label')} className="relative z-20 flex h-10 items-center">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Container padded={false}>
         <ol className="flex items-center gap-1.5 text-sm">
-          {crumbs.map((crumb, i) => {
-            const isLast = i === crumbs.length - 1;
+          {all.map((crumb, i) => {
+            const isLast = i === all.length - 1;
+            // Home crumb: home icon on mobile, label on sm+ (label kept for screen readers via sr-only).
+            const content = i === 0 ? (
+              <>
+                <svg className="h-4 w-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="sr-only sm:not-sr-only">{crumb.label}</span>
+              </>
+            ) : crumb.label;
             return (
               <li key={crumb.href} className="flex items-center gap-1.5">
                 {i > 0 && (
@@ -92,7 +65,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
                 )}
                 {isLast ? (
                   <span className={`font-medium truncate max-w-[200px] sm:max-w-none sm:overflow-visible sm:whitespace-normal ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                    {crumb.label}
+                    {content}
                   </span>
                 ) : (
                   <Link
@@ -103,7 +76,7 @@ export default function Breadcrumbs({ variant }: BreadcrumbsProps = {}) {
                         : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors'
                     }
                   >
-                    {crumb.label}
+                    {content}
                   </Link>
                 )}
               </li>

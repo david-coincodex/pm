@@ -42,14 +42,14 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
   return (
     <article className="not-prose group my-4 flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
       {/* Cover image — left side */}
-      <Link href={href} className="relative w-36 shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-700 sm:w-48">
+      <Link href={href} className="relative w-44 shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-700 sm:w-48">
         {image ? (
           <Image
             src={strapiMediaUrl(image)}
             alt={image.alternativeText ?? site.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 144px, 192px"
+            sizes="(max-width: 640px) 176px, 192px"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-400 dark:text-slate-500">
@@ -90,7 +90,7 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
         </Link>
 
         {site.short_description && (
-          <p className="line-clamp-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="line-clamp-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400 max-sm:hidden">
             {site.short_description}
           </p>
         )}
@@ -101,7 +101,7 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
             <>
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('from')}</span>
               {bestFullPrice !== undefined && bestFullPrice > bestPrice && (
-                <span className="text-xs text-slate-400 line-through dark:text-slate-500">
+                <span className="text-xs font-medium text-slate-500 line-through dark:text-slate-400">
                   ${bestFullPrice.toFixed(2)}
                 </span>
               )}
@@ -114,11 +114,11 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
           )}
         </div>
 
-        {/* Buttons */}
-        <div className="mt-auto flex gap-2 pt-2">
+        {/* Buttons — mobile: stacked (Buy on top, View Deal below); sm+: side by side */}
+        <div className="mt-auto flex flex-col-reverse gap-2 pt-2 sm:flex-row">
           <Link
             href={href}
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+            className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 sm:flex-1 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700"
           >
             {t('viewDeal')}
           </Link>
@@ -127,14 +127,14 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
               href={routes.offer(bestOffer.id)}
               target="_blank"
               rel="nofollow noopener noreferrer"
-              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 sm:flex-1 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
             </Link>
           ) : (
             <Link
               href={href}
-              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 sm:flex-1 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
             </Link>

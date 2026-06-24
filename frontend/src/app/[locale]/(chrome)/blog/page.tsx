@@ -4,6 +4,7 @@ import { getArticlesPaginated } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import SectionTitle from '@/components/SectionTitle';
 import Pagination from '@/components/Pagination';
 import ArticleHeroGrid from '@/components/ArticleHeroGrid';
@@ -32,10 +33,11 @@ export default async function BlogPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [{ data: articles, pagination }, t, tSeo] = await Promise.all([
+  const [{ data: articles, pagination }, t, tSeo, tBc] = await Promise.all([
     getArticlesPaginated(locale, page, PAGE_SIZE),
     getTranslations({ locale, namespace: 'blog' }),
     getTranslations({ locale, namespace: 'pageSEO' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
 
   const basePath = routes.blog();
@@ -45,6 +47,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
+      <Breadcrumbs crumbs={[{ label: tBc('blog'), href: routes.blog() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('blog.pageTitle')} />
 
