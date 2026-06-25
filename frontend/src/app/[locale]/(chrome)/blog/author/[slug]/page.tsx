@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import {
   getAllAuthorSlugs,
@@ -71,6 +71,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export default async function AuthorPage({ params, searchParams }: Props) {
   const { locale, slug } = await params;
+  setRequestLocale(locale);
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 

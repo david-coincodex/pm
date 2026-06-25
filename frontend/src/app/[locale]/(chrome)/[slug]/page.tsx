@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCategoryBySlug, getSitesByCategorySlug, getAllCategories } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
@@ -55,6 +55,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { locale, slug } = await params;
+  setRequestLocale(locale);
   const { page: pageStr } = await searchParams;
 
   const categorySlug = parseCategorySlug(slug);

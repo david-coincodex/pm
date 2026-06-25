@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { getSaleBySlug, getAllSaleSlugs, getDiscountPercent, type Sale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
@@ -51,6 +51,7 @@ function buildSiteItem(site: Sale['sites'][number]) {
 
 export default async function SalePage({ params }: Props) {
   const { locale, slug } = await params;
+  setRequestLocale(locale);
 
   const [sale, t] = await Promise.all([
     getSaleBySlug(slug, locale),

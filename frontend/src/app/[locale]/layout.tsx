@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
-import { getMessages, getTranslations } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { routing } from "@/i18n/routing";
 import { siteSettings } from "@/lib/siteSettings";
@@ -39,6 +39,11 @@ export default async function LocaleLayout({ children, params }: Props) {
   if (!hasLocale(routing.locales, locale)) {
     notFound();
   }
+
+  // Enable static rendering — without this, next-intl APIs (getTranslations/getLocale)
+  // read request headers and become dynamic, which breaks pages that use generateStaticParams
+  // (they bail with DYNAMIC_SERVER_USAGE).
+  setRequestLocale(locale);
 
   const messages = await getMessages();
 

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getBundleBySlug, getAllBundleSlugs, strapiMediaUrl } from '@/lib/strapi';
 import { routing } from '@/i18n/routing';
 import { Link } from '@/i18n/navigation';
@@ -38,6 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BundleDetailPage({ params }: Props) {
   const { locale, slug } = await params;
+  setRequestLocale(locale);
   // Guard the Strapi fetch: a backend error/timeout must degrade to notFound (404), not crash (500).
   const [bundle, t, dt, tBc] = await Promise.all([
     getBundleBySlug(slug, locale).catch(() => null),
