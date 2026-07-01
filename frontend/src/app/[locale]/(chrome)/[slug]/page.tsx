@@ -25,6 +25,10 @@ function parseCategorySlug(slug: string): string | null {
 
 type Props = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ page?: string }> };
 
+// Render dynamically (live offers + ?page= pagination) to avoid DYNAMIC_SERVER_USAGE from
+// static generation hitting request-dynamic APIs.
+export const dynamic = 'force-dynamic';
+
 export async function generateStaticParams() {
   const categories = await getAllCategories().catch(() => []);
   return routing.locales.flatMap((locale) =>

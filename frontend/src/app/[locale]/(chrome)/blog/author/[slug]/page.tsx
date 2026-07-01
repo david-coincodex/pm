@@ -42,6 +42,10 @@ type Props = {
   searchParams: Promise<{ page?: string }>;
 };
 
+// Render dynamically to avoid DYNAMIC_SERVER_USAGE from static generation hitting
+// request-dynamic APIs.
+export const dynamic = 'force-dynamic';
+
 export async function generateStaticParams() {
   const slugs = await getAllAuthorSlugs().catch(() => []);
   return routing.locales.flatMap((locale) =>

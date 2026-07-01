@@ -15,6 +15,10 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
+// Render dynamically to avoid DYNAMIC_SERVER_USAGE from static generation hitting
+// request-dynamic APIs.
+export const dynamic = 'force-dynamic';
+
 export async function generateStaticParams() {
   const slugs = await getAllBundleSlugs().catch(() => []);
   return routing.locales.flatMap((locale) =>
