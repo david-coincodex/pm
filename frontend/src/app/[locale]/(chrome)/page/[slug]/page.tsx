@@ -33,7 +33,7 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <>
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: cmsPage.h1 ?? cmsPage.title, href: routes.page(slug) },
       ]} />
       <Container>
@@ -43,7 +43,7 @@ export default async function CmsPage({ params }: Props) {
         </h1>
         {cmsPage.content && (
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <RichText content={cmsPage.content} />
+            <RichText content={cmsPage.content} locale={locale} />
           </div>
         )}
       </SidebarLayout>

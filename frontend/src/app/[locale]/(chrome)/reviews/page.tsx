@@ -49,7 +49,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Breadcrumbs crumbs={[{ label: tBc('reviews'), href: routes.reviews() }]} />
+      <Breadcrumbs locale={locale} crumbs={[{ label: tBc('reviews'), href: routes.reviews() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('reviews.pageTitle')} subtitle={tSeo('reviews.pageSubtitle')} />
         <SiteCardGrid

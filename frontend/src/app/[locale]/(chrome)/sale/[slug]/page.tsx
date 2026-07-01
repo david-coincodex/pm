@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
-import { getSaleBySlug, getAllSaleSlugs, getDiscountPercent, type Sale } from '@/lib/strapi';
+import { getSaleBySlug, getDiscountPercent, type Sale } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import { localizedAlternates } from '@/lib/pagination';
 import Container from '@/components/Container';
@@ -15,17 +14,6 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import FaqSection from '@/components/FaqSection';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
-
-// Render dynamically to avoid DYNAMIC_SERVER_USAGE from static generation hitting
-// request-dynamic APIs.
-export const dynamic = 'force-dynamic';
-
-export async function generateStaticParams() {
-  const slugs = await getAllSaleSlugs().catch(() => []);
-  return routing.locales.flatMap((locale) =>
-    slugs.map((slug) => ({ locale, slug }))
-  );
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -72,7 +60,7 @@ export default async function SalePage({ params }: Props) {
 
   return (
     <>
-      <Breadcrumbs variant="dark" crumbs={[
+      <Breadcrumbs variant="dark" locale={locale} crumbs={[
         { label: sale.title, href: routes.sale(sale.slug) },
       ]} />
       {/* ── Hero (title, description, countdown, featured deals) ── */}
@@ -100,7 +88,7 @@ export default async function SalePage({ params }: Props) {
       {sale.content && (
         <Container className="py-10 lg:py-14" padded={false}>
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <RichText content={sale.content} />
+            <RichText content={sale.content} locale={locale} />
           </div>
         </Container>
       )}

@@ -148,7 +148,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
   return (
     <>
-    <Breadcrumbs crumbs={[
+    <Breadcrumbs locale={locale} crumbs={[
       { label: site.name, href: routes.site(slug) },
     ]} />
     <Container>
@@ -185,7 +185,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
         {/* Rich-text content */}
         {site.description && (
-          <RichText content={site.description} className="mt-8" />
+          <RichText content={site.description} locale={locale} className="mt-8" />
         )}
 
         {/* Deal offers */}

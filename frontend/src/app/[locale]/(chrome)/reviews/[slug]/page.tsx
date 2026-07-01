@@ -156,7 +156,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 
   return (
     <>
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: tBc('reviews'), href: routes.reviews() },
         { label: site.name, href: routes.review(slug) },
       ]} />
@@ -183,7 +183,7 @@ export default async function ReviewDetailPage({ params }: Props) {
         {/* Main content — offers table, affiliate disclaimer & payment methods injected before the last H2 */}
         {review.content ? (
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <RichText content={review.content} injectBeforeLastH2={pricingBlock} />
+            <RichText content={review.content} injectBeforeLastH2={pricingBlock} locale={locale} />
           </div>
         ) : pricingBlock ? (
           <div className="mt-8">{pricingBlock}</div>

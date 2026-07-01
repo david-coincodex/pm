@@ -7,16 +7,19 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import SectionTitle from '@/components/SectionTitle';
 import { routes } from '@/lib/routes';
 
-export default async function CategoriesPage() {
+type Props = { params: Promise<{ locale: string }> };
+
+export default async function CategoriesPage({ params }: Props) {
+  const { locale } = await params;
   const [t, tBc] = await Promise.all([
-    getTranslations('categoryGrid'),
-    getTranslations('breadcrumbs'),
+    getTranslations({ locale, namespace: 'categoryGrid' }),
+    getTranslations({ locale, namespace: 'breadcrumbs' }),
   ]);
   const categories = await getCategoriesGrid().catch(() => []);
 
   return (
     <main>
-      <Breadcrumbs crumbs={[{ label: tBc('categories'), href: routes.categories() }]} />
+      <Breadcrumbs locale={locale} crumbs={[{ label: tBc('categories'), href: routes.categories() }]} />
       <section>
         <Container>
           <SectionTitle as="h1" title={t('allCategories') || 'All Categories'} />

@@ -1,4 +1,4 @@
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import Container from './Container';
 import { routing } from '@/i18n/routing';
@@ -10,11 +10,12 @@ interface BreadcrumbsProps {
   crumbs: Crumb[];
   /** Colour variant. Use 'dark' when the breadcrumbs sit over a dark hero. */
   variant?: 'light' | 'dark';
+  /** Active locale — passed explicitly so this stays statically renderable (no headers() read). */
+  locale: string;
 }
 
-export default async function Breadcrumbs({ crumbs, variant = 'light' }: BreadcrumbsProps) {
-  const t = await getTranslations('breadcrumbs');
-  const locale = await getLocale();
+export default async function Breadcrumbs({ crumbs, variant = 'light', locale }: BreadcrumbsProps) {
+  const t = await getTranslations({ locale, namespace: 'breadcrumbs' });
   const isDark = variant === 'dark';
 
   const all: Crumb[] = [{ label: t('home'), href: '/' }, ...crumbs];

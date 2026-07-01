@@ -55,7 +55,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Breadcrumbs crumbs={[{ label: tBc('bundles'), href: routes.bundles() }]} />
+      <Breadcrumbs locale={locale} crumbs={[{ label: tBc('bundles'), href: routes.bundles() }]} />
       <Container>
         <SectionTitle
           as="h1"

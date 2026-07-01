@@ -47,7 +47,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
     <>
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
-      <Breadcrumbs crumbs={[{ label: tBc('blog'), href: routes.blog() }]} />
+      <Breadcrumbs locale={locale} crumbs={[{ label: tBc('blog'), href: routes.blog() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('blog.pageTitle')} />
 

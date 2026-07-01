@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { getBundleBySlug, getAllBundleSlugs, strapiMediaUrl } from '@/lib/strapi';
-import { routing } from '@/i18n/routing';
+import { getBundleBySlug, strapiMediaUrl } from '@/lib/strapi';
 import { Link } from '@/i18n/navigation';
 import Container from '@/components/Container';
 import { routes } from '@/lib/routes';
@@ -14,17 +13,6 @@ import RichText from '@/components/RichText';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
-
-// Render dynamically to avoid DYNAMIC_SERVER_USAGE from static generation hitting
-// request-dynamic APIs.
-export const dynamic = 'force-dynamic';
-
-export async function generateStaticParams() {
-  const slugs = await getAllBundleSlugs().catch(() => []);
-  return routing.locales.flatMap((locale) =>
-    slugs.map((slug) => ({ locale, slug }))
-  );
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -61,7 +49,7 @@ export default async function BundleDetailPage({ params }: Props) {
 
   return (
     <>
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: tBc('bundles'), href: routes.bundles() },
         { label: bundle.name, href: routes.bundle(slug) },
       ]} />
@@ -149,7 +137,7 @@ export default async function BundleDetailPage({ params }: Props) {
 
         {/* Rich-text content */}
         {bundle.content && (
-          <RichText content={bundle.content} className="mt-8" />
+          <RichText content={bundle.content} locale={locale} className="mt-8" />
         )}
 
         {/* What's included */}

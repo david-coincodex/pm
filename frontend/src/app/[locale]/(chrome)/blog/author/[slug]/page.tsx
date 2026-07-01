@@ -2,9 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
 import {
-  getAllAuthorSlugs,
   getAuthorBySlug,
   getArticlesByAuthor,
   getReviewsByAuthor,
@@ -41,17 +39,6 @@ type Props = {
   params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ page?: string }>;
 };
-
-// Render dynamically to avoid DYNAMIC_SERVER_USAGE from static generation hitting
-// request-dynamic APIs.
-export const dynamic = 'force-dynamic';
-
-export async function generateStaticParams() {
-  const slugs = await getAllAuthorSlugs().catch(() => []);
-  return routing.locales.flatMap((locale) =>
-    slugs.map((slug) => ({ locale, slug }))
-  );
-}
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -98,7 +85,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
       {prevHref && <link rel="prev" href={prevHref} />}
       {nextHref && <link rel="next" href={nextHref} />}
 
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: tBc('blog'), href: routes.blog() },
         { label: author.name, href: routes.blogAuthor(slug) },
       ]} />

@@ -66,7 +66,7 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <>
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: tBc('blog'), href: routes.blog() },
         { label: article.title, href: routes.blogArticle(id, article.slug) },
       ]} />
@@ -112,7 +112,7 @@ export default async function ArticlePage({ params }: Props) {
           />
 
           {/* Content */}
-          {article.content && <RichText content={article.content} />}
+          {article.content && <RichText content={article.content} locale={locale} />}
 
           {/* FAQ — below the content, inside the main container */}
           <FaqSection faqs={article.faqs} bare />

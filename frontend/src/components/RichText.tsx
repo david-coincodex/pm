@@ -1,6 +1,6 @@
 import parse, { type DOMNode, Element } from 'html-react-parser';
 import { isValidElement, type ReactNode } from 'react';
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import ProsConsBlock from '@/components/rich-text/ProsConsBlock';
 import SiteCardInline from '@/components/rich-text/SiteCardInline';
 import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
@@ -97,18 +97,17 @@ interface RichTextProps {
   className?: string;
   /** Optional node spliced in immediately before the last top-level <h2> (appended if none). */
   injectBeforeLastH2?: ReactNode;
+  /** Active locale — passed explicitly so this stays statically renderable (no headers() read). */
+  locale: string;
 }
 
-export default async function RichText({ content, className = '', injectBeforeLastH2 }: RichTextProps) {
+export default async function RichText({ content, className = '', injectBeforeLastH2, locale }: RichTextProps) {
   if (!content) return null;
 
   // CKEditor HTML string
   if (typeof content === 'string') {
     if (!content.trim()) return null;
-    const [t, locale] = await Promise.all([
-      getTranslations('reviews'),
-      getLocale(),
-    ]);
+    const t = await getTranslations({ locale, namespace: 'reviews' });
     const widgetData = await prefetchWidgetData(content, locale);
     const prosLabel = t('pros');
     const consLabel = t('cons');

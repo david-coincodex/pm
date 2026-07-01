@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { getCategoryBySlug, getSitesByCategorySlug, getAllCategories } from '@/lib/strapi';
-import { routing } from '@/i18n/routing';
+import { getCategoryBySlug, getSitesByCategorySlug } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
@@ -24,17 +23,6 @@ function parseCategorySlug(slug: string): string | null {
 }
 
 type Props = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ page?: string }> };
-
-// Render dynamically (live offers + ?page= pagination) to avoid DYNAMIC_SERVER_USAGE from
-// static generation hitting request-dynamic APIs.
-export const dynamic = 'force-dynamic';
-
-export async function generateStaticParams() {
-  const categories = await getAllCategories().catch(() => []);
-  return routing.locales.flatMap((locale) =>
-    categories.map((cat) => ({ locale, slug: `best-${cat.slug}-sites` }))
-  );
-}
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -86,7 +74,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <Breadcrumbs crumbs={[
+      <Breadcrumbs locale={locale} crumbs={[
         { label: category.name, href: routes.category(categorySlug) },
       ]} />
       {prevHref && <link rel="prev" href={prevHref} />}
@@ -108,9 +96,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             />
           }
         >
-          {category.intro && <RichText content={category.intro} />}
+          {category.intro && <RichText content={category.intro} locale={locale} />}
           <SiteCardInlineList sites={sites} initialShow={5} />
-          {category.content && <RichText content={category.content} />}
+          {category.content && <RichText content={category.content} locale={locale} />}
           {pagination.pageCount > 1 && (
             <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
           )}
