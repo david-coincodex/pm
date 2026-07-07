@@ -5,6 +5,17 @@ export const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? 'http://localhos
 // (e.g. http://backend:1339). Falls back to the public URL outside Docker.
 const STRAPI_FETCH_URL = process.env.STRAPI_INTERNAL_URL ?? STRAPI_URL;
 
+// Cloudflare Access service-token headers, used only for local dev pointed at a
+// Cloudflare-Access-gated Strapi (e.g. cms-staging.pornmode.com). No-op in
+// production and normal local dev, where these env vars are unset. Server-side
+// only — never expose the secret to the browser.
+function cfAccessHeaders(): Record<string, string> {
+  const id = process.env.CF_ACCESS_CLIENT_ID;
+  const secret = process.env.CF_ACCESS_CLIENT_SECRET;
+  if (!id || !secret) return {};
+  return { 'CF-Access-Client-Id': id, 'CF-Access-Client-Secret': secret };
+}
+
 export type StrapiResponse<T> = {
   data: T;
   meta: {
@@ -106,6 +117,7 @@ export async function strapiGet<T>(
     ...rest,
     headers: {
       'Content-Type': 'application/json',
+      ...cfAccessHeaders(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers as Record<string, string>),
     },
@@ -138,6 +150,7 @@ export async function strapiPost<T>(
     ...rest,
     headers: {
       'Content-Type': 'application/json',
+      ...cfAccessHeaders(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers as Record<string, string>),
     },
@@ -161,6 +174,7 @@ export async function strapiPost<T>(
 export async function strapiHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${STRAPI_FETCH_URL}/_health`, {
+      headers: cfAccessHeaders(),
       next: { revalidate: 0 },
       signal: AbortSignal.timeout(3000),
     });
