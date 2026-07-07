@@ -30,6 +30,7 @@ import ArticleCardList from '@/components/ArticleCardList';
 import SectionTitle from '@/components/SectionTitle';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import Pagination from '@/components/Pagination';
+import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
 import SidebarCategorySites from '@/components/SidebarCategorySites';
 
@@ -119,6 +120,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
           )}
 
           {/* Articles */}
+          <PaginationScrollAnchor page={page} />
           {articles.length === 0 ? (
             <p className="text-slate-500 dark:text-slate-400">{t('authorArticlesEmpty')}</p>
           ) : (

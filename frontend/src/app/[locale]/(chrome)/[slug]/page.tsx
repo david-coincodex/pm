@@ -9,6 +9,7 @@ import SidebarLayout from '@/components/SidebarLayout';
 import SectionTitle from '@/components/SectionTitle';
 import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
 import Pagination from '@/components/Pagination';
+import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 import RichText from '@/components/RichText';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
@@ -97,6 +98,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           }
         >
           {category.intro && <RichText content={category.intro} locale={locale} />}
+          <PaginationScrollAnchor page={page} />
           <SiteCardInlineList sites={sites} initialShow={5} />
           {category.content && <RichText content={category.content} locale={locale} />}
           {pagination.pageCount > 1 && (

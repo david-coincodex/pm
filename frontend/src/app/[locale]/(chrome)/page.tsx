@@ -5,6 +5,7 @@ import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } fro
 import Container from "@/components/Container";
 import SiteCardGrid from "@/components/site/SiteCardGrid";
 import Pagination from "@/components/Pagination";
+import PaginationScrollAnchor from "@/components/PaginationScrollAnchor";
 import SiteCardRow from "@/components/site/SiteCardRow";
 import FeaturedHeader from "@/components/FeaturedHeader";
 import CategorySpotlight from "@/components/CategorySpotlight";
@@ -126,6 +127,7 @@ export default async function Home({ params, searchParams }: Props) {
 
       <Container className="py-10 lg:py-14" padded={false}>
         <SectionTitle as="h1" title={tSeo("sites.pageTitle")} subtitle={tSeo("sites.pageSubtitle")} />
+        <PaginationScrollAnchor page={page} />
         <SiteCardGrid items={items} />
         {pagination.pageCount > 1 && (
           <Pagination

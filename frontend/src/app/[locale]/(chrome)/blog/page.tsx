@@ -7,6 +7,7 @@ import Container from '@/components/Container';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SectionTitle from '@/components/SectionTitle';
 import Pagination from '@/components/Pagination';
+import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 import ArticleHeroGrid from '@/components/ArticleHeroGrid';
 
 const PAGE_SIZE = 12;
@@ -50,6 +51,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
       <Breadcrumbs locale={locale} crumbs={[{ label: tBc('blog'), href: routes.blog() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('blog.pageTitle')} />
+        <PaginationScrollAnchor page={page} />
 
         {articles.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400">{t('empty')}</p>

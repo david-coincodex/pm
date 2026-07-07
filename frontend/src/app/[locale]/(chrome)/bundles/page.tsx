@@ -7,6 +7,7 @@ import Container from '@/components/Container';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import BundleGrid from '@/components/bundle/BundleGrid';
 import Pagination from '@/components/Pagination';
+import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 import SectionTitle from '@/components/SectionTitle';
 import FaqSection from '@/components/FaqSection';
 
@@ -62,6 +63,7 @@ export default async function BundlesPage({ params, searchParams }: Props) {
           title={tSeo('bundles.pageTitle')}
           subtitle={tSeo('bundles.pageSubtitle')}
         />
+        <PaginationScrollAnchor page={page} />
         <BundleGrid bundles={bundles} locale={locale} emptyMessage={t('empty')} />
         {pagination.pageCount > 1 && (
           <Pagination

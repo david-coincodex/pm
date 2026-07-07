@@ -8,6 +8,7 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import SiteCardGrid from '@/components/site/SiteCardGrid';
 import SectionTitle from '@/components/SectionTitle';
 import Pagination from '@/components/Pagination';
+import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 
 const PAGE_SIZE = 24;
 
@@ -52,6 +53,7 @@ export default async function ReviewsPage({ params, searchParams }: Props) {
       <Breadcrumbs locale={locale} crumbs={[{ label: tBc('reviews'), href: routes.reviews() }]} />
       <Container>
         <SectionTitle as="h1" title={tSeo('reviews.pageTitle')} subtitle={tSeo('reviews.pageSubtitle')} />
+        <PaginationScrollAnchor page={page} />
         <SiteCardGrid
           items={reviewsWithSite.map((review) => ({
             site: review.site,
