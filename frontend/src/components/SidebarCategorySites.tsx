@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { getSitesByCategoryId, getSitesBySiteType, getActiveSale, strapiMediaUrl, getDiscountPercent, type Site } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
+import OfferLink from '@/components/offer/OfferLink';
 import SaleBadgeInline from '@/components/sale/SaleBadgeInline';
 
 interface SidebarCategorySitesProps {
@@ -133,14 +134,21 @@ export default async function SidebarCategorySites({ title, limit = 5, categoryI
                     {t('viewDeal')}
                   </Link>
                   {bestOffer ? (
-                    <Link
-                      href={routes.offer(bestOffer.id)}
-                      target="_blank"
-                      rel="nofollow noopener noreferrer"
+                    <OfferLink
+                      offer={{
+                        id: bestOffer.id,
+                        siteName: site.name,
+                        siteSlug: site.slug,
+                        price: bestOffer.price,
+                        fullPrice: bestOffer.full_price,
+                        offerType: bestOffer.offerType,
+                        offerKind: bestOffer.offerKind,
+                        credits: bestOffer.credits,
+                      }}
                       className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-center text-xs font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                     >
                       {isInCamCategory ? t('getCredits') : t('buyNow')}
-                    </Link>
+                    </OfferLink>
                   ) : null}
                 </div>
               </div>

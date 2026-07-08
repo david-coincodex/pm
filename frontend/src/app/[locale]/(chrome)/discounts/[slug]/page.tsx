@@ -169,6 +169,8 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
             review={review ? { slug: site.slug, score: computeOverallScore(review.paysiteScores, review.camsiteScores) } : null}
             initialOfferId={initialOfferId}
             parentSite={parentSiteInfo}
+            siteName={site.name}
+            siteSlug={site.slug}
           />
         }
         header={
@@ -189,7 +191,7 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         )}
 
         {/* Deal offers */}
-        <OffersTable offers={activeOffers} />
+        <OffersTable offers={activeOffers} siteName={site.name} siteSlug={site.slug} />
 
         {/* Bonus child sites */}
         <SubsiteGrid subsites={site.child_sites ?? []} siteName={site.name} siteSlug={site.slug} />

@@ -144,7 +144,7 @@ export default async function ReviewDetailPage({ params }: Props) {
   const maxDiscount = getMaxDiscountPercent(activeOffers) ?? undefined;
 
   const sidebar = overall !== null ? (
-    <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} discountPercent={maxDiscount} siteSlug={site.slug} />
+    <ReviewScoreCard overall={overall} entries={scoreEntries} bestOffer={bestOffer} discountPercent={maxDiscount} siteSlug={site.slug} siteName={site.name} />
   ) : null;
 
   // Offers table (incl. affiliate disclaimer) — injected before the article's last H2.

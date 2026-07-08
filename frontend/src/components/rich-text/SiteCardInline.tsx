@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Site, strapiMediaUrl, getActiveSale, getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
+import OfferLink from '@/components/offer/OfferLink';
 import SaleBadgeOverlay from '@/components/sale/SaleBadgeOverlay';
 
 interface SiteCardInlineProps {
@@ -123,14 +124,21 @@ export default async function SiteCardInline({ site }: SiteCardInlineProps) {
             {t('viewDeal')}
           </Link>
           {bestOffer ? (
-            <Link
-              href={routes.offer(bestOffer.id)}
-              target="_blank"
-              rel="nofollow noopener noreferrer"
+            <OfferLink
+              offer={{
+                id: bestOffer.id,
+                siteName: site.name,
+                siteSlug: site.slug,
+                price: bestOffer.price,
+                fullPrice: bestOffer.full_price,
+                offerType: bestOffer.offerType,
+                offerKind: bestOffer.offerKind,
+                credits: bestOffer.credits,
+              }}
               className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700 sm:flex-1 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               {site.siteType === 'camsite' ? t('getCredits') : t('buyNow')}
-            </Link>
+            </OfferLink>
           ) : (
             <Link
               href={href}

@@ -364,12 +364,9 @@
     "privateShows": "Privatshows"
   },
   "upsell": {
-    "description": "Mitglieder, die dies gekauft haben, holten sich auch:",
-    "dealName": "Adult Time – Vollständiger Netzwerkzugang",
-    "dealPrice": "7,95 $/Monat",
-    "dealOriginalPrice": "19,95 $/Monat",
-    "dealDiscount": "-60%",
-    "claimDeal": "Dieses Angebot sichern",
+    "crossSellHeading": "Das könnte dir auch gefallen:",
+    "viewDeal": "Angebot ansehen",
+    "noThanks": "Nein danke",
     "feedbackTitle": "Hat der Rabatt funktioniert?",
     "feedbackYes": "Ja",
     "feedbackNo": "Nein",

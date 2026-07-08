@@ -2,17 +2,18 @@
 
 import { type MouseEvent } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
 import { getDiscountPercent } from '@/lib/strapi';
-import { routes } from '@/lib/routes';
+import OfferLink from '@/components/offer/OfferLink';
 
 
 interface OffersTableProps {
   offers: Offer[];
+  siteName?: string | null;
+  siteSlug?: string | null;
 }
 
-export default function OffersTable({ offers }: OffersTableProps) {
+export default function OffersTable({ offers, siteName, siteSlug }: OffersTableProps) {
   const t = useTranslations('discount');
   const tOffer = useTranslations('offer');
 
@@ -37,7 +38,7 @@ export default function OffersTable({ offers }: OffersTableProps) {
       {/* Subscription offers table */}
       {subscriptionOffers.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="whitespace-nowrap border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
@@ -76,17 +77,24 @@ export default function OffersTable({ offers }: OffersTableProps) {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={routes.offer(offer.id)}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
+                      <OfferLink
+                        offer={{
+                          id: offer.id,
+                          siteName,
+                          siteSlug,
+                          price: offer.price,
+                          fullPrice: offer.full_price,
+                          offerType: offer.offerType,
+                          offerKind: offer.offerKind,
+                          credits: offer.credits,
+                        }}
                         className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                      </Link>
+                      </OfferLink>
                     </td>
                   </tr>
                 ))}
@@ -108,7 +116,7 @@ export default function OffersTable({ offers }: OffersTableProps) {
       {/* Credits offers table */}
       {creditsOffers.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="whitespace-nowrap border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
@@ -127,17 +135,24 @@ export default function OffersTable({ offers }: OffersTableProps) {
                       {offer.credits} {t('credits')}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={routes.offer(offer.id)}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
+                      <OfferLink
+                        offer={{
+                          id: offer.id,
+                          siteName,
+                          siteSlug,
+                          price: offer.price,
+                          fullPrice: offer.full_price,
+                          offerType: offer.offerType,
+                          offerKind: offer.offerKind,
+                          credits: offer.credits,
+                        }}
                         className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                      </Link>
+                      </OfferLink>
                     </td>
                   </tr>
                 ))}

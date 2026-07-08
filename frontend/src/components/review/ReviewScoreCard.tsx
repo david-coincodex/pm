@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
+import OfferLink from '@/components/offer/OfferLink';
 
 interface ScoreEntry {
   key: string;
@@ -25,6 +26,7 @@ interface ReviewScoreCardProps {
   /** Highest discount % across the site's active offers (shown as a badge). */
   discountPercent?: number | null;
   siteSlug?: string | null;
+  siteName?: string | null;
 }
 
 function scoreBarColor(score: number): string {
@@ -58,10 +60,27 @@ function ScoreRow({ label, score }: { label: string; score: number }) {
 
 const INITIAL_VISIBLE = 4;
 
-export default function ReviewScoreCard({ overall, entries, bestOffer, discountPercent, siteSlug }: ReviewScoreCardProps) {
+export default function ReviewScoreCard({ overall, entries, bestOffer, discountPercent, siteSlug, siteName }: ReviewScoreCardProps) {
   const t = useTranslations('reviews');
   const td = useTranslations('discount');
   const [expanded, setExpanded] = useState(false);
+
+  // Sticky mobile buy-bar: show it once the card scrolls out of view.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [showBar, setShowBar] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        setShowBar(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { rootMargin: '-80px 0px 0px 0px', threshold: 0 }, // -80px ≈ sticky header height
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const visible = expanded ? entries : entries.slice(0, INITIAL_VISIBLE);
   const hasMore = entries.length > INITIAL_VISIBLE;
@@ -69,9 +88,10 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
   const color = scoreColor(overall);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+    <>
+    <div ref={cardRef} className="rounded-none border-0 bg-white p-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-5 dark:bg-slate-800 dark:md:border-slate-700">
       {/* Overall score: star + large number */}
-      <div className="mb-5 flex flex-col items-center gap-1">
+      <div className="mb-5 flex flex-col items-start gap-1">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
           {t('overallScore')}
         </p>
@@ -107,23 +127,21 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
       {/* Pricing + CTA */}
       {bestOffer && (
         <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
-          {discountPercent != null && discountPercent > 0 && (
-            <div className="mb-2 flex justify-center">
-              <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white dark:bg-emerald-500">
-                {td('percentOff', { percentage: discountPercent })}
-              </span>
-            </div>
-          )}
-          <div className="mb-4 flex flex-wrap items-baseline justify-center gap-x-2">
-            <span className="text-sm text-slate-500 dark:text-slate-400">{td('from')}</span>
+          <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{td('from')}</p>
+          <div className="mb-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+              ${bestOffer.price.toFixed(2)}
+            </span>
             {bestOffer.full_price && bestOffer.full_price > bestOffer.price && (
               <span className="text-base text-slate-400 line-through dark:text-slate-500">
                 ${bestOffer.full_price.toFixed(2)}
               </span>
             )}
-            <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-              ${bestOffer.price.toFixed(2)}
-            </span>
+            {discountPercent != null && discountPercent > 0 && (
+              <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-emerald-500">
+                {td('percentOff', { percentage: discountPercent })}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {siteSlug && (
@@ -134,17 +152,79 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
                 {t('viewDeal')}
               </Link>
             )}
-            <Link
-              href={routes.offer(bestOffer.id)}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
+            <OfferLink
+              offer={{
+                id: bestOffer.id,
+                siteName,
+                siteSlug,
+                price: bestOffer.price,
+                fullPrice: bestOffer.full_price,
+                offerType: bestOffer.offerType,
+              }}
               className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow transition hover:bg-emerald-500"
             >
               {t('buyNow')}
-            </Link>
+            </OfferLink>
           </div>
         </div>
       )}
     </div>
+
+    {/* Sticky mobile/tablet buy-bar — appears once the card scrolls out of view */}
+    {bestOffer && (
+      <div
+        className={`fixed inset-x-0 bottom-0 z-40 lg:hidden transition-transform duration-200 ${
+          showBar ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        inert={!showBar}
+      >
+        <div
+          className="flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-xl font-extrabold text-slate-900 dark:text-white">
+                ${bestOffer.price.toFixed(2)}
+              </span>
+              {bestOffer.full_price && bestOffer.full_price > bestOffer.price && (
+                <span className="text-sm text-slate-400 line-through dark:text-slate-500">
+                  ${bestOffer.full_price.toFixed(2)}
+                </span>
+              )}
+              {discountPercent != null && discountPercent > 0 && (
+                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-emerald-500">
+                  {td('percentOff', { percentage: discountPercent })}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {siteSlug && (
+              <Link
+                href={routes.site(siteSlug)}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              >
+                {t('viewDeal')}
+              </Link>
+            )}
+            <OfferLink
+              offer={{
+                id: bestOffer.id,
+                siteName,
+                siteSlug,
+                price: bestOffer.price,
+                fullPrice: bestOffer.full_price,
+                offerType: bestOffer.offerType,
+              }}
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-95"
+            >
+              {t('buyNow')}
+            </OfferLink>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

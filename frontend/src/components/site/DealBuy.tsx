@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Offer } from '@/lib/strapi';
 import { getDiscountPercent } from '@/lib/strapi';
 import { routes } from '@/lib/routes';
 import PaymentMethodPills from './PaymentMethodPills';
-import UpsellPopup from './UpsellPopup';
+import OfferLink from '@/components/offer/OfferLink';
 import ReviewTeaser from './ReviewTeaser';
 
 /** Daily verification update time: 1 PM UTC */
@@ -39,9 +39,11 @@ interface DealBuyProps {
   review?: { slug: string; score: number | null } | null;
   initialOfferId?: number;
   parentSite?: { id: number; name: string; slug: string } | null;
+  siteName?: string | null;
+  siteSlug?: string | null;
 }
 
-export default function DealBuy({ offers, dealIncludes, paymentMethods, review, initialOfferId, parentSite }: DealBuyProps) {
+export default function DealBuy({ offers, dealIncludes, paymentMethods, review, initialOfferId, parentSite, siteName, siteSlug }: DealBuyProps) {
   const t = useTranslations('discount');
   const locale = useLocale();
 
@@ -65,8 +67,25 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
       ? initialOfferId
       : (allSorted[0]?.id ?? 0)
   );
-  const [showUpsell, setShowUpsell] = useState(false);
   const selected = allSorted.find((s) => s.id === selectedId) ?? allSorted[0];
+
+  // Sticky mobile buy-bar: show it once the main card scrolls out of view.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [showBar, setShowBar] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        // Show once the card has scrolled up out of view (behind the sticky header).
+        setShowBar(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { rootMargin: '-80px 0px 0px 0px', threshold: 0 }, // -80px ≈ sticky header height
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   if (!selected) return null;
 
@@ -80,8 +99,20 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
 
   const isCredits = selected.offerKind === 'credits';
 
+  const offerInfo = {
+    id: selected.id,
+    siteName,
+    siteSlug,
+    price: selected.price,
+    fullPrice: selected.full_price,
+    offerType: selected.offerType,
+    offerKind: selected.offerKind,
+    credits: selected.credits,
+  };
+
   return (
-    <div className="relative rounded-none border-b border-slate-200 bg-white px-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
+    <>
+    <div ref={cardRef} className="relative rounded-none border-b border-slate-200 bg-white px-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
       {/* Parent site tag */}
       {parentSite && (
         <div className="mb-4 flex justify-center">
@@ -147,15 +178,12 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
       </div>
 
       {/* Buy Now button */}
-      <Link
-        href={routes.offer(selected.id)}
-        target="_blank"
-        rel="nofollow noopener noreferrer"
-        onClick={() => setShowUpsell(true)}
+      <OfferLink
+        offer={offerInfo}
         className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
       >
         {t('buyNow')}
-      </Link>
+      </OfferLink>
 
       {/* Verified badge */}
       <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
@@ -183,9 +211,50 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
         </ul>
       )}
 
-      <UpsellPopup open={showUpsell} onClose={() => setShowUpsell(false)} />
-
       {review && <ReviewTeaser slug={review.slug} score={review.score} />}
     </div>
+
+    {/* Sticky mobile/tablet buy-bar — appears once the card scrolls out of view */}
+    <div
+      className={`fixed inset-x-0 bottom-0 z-40 lg:hidden transition-transform duration-200 ${
+        showBar ? 'translate-y-0' : 'translate-y-full'
+      }`}
+      inert={!showBar}
+    >
+      <div
+        className="flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+            {isCredits
+              ? `${selected.credits} ${t('credits')}`
+              : selected.offerType && selected.offerType !== 'credits'
+                ? t(selected.offerType)
+                : ''}
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+              ${selected.price.toFixed(2)}
+            </span>
+            {!isCredits && fullPrice > selected.price && (
+              <span className="text-sm text-slate-400 line-through">${fullPrice.toFixed(2)}</span>
+            )}
+            {discount !== null && discount > 0 && (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                {discount}%
+              </span>
+            )}
+          </div>
+        </div>
+        <OfferLink
+          offer={offerInfo}
+          className="shrink-0 rounded-xl bg-emerald-600 px-6 py-3 text-base font-bold text-white transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+        >
+          {t('buyNow')}
+        </OfferLink>
+      </div>
+    </div>
+    </>
   );
 }

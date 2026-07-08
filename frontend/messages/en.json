@@ -364,12 +364,9 @@
     "privateShows": "Private Shows"
   },
   "upsell": {
-    "description": "Members who bought this also grabbed:",
-    "dealName": "Adult Time – Full Network Access",
-    "dealPrice": "$7.95/mo",
-    "dealOriginalPrice": "$19.95/mo",
-    "dealDiscount": "-60%",
-    "claimDeal": "Claim This Deal",
+    "crossSellHeading": "You might also like:",
+    "viewDeal": "View Deal",
+    "noThanks": "No thanks",
     "feedbackTitle": "Did the discount work?",
     "feedbackYes": "Yes",
     "feedbackNo": "No",
