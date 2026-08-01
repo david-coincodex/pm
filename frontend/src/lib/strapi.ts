@@ -684,6 +684,13 @@ export type Article = {
   metaTitle: string | null;
   title: string;
   slug: string;
+  /**
+   * The article's id on the legacy WordPress site (pornmode.com). Article URLs are
+   * `/blog/<postId>/<slug>/` so they stay byte-identical to production — Strapi's own
+   * auto-increment `id` differs (and even differs between the draft and published rows
+   * of the same document), so it must never appear in a URL.
+   */
+  postId: number | null;
   description: string | null;
   content: Record<string, unknown>[] | null;
   coverImage: StrapiMedia | null;
@@ -709,7 +716,7 @@ const ARTICLE_POPULATE =
  * fetcher (`getArticleById`) deliberately omits this so it still gets `content`.
  */
 const ARTICLE_CARD_FIELDS =
-  'fields=metaTitle,title,slug,description,publishDate,modifiedDate,publishedAt,createdAt,updatedAt,locale';
+  'fields=metaTitle,title,slug,postId,description,publishDate,modifiedDate,publishedAt,createdAt,updatedAt,locale';
 
 /**
  * Relations a card needs. Same as ARTICLE_POPULATE minus `faqs`, which is ~11 KB
@@ -778,6 +785,34 @@ export async function getLatestArticles(locale: string, limit = 8): Promise<Arti
     { next: { revalidate: 300 } }
   );
   return res.data;
+}
+
+/**
+ * Fetch a published article by its production WordPress id (`postId`).
+ *
+ * This is what the blog route resolves on: `/blog/<postId>/<slug>/` must be byte-identical
+ * to the URL pornmode.com serves. Strapi's own `id` is unusable for URLs — it differs from
+ * the WP id, and differs again between a document's draft and published rows.
+ */
+export async function getArticleByPostId(postId: number, locale: string): Promise<Article | null> {
+  if (!Number.isFinite(postId)) return null;
+  const res = await strapiGet<Article[]>(
+    `/articles?${ARTICLE_POPULATE}&filters[postId][$eq]=${postId}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&pagination[pageSize]=1`,
+    { next: { revalidate: 60 } }
+  );
+  return res.data[0] ?? null;
+}
+
+/**
+ * Fetch a published article by slug — the fallback when the id in the URL is stale or
+ * wrong, so the route can still resolve and 308 to the canonical URL instead of 404ing.
+ */
+export async function getArticleBySlug(slug: string, locale: string): Promise<Article | null> {
+  const res = await strapiGet<Article[]>(
+    `/articles?${ARTICLE_POPULATE}&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&pagination[pageSize]=1`,
+    { next: { revalidate: 60 } }
+  );
+  return res.data[0] ?? null;
 }
 
 /** Fetch a single article by numeric id and slug. Returns null if not found. */
@@ -1046,7 +1081,7 @@ export type SitemapSite = { slug: string; updatedAt: string; localizations: Site
 export type SitemapBundle = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapSale = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapCategory = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
-export type SitemapArticle = { id: number; slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapAuthor = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapReview = { updatedAt: string; site: { slug: string }; localizations: SitemapLocalization[] };
 export type SitemapPage = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
@@ -1127,7 +1162,7 @@ export async function getArticlesForSitemap(
   pageSize: number,
 ): Promise<{ data: SitemapArticle[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<SitemapArticle[]>(
-    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 86400 } }
   );
   return {

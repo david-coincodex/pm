@@ -43,7 +43,8 @@ const dateClass = 'text-xs text-slate-400 dark:text-slate-500';
 const chipClass = 'w-fit rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300';
 
 export default function ArticleCard({ article, locale, variant = 'grid', priority = false, className = '' }: ArticleCardProps) {
-  const href = routes.blogArticle(article.id, article.slug);
+  // postId is the production WordPress id — the canonical URL segment (see the blog route).
+  const href = routes.blogArticle(article.postId ?? article.id, article.slug);
   const category = article.categories?.[0];
   const dateStr = article.publishDate ?? article.publishedAt;
   const date = dateStr ? formatDate(dateStr, locale) : '';

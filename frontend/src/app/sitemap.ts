@@ -104,7 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const articleEntries: MetadataRoute.Sitemap = articles.map((item: SitemapArticle) => {
-    const path = routes.blogArticle(item.id, item.slug);
+    const path = routes.blogArticle(item.postId ?? item.id, item.slug);
     return { url: localizedUrl('en', path), lastModified: item.updatedAt, alternates: buildAlternates(item, path) };
   });
 
