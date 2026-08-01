@@ -1,0 +1,17 @@
+[
+  {
+    "id": "brazzers-ads",
+    "site": "brazzers",
+    "legacySource": "https://pornmode.com/blog/1489/brazzers-ads/",
+    "adTagPage": "https://www.brazzers.com/videos/tags/1427/top-ad/",
+    "manifest": "data/commercials/brazzers.json",
+    "maxAds": 20
+  },
+  {
+    "id": "reality-kings-ads",
+    "site": "reality-kings",
+    "legacySource": "https://pornmode.com/blog/1905/reality-kings-ads/",
+    "manifest": "data/commercials/reality-kings.json",
+    "maxAds": 20
+  }
+]
