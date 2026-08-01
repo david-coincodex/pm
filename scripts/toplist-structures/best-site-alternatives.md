@@ -1,4 +1,4 @@
-## Structure: "Best <site> Alternatives / Ads"
+## Structure: "Best <site> Alternatives"
 
 A ranked list of the best alternatives to a reference site (sites users move to or compare against). Rank only catalog sites so each can be a widget. Order:
 

@@ -12,7 +12,7 @@ Generates fresh "toplist" blog articles with GPT-5.5 from multiple external sour
 - `toplist-structures/<type>.md` — per-type article structure. Add a new file to add a new type.
   - `general-toplist.md` — topical lists (e.g. "Best Teen Pornstars 2026")
   - `similar-to-site.md` — "Sites Similar to <site>"
-  - `best-site-ads.md` — "Best <site> Alternatives"
+  - `best-site-alternatives.md` — "Best <site> Alternatives"
   - `best-network-sites.md` — "Best <site> Sites" — the reference site's own network channels, ranked by our review score (top-rated first). Set `referenceSite` to the main site and `includeReviews: true`.
 - `toplist-jobs.example.json` — example jobs config; copy to `toplist-jobs.json`
 

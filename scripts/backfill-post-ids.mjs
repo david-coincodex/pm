@@ -54,8 +54,10 @@ async function fetchAllArticles() {
   let page = 1;
   for (;;) {
     const res = await fetch(
-      `${STRAPI_URL}/api/articles?fields[0]=slug&fields[1]=postId&fields[2]=title` +
-        `&publicationState=preview&pagination[page]=${page}&pagination[pageSize]=100`,
+      // status=draft returns the draft version of EVERY document (published or not) in
+      // Strapi 5 — the complete set. (`publicationState` was the v4 name and is ignored.)
+      `${STRAPI_URL}/api/articles?fields[0]=slug&fields[1]=postId` +
+        `&status=draft&pagination[page]=${page}&pagination[pageSize]=100`,
       { headers },
     );
     if (!res.ok) throw new Error(`Fetch articles failed: ${res.status} ${await res.text()}`);

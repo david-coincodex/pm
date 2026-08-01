@@ -34,7 +34,7 @@ import { createRequire } from 'module';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import { openAsBlob } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join, basename } from 'path';
+import { dirname, join } from 'path';
 import { createHash } from 'crypto';
 import { execFileSync } from 'child_process';
 import { tmpdir } from 'os';
@@ -230,6 +230,12 @@ function collectFromLegacyHtml(html, job) {
     const videoSrc = video.attr('src');
     if (!videoSrc) return;
 
+    // WP stores uploads under /uploads/<yyyy>/<mm>/ — the closest thing we have to the
+    // ad's publish date, and VideoObject's uploadDate (one of Google's four required
+    // properties) needs it.
+    const dateMatch = videoSrc.match(/\/uploads\/(\d{4})\/(\d{2})\//);
+    const releaseDate = dateMatch ? `${dateMatch[1]}-${dateMatch[2]}-01` : null;
+
     records.push({
       _closed: false,
       galleryUrls: [],
@@ -247,7 +253,7 @@ function collectFromLegacyHtml(html, job) {
       galleryIds: null,
       sourceHash: null,
       sourceUrl: job.legacySource ?? null,
-      releaseDate: null,
+      releaseDate,
       durationSeconds: null,
     });
   });
@@ -295,6 +301,9 @@ async function collect(job) {
       if (old) Object.assign(r, {
         clipId: old.clipId, posterId: old.posterId, galleryIds: old.galleryIds,
         sourceHash: old.sourceHash, durationSeconds: old.durationSeconds,
+        // The upsert back-references too — dropping them made a re-collect sever the link
+        // between manifest records and their Strapi documents.
+        commercialId: old.commercialId, commercialDocumentId: old.commercialDocumentId,
       });
     }
   }
@@ -488,6 +497,7 @@ async function ingest(job) {
         sceneTitle: rec.sceneTitle,
         sceneUrl: rec.sceneUrl,
         performers: rec.performers,
+        releaseDate: rec.releaseDate ?? null,
         durationSeconds: duration,
         popularity: manifest.commercials.length - i, // legacy article order = editorial ranking
         sourceUrl: rec.sourceUrl,

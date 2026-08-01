@@ -10,6 +10,10 @@
     "generate-toplists": "node generate-toplists.mjs",
     "generate-faqs": "node generate-faqs.mjs",
     "generate-cancel-guides": "node generate-cancel-guides.mjs",
+    "import-commercials": "node import-commercials.mjs",
+    "generate-ad-articles": "node generate-ad-articles.mjs",
+    "backfill-post-ids": "node backfill-post-ids.mjs",
+    "build-wp-post-ids": "node build-wp-post-ids.mjs",
     "build-avn-awards": "node build-avn-awards.mjs",
     "translate-messages": "node translate-messages.mjs",
     "translation-context": "node translation-context.mjs"
