@@ -25,6 +25,12 @@ interface SiteCardProps {
   isCamSite?: boolean;
   /** Force a specific offer type — links View Deal to ?offer=<id> and shows 'Only' label */
   forcedType?: Offer['offerType'];
+  /**
+   * Above-the-fold card: preloads the cover instead of lazy-loading it.
+   * Only set this for cards that are genuinely in the initial viewport — on the
+   * homepage that's the featured row, never the main grid below it.
+   */
+  priority?: boolean;
 }
 
 function scoreColor(score: number): string {
@@ -33,7 +39,7 @@ function scoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite, forcedType }: SiteCardProps) {
+export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite, forcedType, priority }: SiteCardProps) {
   const isCam = isCamSite ?? site.siteType === 'camsite';
   const isDark = variant === 'dark';
   const [t, activeSale] = await Promise.all([
@@ -56,6 +62,12 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
             alt={image.alternativeText ?? site.name}
             width={image.width}
             height={image.height}
+            priority={priority}
+            // `priority` opts out of lazy-loading and emits a <link rel=preload>, but in
+            // Next 16 it does not imply fetchPriority — that has to be set explicitly.
+            // Omit it entirely on below-fold cards; fetchPriority="low" would be worse
+            // than leaving it unset.
+            {...(priority ? { fetchPriority: 'high' as const } : {})}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

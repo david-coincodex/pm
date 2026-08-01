@@ -19,6 +19,11 @@ interface SiteCardRowProps {
   columns?: number;
   emptyMessage?: string;
   variant?: 'light' | 'dark';
+  /**
+   * How many leading cards to treat as above-the-fold (preloaded, not lazy).
+   * Defaults to 0 — only opt in where the row is genuinely in the initial viewport.
+   */
+  priorityCount?: number;
 }
 
 /**
@@ -32,6 +37,7 @@ export default async function SiteCardRow({
   columns = 4,
   emptyMessage,
   variant,
+  priorityCount = 0,
 }: SiteCardRowProps) {
   const t = await getTranslations('discounts');
   const message = emptyMessage ?? t('empty');
@@ -48,7 +54,7 @@ export default async function SiteCardRow({
     // Mobile/tablet: snap-scroll one card per swipe (peek of the next) + dot indicator.
     // Desktop (lg+): CardCarousel's inner row becomes a CSS grid (no scroll/dots).
     <CardCarousel columns={columns} count={items.length} variant={variant}>
-      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review }) => (
+      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review }, i) => (
         // Mobile: ~1 card + a bit more peek  |  sm: 2 equal cards  |  lg: auto (grid takes over)
         <div
           key={site.id}
@@ -63,6 +69,7 @@ export default async function SiteCardRow({
             discountPercent={discountPercent}
             review={review}
             variant={variant}
+            priority={i < priorityCount}
           />
         </div>
       ))}

@@ -3,13 +3,22 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Real :root custom properties, so both the `body` rule below and the @theme
+     tokens above can reference them. Distinct names from the --font-sans/--font-mono
+     theme tokens to avoid a self-referential var(). */
+  --font-sans-stack: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-mono-stack: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* System stacks — no webfont download. The body rule below has always rendered
+     Arial, so the Geist webfonts that used to back these vars were downloaded and
+     preloaded on every page without ever being painted. */
+  --font-sans: var(--font-sans-stack);
+  --font-mono: var(--font-mono-stack);
 
   /* Carousel slide animations (SidebarCarouselShell — used via animate-* utilities) */
   --animate-bundle-in-right: bundle-in-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -35,7 +44,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans-stack);
 }
 
 /* Rich-text content (pros/cons block, CTA buttons, etc.) is styled entirely with Tailwind

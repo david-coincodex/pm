@@ -67,16 +67,19 @@ export default async function AuthorPage({ params, searchParams }: Props) {
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
 
-  const [author, t, tBc] = await Promise.all([
+  // Neither the article list nor the reviews depend on the author record, so all
+  // four reads go out together instead of in three serial waves.
+  const [author, t, tBc, articlesResult, authorReviews] = await Promise.all([
     getAuthorBySlug(slug),
     getTranslations({ locale, namespace: 'blog' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),
+    getArticlesByAuthor(slug, locale, page, PAGE_SIZE),
+    page === 1 ? getReviewsByAuthor(slug, locale, 4).catch(() => []) : Promise.resolve<Review[]>([]),
   ]);
 
   if (!author) notFound();
 
-  const { data: articles, pagination } = await getArticlesByAuthor(slug, locale, page, PAGE_SIZE);
-  const authorReviews = page === 1 ? await getReviewsByAuthor(slug, locale, 4) : [];
+  const { data: articles, pagination } = articlesResult;
 
   const basePath = routes.blogAuthor(slug);
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);

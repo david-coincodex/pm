@@ -22,9 +22,15 @@ interface SiteCardGridProps {
   emptyMessage?: string;
   variant?: 'light' | 'dark';
   cols?: 2 | 3 | 4;
+  /**
+   * How many leading cards to treat as above-the-fold (preloaded, not lazy).
+   * Defaults to 0 and should stay that way on the homepage — this grid sits below
+   * the featured row, so preloading its cards would compete with the real LCP image.
+   */
+  priorityCount?: number;
 }
 
-export default async function SiteCardGrid({ items, emptyMessage, variant, cols = 4 }: SiteCardGridProps) {
+export default async function SiteCardGrid({ items, emptyMessage, variant, cols = 4, priorityCount = 0 }: SiteCardGridProps) {
   const t = await getTranslations('discounts');
   const message = emptyMessage ?? t('empty');
 
@@ -39,8 +45,8 @@ export default async function SiteCardGrid({ items, emptyMessage, variant, cols 
 
   return (
     <div className={gridCols}>
-      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review, isCamSite, forcedType }) => (
-        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} isCamSite={isCamSite} forcedType={forcedType} />
+      {items.map(({ site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, review, isCamSite, forcedType }, i) => (
+        <SiteCard key={site.id} site={site} bestPrice={bestPrice} bestFullPrice={bestFullPrice} currency={currency} bestOfferId={bestOfferId} discountPercent={discountPercent} review={review} variant={variant} isCamSite={isCamSite} forcedType={forcedType} priority={i < priorityCount} />
       ))}
     </div>
   );

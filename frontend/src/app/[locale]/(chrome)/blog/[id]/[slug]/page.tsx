@@ -52,16 +52,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ArticlePage({ params }: Props) {
   const { locale, id } = await params;
 
-  const [article, t, tBc] = await Promise.all([
+  // getLatestArticles does not depend on the article, so it joins the same wave
+  // rather than adding a serial round trip after it.
+  const [article, t, tBc, latestArticles] = await Promise.all([
     getArticleById(Number(id), locale),
     getTranslations({ locale, namespace: 'blog' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),
+    getLatestArticles(locale, 9).catch(() => []),
   ]);
 
   if (!article) notFound();
 
   const blogBase = routes.blog().slice(0, -1);
-  const latestArticles = await getLatestArticles(locale, 9).catch(() => []);
   const relatedArticles = latestArticles.filter((a) => a.id !== article.id).slice(0, 8);
 
   return (

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
@@ -9,6 +10,28 @@ const LOCALE_META: Record<string, { countryCode: string }> = {
   en: { countryCode: 'us' },
   de: { countryCode: 'de' },
 };
+
+/**
+ * Only these two flags are ever rendered, so we serve them straight from public/
+ * instead of pulling in the full ~250-flag `flag-icons` stylesheet (28 KB, formerly
+ * render-blocking on every page from the root layout).
+ *
+ * `unoptimized` is deliberate: these are SVGs, and routing them through the image
+ * optimizer would require `dangerouslyAllowSVG`.
+ */
+function Flag({ code, ratio, className }: { code: string; ratio: '1x1' | '4x3'; className?: string }) {
+  const [w, h] = ratio === '1x1' ? [18, 18] : [21, 16];
+  return (
+    <Image
+      src={`/flags/${ratio}/${code}.svg`}
+      alt=""
+      width={w}
+      height={h}
+      unoptimized
+      className={className}
+    />
+  );
+}
 
 interface Props {
   showLabel?: boolean;
@@ -35,7 +58,7 @@ export default function LanguageSwitcher({ showLabel = false }: Props) {
           aria-expanded={open}
           className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 md:py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
-          <span className={`fi fi-${current?.countryCode} fis rounded-full text-lg`} />
+          {current && <Flag code={current.countryCode} ratio="1x1" className="rounded-full" />}
           <span className={showLabel ? '' : 'md:hidden'}>
             {t(locale as 'en' | 'de')}
           </span>
@@ -66,7 +89,7 @@ export default function LanguageSwitcher({ showLabel = false }: Props) {
                   : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700/60'
               }`}
             >
-              <span className={`fi fi-${meta?.countryCode} rounded-sm text-base`} />
+              {meta && <Flag code={meta.countryCode} ratio="4x3" className="rounded-sm" />}
               <span>{t(loc as 'en' | 'de')}</span>
               {isActive && (
                 <svg className="ml-auto h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { getSitesWithDealsPaginated, getFeaturedDeals, getLifetimeDeals, getSitesByCategoryId, getPublishedBundles, getDiscountPercent, getMaxDiscountPercent } from "@/lib/strapi";
+import type { Bundle, Featured, Site } from "@/lib/strapi";
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from "@/lib/pagination";
 import Container from "@/components/Container";
 import SiteCardGrid from "@/components/site/SiteCardGrid";
@@ -44,31 +45,42 @@ export default async function Home({ params, searchParams }: Props) {
   const page = parsePage(pageStr);
   const basePath = routes.home();
 
-  const { sites, pagination } = await getSitesWithDealsPaginated(page, PAGE_SIZE).catch(() => ({
-    sites: [],
-    pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
-  }));
+  // All five reads fire together — they have no interdependencies, and running them
+  // sequentially cost ~5 serial Strapi round trips before the first byte.
+  // Each .catch() stays *inside* Promise.all: it rejects on the first failure, so a
+  // single Strapi hiccup would otherwise 500 the whole homepage.
+  const firstPage = page === 1;
+  const [listing, featuredDeals, lifetimeSites, camSites, bundles] = await Promise.all([
+    getSitesWithDealsPaginated(page, PAGE_SIZE).catch(() => ({
+      sites: [],
+      pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
+    })),
+    firstPage ? getFeaturedDeals().catch(() => []) : Promise.resolve<Featured[]>([]),
+    firstPage ? getLifetimeDeals(4).catch(() => []) : Promise.resolve<Site[]>([]),
+    firstPage
+      ? getSitesByCategoryId(siteSettings.CAM_CATEGORY_ID, 1, 4).then((r) => r.sites).catch(() => [])
+      : Promise.resolve<Site[]>([]),
+    firstPage ? getPublishedBundles(3).catch(() => []) : Promise.resolve<Bundle[]>([]),
+  ]);
+
+  const { sites, pagination } = listing;
 
   // Featured row — only on page 1
-  const featuredItems = page === 1
-    ? await getFeaturedDeals().then((deals) =>
-        deals
-          .filter((d) => d.site)
-          .map((d) => {
-            const activeOffers = (d.site.offers ?? []).filter((o) => o.isActive);
-            const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
-            const bestOffer = sorted[0];
-            return {
-              site: d.site,
-              bestPrice: bestOffer?.price,
-              bestFullPrice: bestOffer?.full_price ?? undefined,
-              currency: 'USD',
-              bestOfferId: bestOffer?.id,
-              discountPercent: bestOffer ? getDiscountPercent(bestOffer) ?? undefined : undefined,
-            };
-          })
-      ).catch(() => [])
-    : [];
+  const featuredItems = featuredDeals
+    .filter((d) => d.site)
+    .map((d) => {
+      const activeOffers = (d.site.offers ?? []).filter((o) => o.isActive);
+      const sorted = [...activeOffers].sort((a, b) => a.price - b.price);
+      const bestOffer = sorted[0];
+      return {
+        site: d.site,
+        bestPrice: bestOffer?.price,
+        bestFullPrice: bestOffer?.full_price ?? undefined,
+        currency: 'USD',
+        bestOfferId: bestOffer?.id,
+        discountPercent: bestOffer ? getDiscountPercent(bestOffer) ?? undefined : undefined,
+      };
+    });
 
   const items = sites.map((site) => {
     const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
@@ -85,31 +97,17 @@ export default async function Home({ params, searchParams }: Props) {
   const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
 
   // Lifetime deals — only on page 1
-  const lifetimeDeals = page === 1
-    ? await getLifetimeDeals(4).then((sites) =>
-        sites.map((site) => {
-          const lifetimeOffers = (site.offers ?? []).filter((o) => o.isActive && o.offerType === 'lifetime');
-          const sorted = [...lifetimeOffers].sort((a, b) => a.price - b.price);
-          const bestOffer = sorted[0];
-          const bestPrice = bestOffer?.price;
-          const bestFullPrice = bestOffer?.full_price ?? undefined;
-          const bestOfferId = bestOffer?.id;
-          const currency = "USD";
-          const discountPercent = getMaxDiscountPercent(lifetimeOffers) ?? undefined;
-          return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, forcedType: 'lifetime' as const };
-        })
-      ).catch(() => [])
-    : [];
-
-  // Cam site deals — only on page 1
-  const camSites = page === 1
-    ? await getSitesByCategoryId(siteSettings.CAM_CATEGORY_ID, 1, 4).then((r) => r.sites).catch(() => [])
-    : [];
-
-  // Bundles — only on page 1
-  const bundles = page === 1
-    ? await getPublishedBundles(3).catch(() => [])
-    : [];
+  const lifetimeDeals = lifetimeSites.map((site) => {
+    const lifetimeOffers = (site.offers ?? []).filter((o) => o.isActive && o.offerType === 'lifetime');
+    const sorted = [...lifetimeOffers].sort((a, b) => a.price - b.price);
+    const bestOffer = sorted[0];
+    const bestPrice = bestOffer?.price;
+    const bestFullPrice = bestOffer?.full_price ?? undefined;
+    const bestOfferId = bestOffer?.id;
+    const currency = "USD";
+    const discountPercent = getMaxDiscountPercent(lifetimeOffers) ?? undefined;
+    return { site, bestPrice, bestFullPrice, currency, bestOfferId, discountPercent, forcedType: 'lifetime' as const };
+  });
 
   return (
     <>
@@ -120,7 +118,13 @@ export default async function Home({ params, searchParams }: Props) {
         <section className="w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 lg:py-14">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <FeaturedHeader locale={locale} />
-            <SiteCardRow items={featuredItems.slice(0, 3)} columns={3} variant="dark" />
+            {/*
+              Only the first card is preloaded. It is the LCP element; preloading all
+              three measured ~600ms WORSE on throttled mobile (median-of-5 Lighthouse),
+              because three concurrent high-priority image fetches saturate the link
+              and delay the one that actually decides LCP.
+            */}
+            <SiteCardRow items={featuredItems.slice(0, 3)} columns={3} variant="dark" priorityCount={1} />
           </div>
         </section>
       )}

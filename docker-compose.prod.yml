@@ -12,6 +12,8 @@ services:
       HOSTNAME: "0.0.0.0"
       STRAPI_INTERNAL_URL: http://backend:1339
       NEXT_PUBLIC_STRAPI_URL: https://cms-staging.pornmode.com
+      # Shared secret for the Strapi publish webhook -> /api/revalidate
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
     # No ports here — Traefik routes external traffic via labels below
     labels:
       - traefik.enable=true

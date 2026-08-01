@@ -11,11 +11,11 @@ type Props = { params: Promise<{ locale: string }> };
 
 export default async function CategoriesPage({ params }: Props) {
   const { locale } = await params;
-  const [t, tBc] = await Promise.all([
+  const [t, tBc, categories] = await Promise.all([
     getTranslations({ locale, namespace: 'categoryGrid' }),
     getTranslations({ locale, namespace: 'breadcrumbs' }),
+    getCategoriesGrid().catch(() => []),
   ]);
-  const categories = await getCategoriesGrid().catch(() => []);
 
   return (
     <main>

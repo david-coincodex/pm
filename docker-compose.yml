@@ -42,6 +42,8 @@ services:
       NEXT_PUBLIC_STRAPI_URL: http://localhost:1339
       # Internal URL — used by Next.js server components inside Docker network
       STRAPI_INTERNAL_URL: http://backend:1339
+      # Shared secret for the Strapi publish webhook -> /api/revalidate
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-dev-revalidate-secret}
     depends_on:
       backend:
         condition: service_healthy

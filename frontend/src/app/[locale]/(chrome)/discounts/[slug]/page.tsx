@@ -124,12 +124,16 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
 
   if (!site) notFound();
 
-  const [relatedDeals, siteBundles, review] = await Promise.all([
+  // fallbackBundles joins this wave instead of being a conditional 4th round trip
+  // after it. getPublishedBundles is shared with other pages, so it is usually a
+  // fetch-cache hit anyway; picking after the fact costs nothing and saves a hop.
+  const [relatedDeals, siteBundles, review, fallbackBundles] = await Promise.all([
     getTopDeals(4, slug),
     getBundlesForSite(slug, 3),
     getReviewBySiteSlug(slug, locale),
+    getPublishedBundles(3),
   ]);
-  const bundlesToShow = siteBundles.length > 0 ? siteBundles : await getPublishedBundles(3);
+  const bundlesToShow = siteBundles.length > 0 ? siteBundles : fallbackBundles;
 
   const image = site.cover_image ?? site.logo;
   

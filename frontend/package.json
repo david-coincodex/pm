@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "flag-icons": "^7.5.0",
     "html-react-parser": "^6.1.2",
     "next": "16.2.9",
     "next-intl": "4.13.0",

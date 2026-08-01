@@ -6,9 +6,15 @@ interface ArticleHeroGridProps {
   locale: string;
   /** Show the featured hero row at the top. Disable on paginated pages (page 2+). */
   hero?: boolean;
+  /**
+   * Preload the featured card's cover. Only enable where this grid is genuinely the
+   * first thing in the viewport (the /blog listing) — as a "latest articles" section
+   * further down a page, preloading it competes with that page's real LCP image.
+   */
+  priorityHero?: boolean;
 }
 
-export default function ArticleHeroGrid({ articles, locale, hero = true }: ArticleHeroGridProps) {
+export default function ArticleHeroGrid({ articles, locale, hero = true, priorityHero = false }: ArticleHeroGridProps) {
   if (articles.length === 0) return null;
 
   const [featured, ...rest] = articles;
@@ -22,7 +28,7 @@ export default function ArticleHeroGrid({ articles, locale, hero = true }: Artic
       {/* Hero row: 1 big featured + 3 compact sidebar cards (page 1 only) */}
       {hero && (
         <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
-          <ArticleCard article={featured} locale={locale} variant="featured" priority className="lg:col-span-2" />
+          <ArticleCard article={featured} locale={locale} variant="featured" priority={priorityHero} className="lg:col-span-2" />
 
           {sidebar.length > 0 && (
             <div className="flex flex-col gap-3">

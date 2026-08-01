@@ -56,7 +56,9 @@ export default async function BlogPage({ params, searchParams }: Props) {
         {articles.length === 0 ? (
           <p className="text-slate-500 dark:text-slate-400">{t('empty')}</p>
         ) : (
-          <ArticleHeroGrid articles={articles} locale={locale} hero={page === 1} />
+          // priorityHero: the hero is the LCP element on /blog page 1, so preload its
+          // cover here — but not where ArticleHeroGrid appears further down a page.
+          <ArticleHeroGrid articles={articles} locale={locale} hero={page === 1} priorityHero={page === 1} />
         )}
 
         {pagination.pageCount > 1 && (

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { type RecentItem } from '@/hooks/useRecentlyViewed';
-import { type Featured, getDiscountPercent } from '@/lib/strapi';
+import { getDiscountPercent } from '@/lib/strapi';
+import type { CrossSellSite } from '@/components/offer/types';
 import { type SearchResult } from '@/app/api/search/route';
 import { routes } from '@/lib/routes';
 
@@ -32,13 +33,6 @@ function clearRecentStorage() {
   } catch {
     // ignore
   }
-}
-
-function getBestOffer(site: any) {
-  const active = (site.offers ?? []).filter((o: any) => o.isActive);
-  if (active.length === 0) return null;
-  const sorted = [...active].sort((a: any, b: any) => a.price - b.price);
-  return sorted[0];
 }
 
 function PriceTag({ price, fullPrice }: { price?: number; fullPrice?: number | null }) {
@@ -78,18 +72,17 @@ function SearchResultRow({ result, onNavigate, active }: { result: SearchResult;
   );
 }
 
-function RecommendedRow({ feat, onNavigate }: { feat: Featured; onNavigate: () => void }) {
-  const offer = getBestOffer(feat.site);
+function RecommendedRow({ feat, onNavigate }: { feat: CrossSellSite; onNavigate: () => void }) {
   return (
     <Link
-      href={routes.site(feat.site.slug)}
+      href={routes.site(feat.slug)}
       onClick={onNavigate}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800 dark:active:bg-slate-700"
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{feat.site.name}</p>
+        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{feat.name}</p>
       </div>
-      {offer && <PriceTag price={offer.price} fullPrice={offer.full_price} />}
+      {feat.price != null && <PriceTag price={feat.price} fullPrice={feat.fullPrice} />}
     </Link>
   );
 }
@@ -127,7 +120,7 @@ export default function SearchContent({ query, onNavigate, activeIndex = -1, vis
   const [fetching, setFetching] = useState(false);
   const [fetchedQuery, setFetchedQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
-  const [recommended, setRecommended] = useState<Featured[] | null>(null);
+  const [recommended, setRecommended] = useState<CrossSellSite[] | null>(null);
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const t = useTranslations('search');
   const debouncedQuery = useDebounce(query, 400);
@@ -164,7 +157,7 @@ export default function SearchContent({ query, onNavigate, activeIndex = -1, vis
   useEffect(() => {
     fetch('/api/featured')
       .then((r) => r.json())
-      .then((data: Featured[]) => setRecommended(data.slice(0, 3)))
+      .then((data: CrossSellSite[]) => setRecommended(Array.isArray(data) ? data.slice(0, 3) : []))
       .catch(() => setRecommended([]));
   }, []);
 
@@ -232,7 +225,7 @@ export default function SearchContent({ query, onNavigate, activeIndex = -1, vis
             <div>
               <SectionLabel>{t('recommended')}</SectionLabel>
               {recommended.map((feat) => (
-                <RecommendedRow key={feat.id} feat={feat} onNavigate={onNavigate} />
+                <RecommendedRow key={feat.slug} feat={feat} onNavigate={onNavigate} />
               ))}
             </div>
           )}
