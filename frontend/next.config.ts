@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
       { protocol: 'http', hostname: 'localhost', port: '1339' },
       // Strapi internal Docker hostname (used by Next.js Image optimizer)
       { protocol: 'http', hostname: 'backend', port: '1339' },
+      // Media served from the public site host via the promode-uploads Traefik router
+      { protocol: 'https', hostname: 'staging.pornmode.com' },
+      { protocol: 'https', hostname: 'pornmode.com' },
     ],
   },
 };

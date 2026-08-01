@@ -16,9 +16,15 @@ CMD ["npm", "run", "dev"]
 # ── builder ───────────────────────────────────────────────────────────────────
 FROM base AS builder
 COPY . .
-# NEXT_PUBLIC_* vars are inlined at build time — pass via --build-arg
+# NEXT_PUBLIC_* vars are inlined at build time — pass via --build-arg.
+# An undeclared --build-arg is silently ignored, so every one must be ARG'd here.
 ARG NEXT_PUBLIC_STRAPI_URL=http://localhost:1339
 ENV NEXT_PUBLIC_STRAPI_URL=$NEXT_PUBLIC_STRAPI_URL
+# Browser-facing base for /uploads media. In production this is the FRONTEND host, so
+# media is same-origin with the site (see the promode-uploads Traefik router). Defaults
+# to the Strapi origin, which is what local dev wants.
+ARG NEXT_PUBLIC_MEDIA_BASE=http://localhost:1339
+ENV NEXT_PUBLIC_MEDIA_BASE=$NEXT_PUBLIC_MEDIA_BASE
 RUN npm run build
 
 # ── production (Next.js standalone output) ────────────────────────────────────

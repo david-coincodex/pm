@@ -25,6 +25,10 @@ backend/public/uploads/*
 backend/dist/
 backend/build/
 
+# Archived legacy media (mp4s + full-size images mirrored from the old WordPress site
+# before cutover). ~110 MB of binaries — keep an off-machine copy, not a git copy.
+scripts/data/commercial-archive/
+
 # misc
 .DS_Store
 *.log

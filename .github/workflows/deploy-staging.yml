@@ -38,6 +38,7 @@ jobs:
           # public CMS origin must be passed here (not just at runtime).
           build-args: |
             NEXT_PUBLIC_STRAPI_URL=https://cms-staging.pornmode.com
+            NEXT_PUBLIC_MEDIA_BASE=https://staging.pornmode.com
           tags: |
             ghcr.io/david-coincodex/pm-frontend:latest
             ghcr.io/david-coincodex/pm-frontend:${{ github.sha }}

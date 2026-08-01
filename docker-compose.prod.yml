@@ -59,6 +59,19 @@ services:
       - traefik.http.routers.promode-cms.rule=Host(`cms-staging.pornmode.com`)
       - traefik.http.routers.promode-cms.entrypoints=web
       - traefik.http.services.promode-cms.loadbalancer.server.port=1339
+      # Serve uploaded media from the FRONTEND host as well, so media is same-origin with
+      # the site. cms-staging is a separate Cloudflare Access application from
+      # staging.pornmode.com (separate cookies), so media loaded from the CMS host 302s to a
+      # login page even for a signed-in reviewer — and at launch it would be unreachable for
+      # visitors and Googlebot. Routing /uploads through the public host couples media
+      # visibility to the site's own, so it becomes public automatically at launch.
+      #
+      # Explicit priority: without it Traefik orders by rule length, and the frontend's bare
+      # Host(...) rule could win over this more specific one.
+      - traefik.http.routers.promode-uploads.rule=Host(`staging.pornmode.com`) && PathPrefix(`/uploads`)
+      - traefik.http.routers.promode-uploads.entrypoints=web
+      - traefik.http.routers.promode-uploads.priority=100
+      - traefik.http.routers.promode-uploads.service=promode-cms
     volumes:
       - strapi_public:/app/public
     networks:

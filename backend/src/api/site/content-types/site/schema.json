@@ -11,7 +11,11 @@
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": { "i18n": { "localized": true } },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
   "attributes": {
     "name": {
       "type": "string",
@@ -33,13 +37,19 @@
       "options": {
         "preset": "defaultHtml"
       },
-      "pluginOptions": { "i18n": { "localized": true } }
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     },
     "logo": {
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "isActive": {
       "type": "boolean",
@@ -48,7 +58,12 @@
     },
     "siteType": {
       "type": "enumeration",
-      "enum": ["paysite", "camsite", "datingsite", "tubesite"],
+      "enum": [
+        "paysite",
+        "camsite",
+        "datingsite",
+        "tubesite"
+      ],
       "required": true
     },
     "typeDetails": {
@@ -63,23 +78,35 @@
     },
     "short_description": {
       "type": "string",
-      "pluginOptions": { "i18n": { "localized": true } }
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     },
     "cover_image": {
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "included": {
       "type": "text",
-      "pluginOptions": { "i18n": { "localized": true } }
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     },
     "gallery": {
       "type": "media",
       "multiple": true,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "offers": {
       "type": "relation",
@@ -122,11 +149,21 @@
     "externalContext": {
       "type": "json"
     },
+    "commercials": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::commercial.commercial",
+      "mappedBy": "site"
+    },
     "faqs": {
       "type": "component",
       "repeatable": true,
       "component": "shared.faq",
-      "pluginOptions": { "i18n": { "localized": true } }
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     }
   }
 }

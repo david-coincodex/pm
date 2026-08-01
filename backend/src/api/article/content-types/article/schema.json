@@ -21,14 +21,18 @@
       "type": "string",
       "required": true,
       "pluginOptions": {
-        "i18n": { "localized": true }
+        "i18n": {
+          "localized": true
+        }
       }
     },
     "title": {
       "type": "string",
       "required": true,
       "pluginOptions": {
-        "i18n": { "localized": true }
+        "i18n": {
+          "localized": true
+        }
       }
     },
     "slug": {
@@ -36,14 +40,22 @@
       "targetField": "title",
       "required": true,
       "pluginOptions": {
-        "i18n": { "localized": true }
+        "i18n": {
+          "localized": true
+        }
       }
+    },
+    "postId": {
+      "type": "integer",
+      "unique": true
     },
     "description": {
       "type": "text",
       "required": true,
       "pluginOptions": {
-        "i18n": { "localized": true }
+        "i18n": {
+          "localized": true
+        }
       }
     },
     "content": {
@@ -54,7 +66,9 @@
       },
       "required": true,
       "pluginOptions": {
-        "i18n": { "localized": true }
+        "i18n": {
+          "localized": true
+        }
       }
     },
     "publishDate": {
@@ -68,7 +82,9 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "categories": {
       "type": "relation",
@@ -93,7 +109,11 @@
       "type": "component",
       "repeatable": true,
       "component": "shared.faq",
-      "pluginOptions": { "i18n": { "localized": true } }
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     }
   }
 }

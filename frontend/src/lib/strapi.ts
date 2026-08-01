@@ -7,6 +7,13 @@ export const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? 'http://localhos
 // (e.g. http://backend:1339). Falls back to the public URL outside Docker.
 const STRAPI_FETCH_URL = process.env.STRAPI_INTERNAL_URL ?? STRAPI_URL;
 
+// Browser-facing base for uploaded media (images + video). Deliberately separate from
+// STRAPI_URL: /uploads is routed through the FRONTEND host in production (see the
+// promode-uploads Traefik router in docker-compose.prod.yml) so media is same-origin with
+// the site rather than sitting behind the CMS host's separate Cloudflare Access app.
+// Falls back to STRAPI_URL, which is correct for local dev.
+const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE ?? STRAPI_URL;
+
 // Cloudflare Access service-token headers, used only for local dev pointed at a
 // Cloudflare-Access-gated Strapi (e.g. cms-staging.pornmode.com). No-op in
 // production and normal local dev, where these env vars are unset. Server-side
@@ -135,10 +142,16 @@ function nestedSiteCard(key: string, extraPopulate: string[] = []): string {
   ].join('&');
 }
 
-/** Resolve a Strapi media URL to an absolute URL */
-export function strapiMediaUrl(media: StrapiMedia): string {
+/**
+ * Resolve a Strapi media URL to an absolute URL.
+ *
+ * Takes only `{ url }` so it also accepts `StrapiVideo` and `formats.*` entries, which
+ * don't carry the full StrapiMedia shape. Kept absolute because the result also feeds
+ * `metadata.openGraph.images` and JSON-LD, which require absolute URLs.
+ */
+export function strapiMediaUrl(media: Pick<StrapiMedia, 'url'>): string {
   if (media.url.startsWith('http')) return media.url;
-  return `${STRAPI_URL}${media.url}`;
+  return `${MEDIA_BASE}${media.url}`;
 }
 
 type FetchOptions = Omit<RequestInit, 'body'> & {
