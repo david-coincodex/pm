@@ -962,21 +962,30 @@ const SALE_POPULATE =
  * memoizes the parsed, post-processed result (including the siteIds dedup) per request.
  */
 export const getActiveSale = cache(async (): Promise<Pick<Sale, 'id' | 'documentId' | 'title' | 'slug' | 'navLabel' | 'themeColor' | 'startsAt' | 'endsAt' | 'badgeLabel' | 'badgeIcon' | 'badgeImage'> & { siteIds: number[] } | null> => {
-  const now = new Date().toISOString();
-  const res = await strapiGet<(Sale & { sites: { id: number }[]; featuredSites: { id: number }[] })[]>(
-    `/sales?filters[publishedAt][$notNull]=true&filters[startsAt][$lte]=${encodeURIComponent(now)}&filters[endsAt][$gte]=${encodeURIComponent(now)}&fields[0]=title&fields[1]=slug&fields[2]=navLabel&fields[3]=themeColor&fields[4]=startsAt&fields[5]=endsAt&fields[6]=badgeLabel&fields[7]=badgeIcon&populate[0]=badgeImage&populate[sites][fields][0]=id&populate[featuredSites][fields][0]=id&pagination[pageSize]=1`,
-    { next: { revalidate: 60 } }
-  );
-  const sale = res.data[0];
-  if (!sale) return null;
-  const allSiteIds = [
-    ...(sale.sites ?? []).map((s) => s.id),
-    ...(sale.featuredSites ?? []).map((s) => s.id),
-  ];
-  return {
-    ...sale,
-    siteIds: [...new Set(allSiteIds)],
-  };
+  // Degrades to "no sale" on any error instead of throwing. This is called from
+  // Header (i.e. from every page's shell), so an unguarded failure here 500s the
+  // whole site — and it is exactly what killed the staging image build: `next
+  // build` prerenders /en/categories, whose fetches hit the CF-Access-gated CMS
+  // without a service token and got the login HTML back, crashing on JSON.parse.
+  try {
+    const now = new Date().toISOString();
+    const res = await strapiGet<(Sale & { sites: { id: number }[]; featuredSites: { id: number }[] })[]>(
+      `/sales?filters[publishedAt][$notNull]=true&filters[startsAt][$lte]=${encodeURIComponent(now)}&filters[endsAt][$gte]=${encodeURIComponent(now)}&fields[0]=title&fields[1]=slug&fields[2]=navLabel&fields[3]=themeColor&fields[4]=startsAt&fields[5]=endsAt&fields[6]=badgeLabel&fields[7]=badgeIcon&populate[0]=badgeImage&populate[sites][fields][0]=id&populate[featuredSites][fields][0]=id&pagination[pageSize]=1`,
+      { next: { revalidate: 60 } }
+    );
+    const sale = res.data[0];
+    if (!sale) return null;
+    const allSiteIds = [
+      ...(sale.sites ?? []).map((s) => s.id),
+      ...(sale.featuredSites ?? []).map((s) => s.id),
+    ];
+    return {
+      ...sale,
+      siteIds: [...new Set(allSiteIds)],
+    };
+  } catch {
+    return null;
+  }
 });
 
 /** Fetch all published bundle slugs (for generateStaticParams). */
