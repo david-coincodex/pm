@@ -389,5 +389,12 @@
   "richText": {
     "showMore": "{count} weitere anzeigen",
     "showLess": "Weniger anzeigen"
+  },
+  "commercials": {
+    "indexTitle": "Alle Werbespots in dieser Liste",
+    "performers": "Mit",
+    "fromScene": "Aus der Szene",
+    "onSite": "Auf",
+    "getFullAccess": "Vollzugriff für {price}"
   }
 }

@@ -389,5 +389,12 @@
   "richText": {
     "showMore": "Show {count} more",
     "showLess": "Show less"
+  },
+  "commercials": {
+    "indexTitle": "All ads in this list",
+    "performers": "Starring",
+    "fromScene": "From the scene",
+    "onSite": "On",
+    "getFullAccess": "Get full access for {price}"
   }
 }

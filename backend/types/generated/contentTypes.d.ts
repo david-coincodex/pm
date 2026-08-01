@@ -448,14 +448,20 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
-    authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'> &
+    author: Schema.Attribute.Relation<'manyToOne', 'api::author.author'> &
       Schema.Attribute.Required;
     categories: Schema.Attribute.Relation<
       'manyToMany',
       'api::category.category'
     >;
-    content: Schema.Attribute.Blocks &
+    content: Schema.Attribute.RichText &
       Schema.Attribute.Required &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -472,7 +478,12 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    editors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    faqs: Schema.Attribute.Component<'shared.faq', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -485,7 +496,15 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    publishDate: Schema.Attribute.DateTime;
+    modifiedDate: Schema.Attribute.DateTime;
+    postId: Schema.Attribute.Integer &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
+        };
+      }>;
+    publishDate: Schema.Attribute.DateTime & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'title'> &
       Schema.Attribute.Required &
@@ -527,11 +546,11 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   };
   attributes: {
     authoredArticles: Schema.Attribute.Relation<
-      'manyToMany',
+      'oneToMany',
       'api::article.article'
     >;
     authoredReviews: Schema.Attribute.Relation<
-      'manyToMany',
+      'oneToMany',
       'api::review.review'
     >;
     avatar: Schema.Attribute.Media<'images'>;
@@ -544,14 +563,6 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    editedArticles: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::article.article'
-    >;
-    editedReviews: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::review.review'
-    >;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::author.author'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
@@ -575,21 +586,37 @@ export interface ApiBundleBundle extends Struct.CollectionTypeSchema {
   options: {
     draftAndPublish: true;
   };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
   attributes: {
-    content: Schema.Attribute.Blocks;
+    content: Schema.Attribute.Blocks &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     cover_image: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.String;
+    description: Schema.Attribute.String &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     gallery: Schema.Attribute.Media<'images', true>;
-    included: Schema.Attribute.Text;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::bundle.bundle'
-    > &
-      Schema.Attribute.Private;
+    included: Schema.Attribute.Text &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::bundle.bundle'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     offers: Schema.Attribute.Relation<'oneToMany', 'api::offer.offer'>;
     publishedAt: Schema.Attribute.DateTime;
@@ -621,11 +648,41 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
   attributes: {
     articles: Schema.Attribute.Relation<'manyToMany', 'api::article.article'>;
+    content: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     cover_image: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.Text &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    faqs: Schema.Attribute.Component<'shared.faq', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    intro: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -652,6 +709,56 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCommercialCommercial extends Struct.CollectionTypeSchema {
+  collectionName: 'commercials';
+  info: {
+    description: "A promotional clip (\"ad\") published by a paysite to market its subscription. Named 'commercial' rather than 'ad' on purpose: adblock filter lists match /ads/, -ad-, .ad-* in subresource URLs and class names, and these records drive our highest-traffic pages.";
+    displayName: 'Commercial';
+    mainField: 'title';
+    pluralName: 'commercials';
+    singularName: 'commercial';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  pluginOptions: {
+    i18n: {
+      localized: false;
+    };
+  };
+  attributes: {
+    clip: Schema.Attribute.Media<'videos'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text & Schema.Attribute.Required;
+    durationSeconds: Schema.Attribute.Integer;
+    gallery: Schema.Attribute.Media<'images', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::commercial.commercial'
+    > &
+      Schema.Attribute.Private;
+    performers: Schema.Attribute.String;
+    popularity: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    poster: Schema.Attribute.Media<'images'>;
+    publishedAt: Schema.Attribute.DateTime;
+    releaseDate: Schema.Attribute.Date;
+    sceneSite: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
+    sceneTitle: Schema.Attribute.String;
+    sceneUrl: Schema.Attribute.String;
+    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    sourceHash: Schema.Attribute.String;
+    sourceUrl: Schema.Attribute.String;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -760,7 +867,13 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
-    content: Schema.Attribute.Blocks &
+    content: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -854,7 +967,7 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
   info: {
     description: 'Site reviews with score breakdown';
     displayName: 'Review';
-    mainField: 'title';
+    mainField: 'displayTitle';
     pluralName: 'reviews';
     singularName: 'review';
   };
@@ -867,15 +980,16 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
-    authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    author: Schema.Attribute.Relation<'manyToOne', 'api::author.author'> &
+      Schema.Attribute.Required;
     camsiteScores: Schema.Attribute.Component<'review.camsite-scores', false>;
-    cons: Schema.Attribute.Text &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    content: Schema.Attribute.Blocks &
+    content: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -890,36 +1004,23 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    editors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    displayTitle: Schema.Attribute.String;
+    faqs: Schema.Attribute.Component<'shared.faq', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
-    metaTitle: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
+    modifiedDate: Schema.Attribute.DateTime;
+    overallScore: Schema.Attribute.Decimal;
     paysiteScores: Schema.Attribute.Component<'review.paysite-scores', false>;
-    pros: Schema.Attribute.Text &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    publishDate: Schema.Attribute.DateTime;
+    publishDate: Schema.Attribute.DateTime & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     site: Schema.Attribute.Relation<'oneToOne', 'api::site.site'> &
       Schema.Attribute.Required;
-    slug: Schema.Attribute.UID<'title'> &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    title: Schema.Attribute.String &
-      Schema.Attribute.Required &
+    titleExtra: Schema.Attribute.String &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -943,27 +1044,68 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
   options: {
     draftAndPublish: true;
   };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
   attributes: {
     badgeIcon: Schema.Attribute.Enumeration<
       ['fire', 'tag', 'bolt', 'star', 'gift', 'percent']
     > &
       Schema.Attribute.DefaultTo<'fire'>;
     badgeImage: Schema.Attribute.Media<'images'>;
-    badgeLabel: Schema.Attribute.String;
+    badgeLabel: Schema.Attribute.String &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     bundles: Schema.Attribute.Relation<'manyToMany', 'api::bundle.bundle'>;
-    content: Schema.Attribute.Blocks;
+    content: Schema.Attribute.Blocks &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.String;
+    description: Schema.Attribute.String &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     endsAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    faqs: Schema.Attribute.Component<'shared.faq', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     featuredSites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'> &
-      Schema.Attribute.Private;
-    metaDescription: Schema.Attribute.Text;
-    metaTitle: Schema.Attribute.String;
-    navLabel: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'>;
+    metaDescription: Schema.Attribute.Text &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    metaTitle: Schema.Attribute.String &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    navLabel: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     publishedAt: Schema.Attribute.DateTime;
     sites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
@@ -990,38 +1132,77 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
   options: {
     draftAndPublish: true;
   };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
   attributes: {
     categories: Schema.Attribute.Relation<
       'manyToMany',
       'api::category.category'
     >;
+    child_sites: Schema.Attribute.Relation<'oneToMany', 'api::site.site'>;
+    commercials: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::commercial.commercial'
+    >;
     cover_image: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.Blocks;
+    description: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      > &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    externalContext: Schema.Attribute.JSON;
+    faqs: Schema.Attribute.Component<'shared.faq', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     gallery: Schema.Attribute.Media<'images', true>;
-    included: Schema.Attribute.Text;
+    included: Schema.Attribute.Text &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     isActive: Schema.Attribute.Boolean &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<true>;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::site.site'> &
-      Schema.Attribute.Private;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::site.site'>;
     logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
     offers: Schema.Attribute.Relation<'oneToMany', 'api::offer.offer'>;
+    parent_site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
     platform: Schema.Attribute.Relation<'manyToOne', 'api::platform.platform'>;
     publishedAt: Schema.Attribute.DateTime;
-    short_description: Schema.Attribute.String;
+    reviewSources: Schema.Attribute.Component<'review.review-source', true>;
+    scrapedReviews: Schema.Attribute.JSON;
+    short_description: Schema.Attribute.String &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     siteType: Schema.Attribute.Enumeration<
       ['paysite', 'camsite', 'datingsite', 'tubesite']
     > &
       Schema.Attribute.Required;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
-    subsites: Schema.Attribute.Relation<'oneToMany', 'api::subsite.subsite'>;
     typeDetails: Schema.Attribute.DynamicZone<
       [
         'site-details.pay-site-details',
@@ -1040,44 +1221,6 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     url: Schema.Attribute.String & Schema.Attribute.Required;
-  };
-}
-
-export interface ApiSubsiteSubsite extends Struct.CollectionTypeSchema {
-  collectionName: 'subsites';
-  info: {
-    description: 'A subsite or section belonging to a parent site';
-    displayName: 'Subsite';
-    mainField: 'name';
-    pluralName: 'subsites';
-    singularName: 'subsite';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    cover_image: Schema.Attribute.Media<'images'>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    description: Schema.Attribute.Blocks;
-    isActive: Schema.Attribute.Boolean &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<true>;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::subsite.subsite'
-    > &
-      Schema.Attribute.Private;
-    logo: Schema.Attribute.Media<'images'>;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
-    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
   };
 }
 
@@ -1641,6 +1784,7 @@ declare module '@strapi/strapi' {
       'api::author.author': ApiAuthorAuthor;
       'api::bundle.bundle': ApiBundleBundle;
       'api::category.category': ApiCategoryCategory;
+      'api::commercial.commercial': ApiCommercialCommercial;
       'api::featured.featured': ApiFeaturedFeatured;
       'api::offer.offer': ApiOfferOffer;
       'api::page.page': ApiPagePage;
@@ -1648,7 +1792,6 @@ declare module '@strapi/strapi' {
       'api::review.review': ApiReviewReview;
       'api::sale.sale': ApiSaleSale;
       'api::site.site': ApiSiteSite;
-      'api::subsite.subsite': ApiSubsiteSubsite;
       'api::tag.tag': ApiTagTag;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

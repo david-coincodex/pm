@@ -47,7 +47,12 @@
     },
     "postId": {
       "type": "integer",
-      "unique": true
+      "unique": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
     },
     "description": {
       "type": "text",

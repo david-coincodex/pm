@@ -11,6 +11,8 @@ import {
   getAuthorsForSitemap,
   getReviewsForSitemap,
   getPagesForSitemap,
+  getCommercialsByIds,
+  strapiMediaUrl,
   type SitemapSite,
   type SitemapBundle,
   type SitemapSale,
@@ -20,6 +22,7 @@ import {
   type SitemapReview,
   type SitemapPage,
 } from '@/lib/strapi';
+import { extractCommercialIds } from '@/lib/richTextWidgets';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,9 +106,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return { url: localizedUrl('en', path), lastModified: item.updatedAt, alternates: buildAlternates(item, path) };
   });
 
+  // Ad-roundup articles embed self-hosted clips, so their sitemap rows carry <video:video>
+  // entries. Every commercial across every article is fetched in ONE batched request.
+  const commercialIdsByArticle = new Map<string, string[]>(
+    articles.map((item: SitemapArticle) => [
+      item.slug,
+      item.content ? extractCommercialIds(item.content) : [],
+    ]),
+  );
+  const allCommercialIds = [...new Set([...commercialIdsByArticle.values()].flat())];
+  const commercialsById = allCommercialIds.length
+    ? await getCommercialsByIds(allCommercialIds)
+    : new Map();
+
   const articleEntries: MetadataRoute.Sitemap = articles.map((item: SitemapArticle) => {
     const path = routes.blogArticle(item.postId ?? item.id, item.slug);
-    return { url: localizedUrl('en', path), lastModified: item.updatedAt, alternates: buildAlternates(item, path) };
+    const pageUrl = localizedUrl('en', path);
+
+    const videos = (commercialIdsByArticle.get(item.slug) ?? [])
+      .map((id) => commercialsById.get(id))
+      .filter((c) => c && c.clip && c.poster)
+      .map((c) => ({
+        title: c!.title,
+        thumbnail_loc: strapiMediaUrl(c!.poster!),
+        description: c!.description,
+        content_loc: strapiMediaUrl(c!.clip!),
+        ...(c!.durationSeconds ? { duration: c!.durationSeconds } : {}),
+        family_friendly: 'no' as const,
+        requires_subscription: 'no' as const,
+      }));
+
+    return {
+      url: pageUrl,
+      lastModified: item.updatedAt,
+      alternates: buildAlternates(item, path),
+      ...(videos.length ? { videos } : {}),
+    };
   });
 
   const authorEntries: MetadataRoute.Sitemap = authors.map((item: SitemapAuthor) => {

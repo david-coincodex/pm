@@ -432,6 +432,256 @@ class SiteCardListPlugin extends Plugin {
   }
 }
 
+// ─── COMMERCIAL ("AD") ────────────────────────────────────────────────────────
+//
+// Named `commercial`, never `ad`, in every identifier: adblock filter lists match `/ads/`,
+// `-ad-` and `.ad-*` in subresource URLs and class names, and these widgets drive our
+// highest-traffic pages. Article slugs stay `*-ads` — top-level documents aren't filtered.
+
+class CommercialPlugin extends Plugin {
+  static get pluginName() {
+    return 'CommercialPlugin' as const;
+  }
+
+  _openDialog(
+    prefill: { clips: { id: string; title: string; poster?: string }[]; _modelEl?: any } | null = null
+  ) {
+    const editor = this.editor;
+    const savedRange = editor.model.document.selection.getFirstRange();
+
+    const dlg = document.createElement('dialog');
+    dlg.style.cssText =
+      'padding:0;border:none;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.25);width:560px;max-height:90vh;overflow:hidden;z-index:99999;display:flex;flex-direction:column;';
+
+    dlg.innerHTML = [
+      '<div style="padding:24px 24px 0;font-family:system-ui,sans-serif;">',
+      `<h3 style="margin:0 0 16px;font-size:16px;font-weight:600;">${prefill ? 'Edit' : 'Insert'} Ad Clip${prefill ? '' : 's'}</h3>`,
+      '<div style="display:flex;gap:8px;">',
+      '<input type="text" class="pm-cm-site" placeholder="Site slug (e.g. brazzers)" style="width:180px;padding:8px 12px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit;" />',
+      '<input type="text" class="pm-cm-search" placeholder="Search ads by title…" style="flex:1;padding:8px 12px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit;" />',
+      '</div>',
+      '<div class="pm-cm-search-results" style="margin-top:8px;max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:4px;"></div>',
+      '</div>',
+      '<div style="padding:16px 24px;flex:1;overflow-y:auto;">',
+      '<p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Selected Ads</p>',
+      '<ul class="pm-cm-selected" style="list-style:none;margin:0;padding:0;min-height:40px;"></ul>',
+      '<p class="pm-cm-empty" style="font-size:13px;color:#94a3b8;margin:8px 0;">No ads added yet.</p>',
+      '</div>',
+      '<div style="padding:12px 24px 16px;border-top:1px solid #e2e8f0;">',
+      '<p style="margin:0 0 12px;font-size:12px;color:#64748b;">Each ad is inserted as its own block, numbered by document order. The Ad Index widget lists them automatically.</p>',
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">',
+      '<button type="button" class="pm-cm-cancel" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;font-size:13px;cursor:pointer;">Cancel</button>',
+      `<button type="button" class="pm-cm-insert" style="padding:7px 16px;border:none;border-radius:4px;background:#4945ff;color:#fff;font-size:13px;cursor:pointer;font-weight:500;">${prefill ? 'Update' : 'Insert'}</button>`,
+      '</div></div>',
+    ].join('');
+
+    document.body.appendChild(dlg);
+
+    const siteInput = dlg.querySelector('.pm-cm-site') as HTMLInputElement;
+    const searchInput = dlg.querySelector('.pm-cm-search') as HTMLInputElement;
+    const searchResults = dlg.querySelector('.pm-cm-search-results') as HTMLDivElement;
+    const selectedList = dlg.querySelector('.pm-cm-selected') as HTMLUListElement;
+    const emptyMsg = dlg.querySelector('.pm-cm-empty') as HTMLParagraphElement;
+
+    const selected: { id: string; title: string; poster?: string }[] = prefill?.clips
+      ? [...prefill.clips]
+      : [];
+
+    function moveItem(from: number, to: number) {
+      if (to < 0 || to >= selected.length) return;
+      const [item] = selected.splice(from, 1);
+      selected.splice(to, 0, item);
+      renderSelected();
+    }
+
+    function renderSelected() {
+      emptyMsg.style.display = selected.length ? 'none' : 'block';
+      selectedList.innerHTML = selected
+        .map((s, i) => [
+          `<li data-index="${i}" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;margin-bottom:6px;font-size:13px;font-family:system-ui,sans-serif;">`,
+          s.poster
+            ? `<img src="${escapeHtml(s.poster)}" alt="" style="width:40px;height:23px;object-fit:cover;border-radius:2px;flex-shrink:0;" />`
+            : '<span style="width:40px;height:23px;background:#e2e8f0;border-radius:2px;flex-shrink:0;"></span>',
+          `<span style="flex:1;">${escapeHtml(s.title)} <span style="color:#94a3b8;">(#${s.id})</span></span>`,
+          `<button type="button" class="pm-cm-up" data-idx="${i}" title="Move up" style="border:1px solid #e2e8f0;background:#fff;border-radius:3px;padding:1px 7px;cursor:pointer;font-size:12px;${i === 0 ? 'opacity:.3;' : ''}">&#9650;</button>`,
+          `<button type="button" class="pm-cm-down" data-idx="${i}" title="Move down" style="border:1px solid #e2e8f0;background:#fff;border-radius:3px;padding:1px 7px;cursor:pointer;font-size:12px;${i === selected.length - 1 ? 'opacity:.3;' : ''}">&#9660;</button>`,
+          `<button type="button" class="pm-cm-remove" data-idx="${i}" title="Remove" style="border:none;background:none;padding:1px 6px;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;">&times;</button>`,
+          '</li>',
+        ].join('')).join('');
+    }
+
+    selectedList.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest('[data-idx]') as HTMLElement | null;
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      if (btn.classList.contains('pm-cm-up')) moveItem(idx, idx - 1);
+      else if (btn.classList.contains('pm-cm-down')) moveItem(idx, idx + 1);
+      else if (btn.classList.contains('pm-cm-remove')) { selected.splice(idx, 1); renderSelected(); }
+    });
+
+    // A "Best 20" article picks 20 near-identical clips from one network, so the dialog
+    // supports filtering by site (list them all at once) and shows poster thumbnails —
+    // choosing among 20 by title alone is hopeless.
+    async function runSearch() {
+      const query = searchInput.value.trim();
+      const site = siteInput.value.trim();
+      if (!query && !site) { searchResults.innerHTML = ''; return; }
+      try {
+        const filters = [
+          query ? `filters[title][$containsi]=${encodeURIComponent(query)}` : '',
+          site ? `filters[site][slug][$eq]=${encodeURIComponent(site)}` : '',
+        ].filter(Boolean).join('&');
+        const res = await fetch(
+          `/api/commercials?${filters}&fields[0]=title&fields[1]=id&populate[poster][fields][0]=url&populate[poster][fields][1]=formats&sort=popularity:desc&pagination[pageSize]=50`
+        );
+        const json = await res.json();
+        // documentId, not numeric id: republishing a draft-and-publish entry reassigns the
+        // numeric id, which would orphan every widget referencing it.
+        const clips: { id: string; title: string; poster?: string }[] = (json.data ?? []).map((item: any) => {
+          const p = item.poster ?? item.attributes?.poster;
+          return {
+            id: String(item.documentId),
+            title: item.title ?? item.attributes?.title,
+            poster: p?.formats?.thumbnail?.url ?? p?.url ?? undefined,
+          };
+        });
+        if (!clips.length) {
+          searchResults.innerHTML = '<p style="font-size:13px;color:#64748b;padding:8px 12px;margin:0;">No ads found.</p>';
+          return;
+        }
+        searchResults.innerHTML = clips
+          .map((c) =>
+            `<button type="button" class="pm-cm-result" data-id="${c.id}" data-title="${escapeHtml(c.title)}" data-poster="${escapeHtml(c.poster ?? '')}" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:0;font-family:inherit;">` +
+            (c.poster
+              ? `<img src="${escapeHtml(c.poster)}" alt="" style="width:40px;height:23px;object-fit:cover;border-radius:2px;flex-shrink:0;" />`
+              : '<span style="width:40px;height:23px;background:#e2e8f0;border-radius:2px;flex-shrink:0;"></span>') +
+            `<span style="flex:1;">${escapeHtml(c.title)} <span style="color:#94a3b8;">(#${c.id})</span></span></button>`
+          ).join('');
+      } catch {
+        searchResults.innerHTML = '<p style="font-size:13px;color:#dc2626;padding:8px 12px;margin:0;">Search failed.</p>';
+      }
+    }
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    const onInput = () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(runSearch, 300); };
+    searchInput.addEventListener('input', onInput);
+    siteInput.addEventListener('input', onInput);
+
+    searchResults.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest('.pm-cm-result') as HTMLElement | null;
+      if (!btn) return;
+      const id = btn.dataset.id ?? '';
+      if (!id || selected.some((s) => s.id === id)) return;
+      selected.push({
+        id,
+        title: btn.dataset.title ?? '',
+        poster: btn.dataset.poster || undefined,
+      });
+      renderSelected();
+    });
+
+    dlg.querySelector('.pm-cm-cancel')?.addEventListener('click', () => {
+      (dlg as HTMLDialogElement).close();
+      dlg.remove();
+    });
+
+    dlg.querySelector('.pm-cm-insert')?.addEventListener('click', () => {
+      if (!selected.length) return;
+      (dlg as HTMLDialogElement).close();
+      dlg.remove();
+
+      if (prefill?._modelEl) {
+        editor.model.change((writer) => writer.setSelection(prefill._modelEl, 'on'));
+      } else if (prefill && savedRange) {
+        editor.model.change((writer) => writer.setSelection(savedRange));
+      }
+      // One sibling div per clip, inserted in a single operation. `data-component` first and
+      // the id immediately after: the frontend prefetch regexes are attribute-order
+      // sensitive and fail SILENTLY to an empty node.
+      const html = selected
+        .map((c) =>
+          `<div data-component="commercial" data-commercial-id="${c.id}" class="pm-widget pm-widget--commercial" contenteditable="false"><span class="pm-widget__label">Ad: ${escapeHtml(c.title)}</span></div>`
+        ).join('');
+      const viewFragment = (editor.data.processor as any).toView(html);
+      const modelFragment = editor.data.toModel(viewFragment);
+      editor.model.insertContent(modelFragment);
+      editor.editing.view.focus();
+    });
+
+    renderSelected();
+    (dlg as HTMLDialogElement).showModal();
+    setTimeout(() => siteInput.focus(), 50);
+  }
+
+  init() {
+    const editor = this.editor;
+
+    editor.ui.componentFactory.add('commercial', (locale) => {
+      const button = new ButtonView(locale);
+      button.set({ label: 'Ad Clip', withText: true, tooltip: true });
+      button.on('execute', () => this._openDialog(null));
+      return button;
+    });
+
+    editor.on('ready', () => {
+      const editableEl = editor.editing.view.getDomRoot();
+      if (!editableEl) return;
+      editableEl.addEventListener('dblclick', (e: MouseEvent) => {
+        let el = e.target as HTMLElement | null;
+        while (el && el.dataset?.component !== 'commercial') el = el.parentElement;
+        if (!el) return;
+        e.stopPropagation();
+        const id = el.dataset.commercialId ?? '';
+        if (!id) return;
+        const viewEl = editor.editing.view.domConverter.mapDomToView(el as Element);
+        const _modelEl = viewEl ? editor.editing.mapper.toModelElement(viewEl as any) : null;
+        fetch(`/api/commercials?filters[documentId][$eq]=${encodeURIComponent(id)}&fields[0]=title&populate[poster][fields][0]=url&populate[poster][fields][1]=formats&pagination[pageSize]=1`)
+          .then((r) => r.json())
+          .then((j) => {
+            const item = j.data?.[0];
+            const p = item?.poster ?? item?.attributes?.poster;
+            return [{
+              id: String(item?.documentId ?? id),
+              title: item?.title ?? item?.attributes?.title ?? id,
+              poster: p?.formats?.thumbnail?.url ?? p?.url ?? undefined,
+            }];
+          })
+          .catch(() => [{ id, title: id }])
+          .then((clips) => this._openDialog({ clips, _modelEl }));
+      });
+    });
+  }
+}
+
+// ─── AD INDEX ─────────────────────────────────────────────────────────────────
+
+class CommercialIndexPlugin extends Plugin {
+  static get pluginName() {
+    return 'CommercialIndexPlugin' as const;
+  }
+
+  init() {
+    const editor = this.editor;
+
+    // No dialog and no dblclick handler: the widget carries no attributes to edit. The list
+    // it renders is derived from the Ad Clip widgets further down the document, so reordering
+    // or removing an ad updates the index automatically.
+    editor.ui.componentFactory.add('commercialIndex', (locale) => {
+      const button = new ButtonView(locale);
+      button.set({ label: 'Ad Index', withText: true, tooltip: true });
+      button.on('execute', () => {
+        const html =
+          '<div data-component="commercial-index" class="pm-widget" contenteditable="false"><span class="pm-widget__label">Ad Index (auto — lists every ad below, in order)</span></div>';
+        const viewFragment = (editor.data.processor as any).toView(html);
+        const modelFragment = editor.data.toModel(viewFragment);
+        editor.model.insertContent(modelFragment);
+        editor.editing.view.focus();
+      });
+      return button;
+    });
+  }
+}
+
 // ─── ARTICLE CARD ─────────────────────────────────────────────────────────────
 
 class ArticleCardPlugin extends Plugin {
@@ -640,6 +890,18 @@ const editorWidgetStyles = `
   .ck-content a[data-button]:hover {
     background: #047857;
   }
+  /* Ad widgets. The rendered <h2> lives in the frontend component (so its id, the index
+     href and the JSON-LD @id all derive from one slug), which means the editor can't show
+     it in the document outline — so style the label to read like a heading instead. */
+  .ck-content .pm-widget--commercial {
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+  .ck-content .pm-widget--commercial .pm-widget__label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #312e81;
+  }
 `;
 
 export default {
@@ -651,8 +913,8 @@ export default {
       : ((existingToolbar as any)?.items ?? []) as string[];
 
     const newToolbar = Array.isArray(existingToolbar)
-      ? [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard']
-      : { ...(existingToolbar as object), items: [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard'] };
+      ? [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', '|', 'commercial', 'commercialIndex']
+      : { ...(existingToolbar as object), items: [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', '|', 'commercial', 'commercialIndex'] };
 
     const customHtmlPreset: Preset = {
       ...defaultHtmlPreset,
@@ -688,6 +950,8 @@ export default {
           SiteCardPlugin as any,
           SiteCardListPlugin as any,
           ArticleCardPlugin as any,
+          CommercialPlugin as any,
+          CommercialIndexPlugin as any,
         ],
         toolbar: newToolbar,
       },

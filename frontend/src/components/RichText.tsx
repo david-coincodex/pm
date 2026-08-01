@@ -5,8 +5,10 @@ import ProsConsBlock from '@/components/rich-text/ProsConsBlock';
 import SiteCardInline from '@/components/rich-text/SiteCardInline';
 import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
 import ArticleCard from '@/components/ArticleCard';
-import { prefetchWidgetData, type WidgetData } from '@/lib/richTextWidgets';
-import { type Site, type Article } from '@/lib/strapi';
+import CommercialIndex from '@/components/rich-text/CommercialIndex';
+import CommercialBlock from '@/components/rich-text/CommercialBlock';
+import { prefetchWidgetData, extractCommercialIds, type WidgetData } from '@/lib/richTextWidgets';
+import { type Site, type Article, type Commercial } from '@/lib/strapi';
 
 const ELEMENT_CLASSES: Record<string, string> = {
   p: 'text-base leading-relaxed text-slate-700 dark:text-slate-300',
@@ -35,7 +37,21 @@ const ELEMENT_CLASSES: Record<string, string> = {
 const RT_BUTTON_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white no-underline transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600';
 
-function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, widgetData: WidgetData, locale: string) {
+/** Ordered commercial context, derived from document order (see extractCommercialIds). */
+type CommercialContext = {
+  ordered: Commercial[];
+  ordinals: Map<string, number>;
+  canonicalPath?: string;
+};
+
+function replaceNode(
+  domNode: DOMNode,
+  prosLabel: string,
+  consLabel: string,
+  widgetData: WidgetData,
+  locale: string,
+  commercials: CommercialContext,
+) {
   if (!(domNode instanceof Element)) return;
 
   // Widget: Pros/Cons
@@ -59,6 +75,27 @@ function replaceNode(domNode: DOMNode, prosLabel: string, consLabel: string, wid
     const article = widgetData.get(`article-card:${id}`) as Article | undefined;
     if (!article) return <></>;
     return <ArticleCard variant="compact" article={article} locale={locale} className="not-prose my-4" />;
+  }
+
+  // Widget: Commercial ("ad") — one full entry. Renders its own <h2 id> so the anchor, the
+  // index href and the JSON-LD @id all derive from the same slug.
+  if (domNode.attribs['data-component'] === 'commercial') {
+    const id = domNode.attribs['data-commercial-id'];
+    const commercial = widgetData.get(`commercial:${id}`) as Commercial | undefined;
+    if (!commercial) return <></>;
+    return (
+      <CommercialBlock
+        commercial={commercial}
+        ordinal={commercials.ordinals.get(id) ?? 0}
+        canonicalPath={commercials.canonicalPath}
+      />
+    );
+  }
+
+  // Widget: Commercial index — carries no ids; derived from the commercial widgets below it.
+  if (domNode.attribs['data-component'] === 'commercial-index') {
+    if (!commercials.ordered.length) return <></>;
+    return <CommercialIndex commercials={commercials.ordered} canonicalPath={commercials.canonicalPath} />;
   }
 
   // Widget: Site Card List
@@ -99,9 +136,14 @@ interface RichTextProps {
   injectBeforeLastH2?: ReactNode;
   /** Active locale — passed explicitly so this stays statically renderable (no headers() read). */
   locale: string;
+  /**
+   * Path of the page rendering this content, used only to build absolute URLs for the ad
+   * JSON-LD. Optional and additive, so the other call sites are unaffected.
+   */
+  canonicalPath?: string;
 }
 
-export default async function RichText({ content, className = '', injectBeforeLastH2, locale }: RichTextProps) {
+export default async function RichText({ content, className = '', injectBeforeLastH2, locale, canonicalPath }: RichTextProps) {
   if (!content) return null;
 
   // CKEditor HTML string
@@ -111,7 +153,21 @@ export default async function RichText({ content, className = '', injectBeforeLa
     const widgetData = await prefetchWidgetData(content, locale);
     const prosLabel = t('pros');
     const consLabel = t('cons');
-    const parsed = parse(content, { replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale) });
+
+    // Ad ordering comes from the document, so the index and the numbered headings can never
+    // disagree: reordering the body reorders the index and renumbers the headings for free.
+    const orderedIds = extractCommercialIds(content);
+    const commercials: CommercialContext = {
+      ordered: orderedIds
+        .map((id) => widgetData.get(`commercial:${id}`) as Commercial | undefined)
+        .filter((c): c is Commercial => Boolean(c)),
+      ordinals: new Map(orderedIds.map((id, i) => [id, i + 1])),
+      canonicalPath,
+    };
+
+    const parsed = parse(content, {
+      replace: (node) => replaceNode(node, prosLabel, consLabel, widgetData, locale, commercials),
+    });
     const wrapperClass = `rich-text-content space-y-4 max-w-none ${className}`;
 
     // When injecting a custom node, render it as a SIBLING outside .rich-text-content (and the
@@ -145,7 +201,11 @@ export default async function RichText({ content, className = '', injectBeforeLa
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {parse((content as { __html: string }[])[0]?.__html ?? '', { replace: (node) => replaceNode(node, '', '', new Map(), 'en') })}
+      {parse((content as { __html: string }[])[0]?.__html ?? '', {
+        // Legacy path: no widget data, so ad widgets render as empty nodes here.
+        replace: (node) =>
+          replaceNode(node, '', '', new Map(), 'en', { ordered: [], ordinals: new Map() }),
+      })}
     </div>
   );
 }

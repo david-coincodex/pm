@@ -67,6 +67,25 @@ export type StrapiMedia = {
   };
 };
 
+/**
+ * An uploaded video. Deliberately a sibling of `StrapiMedia` rather than a loosening of it:
+ * Strapi returns `width: null`, `height: null` and no `formats` for video uploads (verified
+ * against a real mp4), while 30+ call sites rely on `StrapiMedia.width` being non-nullable.
+ * `mime`/`ext`/`size` are already on the wire for every media populate, just undeclared.
+ */
+export type StrapiVideo = {
+  id: number;
+  documentId: string;
+  url: string;
+  mime: string;
+  ext: string;
+  /** Kilobytes, not bytes — Strapi's own unit for this field. */
+  size: number;
+  alternativeText: string | null;
+  width: number | null;
+  height: number | null;
+};
+
 export type Platform = {
   id: number;
   documentId: string;
@@ -964,6 +983,68 @@ export async function getReviewBySiteSlug(siteSlug: string, locale: string): Pro
   return null;
 }
 
+// ─── Commercial ("ad") ───────────────────────────────────────────────────────
+//
+// Named `commercial`, never `ad`, throughout — adblock filter lists match `/ads/`, `-ad-`
+// and `.ad-*` in subresource URLs and class names, and these records drive our
+// highest-traffic pages. Article slugs stay `*-ads`; top-level documents aren't filtered.
+
+export type Commercial = {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  description: string;
+  clip: StrapiVideo | null;
+  poster: StrapiMedia | null;
+  gallery: StrapiMedia[];
+  site: Site | null;
+  sceneTitle: string | null;
+  sceneUrl: string | null;
+  sceneSite: Pick<Site, 'id' | 'documentId' | 'name' | 'slug'> | null;
+  performers: string | null;
+  releaseDate: string | null;
+  durationSeconds: number | null;
+  popularity: number;
+};
+
+const COMMERCIAL_FIELDS =
+  'fields=title,slug,description,sceneTitle,sceneUrl,performers,releaseDate,durationSeconds,popularity';
+
+/**
+ * Object-style throughout — required, because `nestedSiteCard()` is object-style and mixing
+ * it with array-style `populate[n]=` at the same level makes Strapi silently drop the
+ * array-style entries (200, no error).
+ */
+const COMMERCIAL_QUERY = [
+  COMMERCIAL_FIELDS,
+  'populate[clip][fields]=url,mime,ext,size,alternativeText,width,height',
+  'populate[poster][fields]=url,width,height,alternativeText,formats',
+  'populate[gallery][fields]=url,width,height,alternativeText,formats',
+  nestedSiteCard('site'),
+  'populate[sceneSite][fields]=name,slug',
+].join('&');
+
+/**
+ * Batch-fetch commercials by documentId in ONE request, keyed by documentId for the widget
+ * map. A "Best 20" article renders 20 of these, so the per-id `Promise.all` shape used by
+ * the `site-card` prefetch would mean 20 round trips on our highest-traffic page.
+ *
+ * Widgets reference `documentId`, NOT the numeric `id` — measured: republishing a
+ * draft-and-publish document reassigns its published row's numeric id (18 commercials went
+ * 6–40 → 41–58 after one metadata edit each), which would silently kill every widget
+ * embedded in article HTML. documentId is stable across republishes.
+ */
+export async function getCommercialsByIds(ids: string[]): Promise<Map<string, Commercial>> {
+  const clean = [...new Set(ids.filter((id) => /^[a-z0-9]+$/.test(id)))];
+  if (!clean.length) return new Map();
+  const idFilter = clean.map((id, i) => `filters[documentId][$in][${i}]=${id}`).join('&');
+  const res = await strapiGet<Commercial[]>(
+    `/commercials?${COMMERCIAL_QUERY}&${idFilter}&filters[publishedAt][$notNull]=true&pagination[pageSize]=${clean.length}`
+  );
+  return new Map(res.data.map((c) => [c.documentId, c]));
+}
+
 // ─── Sale ────────────────────────────────────────────────────────────────────
 
 export type SaleBadgeIcon = 'fire' | 'tag' | 'bolt' | 'star' | 'gift' | 'percent';
@@ -1081,7 +1162,7 @@ export type SitemapSite = { slug: string; updatedAt: string; localizations: Site
 export type SitemapBundle = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapSale = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapCategory = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
-export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; localizations: SitemapLocalization[] };
+export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; content: string | null; localizations: SitemapLocalization[] };
 export type SitemapAuthor = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapReview = { updatedAt: string; site: { slug: string }; localizations: SitemapLocalization[] };
 export type SitemapPage = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
@@ -1162,7 +1243,7 @@ export async function getArticlesForSitemap(
   pageSize: number,
 ): Promise<{ data: SitemapArticle[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<SitemapArticle[]>(
-    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&fields[4]=content&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 86400 } }
   );
   return {

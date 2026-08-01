@@ -1,4 +1,4 @@
-import { getSiteById, getArticleById, Site, Article } from '@/lib/strapi';
+import { getSiteById, getArticleById, getCommercialsByIds, Site, Article, Commercial } from '@/lib/strapi';
 
 export type WidgetData = Map<string, unknown>;
 
@@ -42,6 +42,16 @@ export const widgetTypes: Record<string, WidgetType> = {
       return map;
     },
   },
+  commercial: {
+    pattern: /data-component="commercial"\s+data-commercial-id="([a-z0-9]+)"/g,
+    // Batched: a "Best 20" article has 20 of these, so the per-id Promise.all shape used by
+    // the site-card widget would be 20 Strapi round trips on our highest-traffic page.
+    // The trailing quote in the pattern keeps it from matching "commercial-index".
+    // Keys are documentIds — numeric ids churn on every republish (see getCommercialsByIds).
+    async prefetch(ids: string[]): Promise<Map<string, Commercial>> {
+      return getCommercialsByIds(ids);
+    },
+  },
   'site-card-list': {
     pattern: /data-component="site-card-list"\s+data-site-ids="([^"]+)"/g,
     async prefetch(idStrings: string[]): Promise<Map<string, Site[]>> {
@@ -57,6 +67,24 @@ export const widgetTypes: Record<string, WidgetType> = {
     },
   },
 };
+
+/**
+ * Commercial ids in document order, deduped.
+ *
+ * The `commercial-index` widget carries no ids of its own — it is derived from the
+ * `commercial` widgets that appear later in the same document. An explicit id list on the
+ * index would be a second ordering that goes stale the moment someone reorders or drops an
+ * ad, and a wrong index defeats its entire purpose ("find the one you remember").
+ */
+export function extractCommercialIds(html: string): string[] {
+  const re = /data-component="commercial"\s+data-commercial-id="([a-z0-9]+)"/g;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}
 
 /**
  * Pre-scan HTML for all widget patterns and batch-fetch their data.

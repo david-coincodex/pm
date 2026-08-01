@@ -1,5 +1,30 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface ContentProsCons extends Struct.ComponentSchema {
+  collectionName: 'components_content_pros_cons';
+  info: {
+    description: 'A list of pros and cons';
+    displayName: 'Pros & Cons';
+    icon: 'thumbs-up';
+  };
+  attributes: {
+    cons: Schema.Attribute.JSON;
+    pros: Schema.Attribute.JSON;
+  };
+}
+
+export interface ContentRichText extends Struct.ComponentSchema {
+  collectionName: 'components_content_rich_texts';
+  info: {
+    description: 'A block of rich text content';
+    displayName: 'Rich Text';
+    icon: 'align-left';
+  };
+  attributes: {
+    body: Schema.Attribute.Blocks;
+  };
+}
+
 export interface PaymentMethod extends Struct.ComponentSchema {
   collectionName: 'components_payment_methods';
   info: {
@@ -229,6 +254,32 @@ export interface ReviewPaysiteScores extends Struct.ComponentSchema {
   };
 }
 
+export interface ReviewReviewSource extends Struct.ComponentSchema {
+  collectionName: 'components_review_review_sources';
+  info: {
+    description: 'External review source URL for a site';
+    displayName: 'Review Source';
+    icon: 'link';
+  };
+  attributes: {
+    sourceName: Schema.Attribute.String & Schema.Attribute.Required;
+    sourceUrl: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface SharedFaq extends Struct.ComponentSchema {
+  collectionName: 'components_shared_faqs';
+  info: {
+    description: 'A single frequently-asked question and its answer';
+    displayName: 'FAQ';
+    icon: 'question';
+  };
+  attributes: {
+    answer: Schema.Attribute.Text & Schema.Attribute.Required;
+    question: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
 export interface SiteDetailsCamSiteDetails extends Struct.ComponentSchema {
   collectionName: 'components_site_details_cam_site_details';
   info: {
@@ -298,9 +349,13 @@ export interface SiteDetailsTubeSiteDetails extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'content.pros-cons': ContentProsCons;
+      'content.rich-text': ContentRichText;
       'payment.method': PaymentMethod;
       'review.camsite-scores': ReviewCamsiteScores;
       'review.paysite-scores': ReviewPaysiteScores;
+      'review.review-source': ReviewReviewSource;
+      'shared.faq': SharedFaq;
       'site-details.cam-site-details': SiteDetailsCamSiteDetails;
       'site-details.dating-site-details': SiteDetailsDatingSiteDetails;
       'site-details.pay-site-details': SiteDetailsPaySiteDetails;
