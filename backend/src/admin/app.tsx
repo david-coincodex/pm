@@ -432,6 +432,217 @@ class SiteCardListPlugin extends Plugin {
   }
 }
 
+
+// ─── MEDIA GALLERY ────────────────────────────────────────────────────────────
+
+/**
+ * Admin JWT for the media-library routes. The other widget dialogs hit `/api/...` content
+ * endpoints, which are publicly readable — but `/upload/files` is admin-only, so this dialog
+ * must send the token the admin panel itself is logged in with.
+ *
+ * Mirrors the admin's own getStoredToken (@strapi/admin reducer, checked against the installed
+ * source): localStorage holds the token JSON-stringified ("remember me" checked), otherwise it
+ * lives in a `jwtToken` cookie, raw. Never sessionStorage.
+ */
+function adminToken(): string | null {
+  try {
+    const fromLocalStorage = localStorage.getItem('jwtToken');
+    if (fromLocalStorage) return JSON.parse(fromLocalStorage);
+    const match = document.cookie.match(/(?:^|;\s*)jwtToken=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+type GalleryItem = { url: string; mime: string; alt?: string };
+
+class MediaGalleryPlugin extends Plugin {
+  static get pluginName() {
+    return 'MediaGalleryPlugin' as const;
+  }
+
+  _openDialog(prefill: { items: GalleryItem[]; _modelEl?: any } | null = null) {
+    const editor = this.editor;
+    const savedRange = editor.model.document.selection.getFirstRange();
+
+    const dlg = document.createElement('dialog');
+    dlg.style.cssText =
+      'padding:0;border:none;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.25);width:560px;max-height:90vh;overflow:hidden;z-index:99999;display:flex;flex-direction:column;';
+
+    dlg.innerHTML = [
+      '<div style="padding:24px 24px 0;font-family:system-ui,sans-serif;">',
+      `<h3 style="margin:0 0 16px;font-size:16px;font-weight:600;">${prefill ? 'Edit' : 'Insert'} Media Gallery</h3>`,
+      '<input type="text" class="pm-mg-search" placeholder="Search the media library (images + videos)\u2026" style="display:block;width:100%;padding:8px 12px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit;" />',
+      '<div class="pm-mg-search-results" style="margin-top:8px;max-height:200px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:4px;"></div>',
+      '</div>',
+      '<div style="padding:16px 24px;flex:1;overflow-y:auto;">',
+      '<p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Gallery items (rendered in this order)</p>',
+      '<ul class="pm-mg-selected" style="list-style:none;margin:0;padding:0;min-height:40px;"></ul>',
+      '<p class="pm-mg-empty" style="font-size:13px;color:#94a3b8;margin:8px 0;">No media added yet.</p>',
+      '</div>',
+      '<div style="padding:12px 24px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;">',
+      '<button type="button" class="pm-mg-cancel" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;font-size:13px;cursor:pointer;">Cancel</button>',
+      `<button type="button" class="pm-mg-insert" style="padding:7px 16px;border:none;border-radius:4px;background:#4945ff;color:#fff;font-size:13px;cursor:pointer;font-weight:500;">${prefill ? 'Update' : 'Insert'}</button>`,
+      '</div>',
+    ].join('');
+
+    document.body.appendChild(dlg);
+
+    const searchInput = dlg.querySelector('.pm-mg-search') as HTMLInputElement;
+    const searchResults = dlg.querySelector('.pm-mg-search-results') as HTMLDivElement;
+    const selectedList = dlg.querySelector('.pm-mg-selected') as HTMLUListElement;
+    const emptyMsg = dlg.querySelector('.pm-mg-empty') as HTMLParagraphElement;
+
+    const selected: GalleryItem[] = prefill?.items ? [...prefill.items] : [];
+
+    const displayName = (it: GalleryItem) => it.alt || decodeURIComponent(it.url.split('/').pop() ?? it.url);
+    const preview = (it: GalleryItem) =>
+      it.mime.startsWith('video/')
+        ? '<span style="display:inline-flex;width:36px;height:28px;align-items:center;justify-content:center;background:#0f172a;color:#fff;border-radius:3px;font-size:11px;flex:none;">\u25B6</span>'
+        : `<img src="${escapeHtml(it.url)}" alt="" style="width:36px;height:28px;object-fit:cover;border-radius:3px;flex:none;" />`;
+
+    function moveItem(from: number, to: number) {
+      if (to < 0 || to >= selected.length) return;
+      const [item] = selected.splice(from, 1);
+      selected.splice(to, 0, item);
+      renderSelected();
+    }
+
+    function renderSelected() {
+      emptyMsg.style.display = selected.length ? 'none' : 'block';
+      selectedList.innerHTML = selected
+        .map((it, i) => [
+          `<li data-index="${i}" style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;margin-bottom:6px;font-size:13px;font-family:system-ui,sans-serif;">`,
+          preview(it),
+          `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(displayName(it))}${it.mime.startsWith('video/') ? ' <span style="color:#94a3b8;">(video, silent autoplay)</span>' : ''}</span>`,
+          `<button type="button" class="pm-mg-up" data-idx="${i}" title="Move up" style="border:1px solid #e2e8f0;background:#fff;border-radius:3px;padding:1px 7px;cursor:pointer;font-size:12px;${i === 0 ? 'opacity:.3;' : ''}">&#9650;</button>`,
+          `<button type="button" class="pm-mg-down" data-idx="${i}" title="Move down" style="border:1px solid #e2e8f0;background:#fff;border-radius:3px;padding:1px 7px;cursor:pointer;font-size:12px;${i === selected.length - 1 ? 'opacity:.3;' : ''}">&#9660;</button>`,
+          `<button type="button" class="pm-mg-remove" data-idx="${i}" title="Remove" style="border:none;background:none;padding:1px 6px;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;">&times;</button>`,
+          '</li>',
+        ].join('')).join('');
+    }
+
+    selectedList.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest('[data-idx]') as HTMLElement | null;
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      if (btn.classList.contains('pm-mg-up')) moveItem(idx, idx - 1);
+      else if (btn.classList.contains('pm-mg-down')) moveItem(idx, idx + 1);
+      else if (btn.classList.contains('pm-mg-remove')) { selected.splice(idx, 1); renderSelected(); }
+    });
+
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const query = searchInput.value.trim();
+      if (!query) { searchResults.innerHTML = ''; return; }
+      debounceTimer = setTimeout(async () => {
+        try {
+          const token = adminToken();
+          const res = await fetch(
+            `/upload/files?page=1&pageSize=12&sort=createdAt:DESC&filters[$and][0][name][$containsi]=${encodeURIComponent(query)}`,
+            token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+          );
+          const json = await res.json();
+          const files: any[] = json.results ?? [];
+          if (!files.length) {
+            searchResults.innerHTML = '<p style="font-size:13px;color:#64748b;padding:8px 12px;margin:0;">No media found.</p>';
+            return;
+          }
+          searchResults.innerHTML = files
+            .filter((f) => typeof f.mime === 'string' && (f.mime.startsWith('image/') || f.mime.startsWith('video/')))
+            .map((f) => {
+              const thumb = f.formats?.thumbnail?.url ?? (f.mime.startsWith('image/') ? f.url : null);
+              return [
+                `<button type="button" class="pm-mg-result" data-url="${escapeHtml(f.url)}" data-mime="${escapeHtml(f.mime)}" data-alt="${escapeHtml(f.alternativeText ?? '')}"`,
+                ' style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit;">',
+                thumb
+                  ? `<img src="${escapeHtml(thumb)}" alt="" style="width:36px;height:28px;object-fit:cover;border-radius:3px;flex:none;" />`
+                  : '<span style="display:inline-flex;width:36px;height:28px;align-items:center;justify-content:center;background:#0f172a;color:#fff;border-radius:3px;font-size:11px;flex:none;">\u25B6</span>',
+                `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name)}</span>`,
+                '</button>',
+              ].join('');
+            }).join('');
+        } catch {
+          searchResults.innerHTML = '<p style="font-size:13px;color:#dc2626;padding:8px 12px;margin:0;">Search failed \u2014 are you logged in?</p>';
+        }
+      }, 300);
+    });
+
+    searchResults.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest('.pm-mg-result') as HTMLElement | null;
+      if (!btn) return;
+      const url = btn.dataset.url ?? '';
+      if (!url || selected.some((it) => it.url === url)) return;
+      selected.push({ url, mime: btn.dataset.mime ?? 'image/jpeg', ...(btn.dataset.alt ? { alt: btn.dataset.alt } : {}) });
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+      renderSelected();
+    });
+
+    dlg.querySelector('.pm-mg-cancel')?.addEventListener('click', () => {
+      (dlg as HTMLDialogElement).close();
+      dlg.remove();
+    });
+
+    dlg.querySelector('.pm-mg-insert')?.addEventListener('click', () => {
+      if (!selected.length) return;
+      (dlg as HTMLDialogElement).close();
+      dlg.remove();
+
+      if (prefill?._modelEl) {
+        editor.model.change((writer) => writer.setSelection(prefill._modelEl, 'on'));
+      } else if (prefill && savedRange) {
+        editor.model.change((writer) => writer.setSelection(savedRange));
+      }
+      const label = `Media Gallery: ${selected.length} item(s) \u2014 ${selected.slice(0, 3).map(displayName).join(', ')}${selected.length > 3 ? '\u2026' : ''}`;
+      const html =
+        `<div data-component="media-gallery" data-items="${escapeHtml(JSON.stringify(selected))}" class="pm-widget" contenteditable="false">` +
+        `<span class="pm-widget__label">${escapeHtml(label)}</span></div>`;
+      const viewFragment = (editor.data.processor as any).toView(html);
+      const modelFragment = editor.data.toModel(viewFragment);
+      editor.model.insertContent(modelFragment);
+      editor.editing.view.focus();
+    });
+
+    renderSelected();
+    (dlg as HTMLDialogElement).showModal();
+    setTimeout(() => searchInput.focus(), 50);
+  }
+
+  init() {
+    const editor = this.editor;
+
+    editor.ui.componentFactory.add('mediaGallery', (locale) => {
+      const button = new ButtonView(locale);
+      button.set({ label: 'Media Gallery', withText: true, tooltip: true });
+      button.on('execute', () => this._openDialog(null));
+      return button;
+    });
+
+    editor.on('ready', () => {
+      const editableEl = editor.editing.view.getDomRoot();
+      if (!editableEl) return;
+      editableEl.addEventListener('dblclick', (e: MouseEvent) => {
+        let el = e.target as HTMLElement | null;
+        while (el && el.dataset?.component !== 'media-gallery') el = el.parentElement;
+        if (!el) return;
+        e.stopPropagation();
+        let items: GalleryItem[] = [];
+        try {
+          // dataset decodes the HTML entities, so this is plain JSON again.
+          const parsed = JSON.parse(el.dataset.items ?? '[]');
+          if (Array.isArray(parsed)) items = parsed.filter((it) => it && typeof it.url === 'string');
+        } catch { /* unreadable attribute: open the dialog empty rather than not at all */ }
+        const viewEl = editor.editing.view.domConverter.mapDomToView(el as Element);
+        const _modelEl = viewEl ? editor.editing.mapper.toModelElement(viewEl as any) : null;
+        this._openDialog({ items, _modelEl });
+      });
+    });
+  }
+}
+
 // ─── COMMERCIAL ("AD") ────────────────────────────────────────────────────────
 //
 // Named `commercial`, never `ad`, in every identifier: adblock filter lists match `/ads/`,
@@ -913,8 +1124,8 @@ export default {
       : ((existingToolbar as any)?.items ?? []) as string[];
 
     const newToolbar = Array.isArray(existingToolbar)
-      ? [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', '|', 'commercial', 'commercialIndex']
-      : { ...(existingToolbar as object), items: [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', '|', 'commercial', 'commercialIndex'] };
+      ? [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', 'mediaGallery', '|', 'commercial', 'commercialIndex']
+      : { ...(existingToolbar as object), items: [...toolbarItems, '|', 'prosCons', 'siteCard', 'siteCardList', 'articleCard', 'mediaGallery', '|', 'commercial', 'commercialIndex'] };
 
     const customHtmlPreset: Preset = {
       ...defaultHtmlPreset,
@@ -950,6 +1161,7 @@ export default {
           SiteCardPlugin as any,
           SiteCardListPlugin as any,
           ArticleCardPlugin as any,
+          MediaGalleryPlugin as any,
           CommercialPlugin as any,
           CommercialIndexPlugin as any,
         ],

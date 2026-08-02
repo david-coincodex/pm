@@ -7,6 +7,7 @@ import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
 import ArticleCard from '@/components/ArticleCard';
 import CommercialIndex from '@/components/rich-text/CommercialIndex';
 import CommercialBlock from '@/components/rich-text/CommercialBlock';
+import ImageGallery from '@/components/ImageGallery';
 import { prefetchWidgetData, extractCommercialIds, type WidgetData } from '@/lib/richTextWidgets';
 import { resolveMediaSrc, type Site, type Article, type Commercial } from '@/lib/strapi';
 
@@ -44,7 +45,6 @@ const ELEMENT_CLASSES: Record<string, string> = {
   // stylesheet, which gives <figure> a 40px margin on both sides — every image visibly inset.
   figure: 'my-5',
   figcaption: 'mt-2 text-center text-sm text-slate-500 dark:text-slate-400',
-  hr: 'my-6 border-slate-200 dark:border-slate-700',
   video: 'rounded-lg max-w-full h-auto',
   table: 'w-full border-collapse text-sm text-slate-700 dark:text-slate-300',
   th: 'border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left font-semibold',
@@ -116,6 +116,27 @@ function replaceNode(
   if (domNode.attribs['data-component'] === 'commercial-index') {
     if (!commercials.ordered.length) return <></>;
     return <CommercialIndex commercials={commercials.ordered} canonicalPath={commercials.canonicalPath} />;
+  }
+
+  // Widget: Media gallery — the article's own media (top-of-page images + promo clips),
+  // rendered in the same grid used for site galleries. Items are self-contained JSON in the
+  // attribute (url/mime/alt), NOT ids: uploads are files, not documents, so there is nothing
+  // stable to reference — and the widget must keep working if the upload library is reorganised.
+  if (domNode.attribs['data-component'] === 'media-gallery') {
+    let items: Array<{ url: string; mime?: string; alt?: string }> = [];
+    try {
+      const parsedItems = JSON.parse(domNode.attribs['data-items'] ?? '[]');
+      if (Array.isArray(parsedItems)) items = parsedItems.filter((it) => it && typeof it.url === 'string');
+    } catch {
+      // Malformed JSON: render nothing rather than crash the whole article.
+    }
+    if (!items.length) return <></>;
+    return (
+      <ImageGallery
+        images={items.map((it, i) => ({ id: i, url: it.url, alternativeText: it.alt ?? null, mime: it.mime }))}
+        className="not-prose my-6"
+      />
+    );
   }
 
   // Widget: Site Card List

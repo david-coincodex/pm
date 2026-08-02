@@ -1,15 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { strapiMediaUrl, type StrapiMedia } from '@/lib/strapi';
+import { requestPlay, release, autoplayAllowed } from '@/lib/clipPlayback';
+
+/**
+ * A gallery item. Structurally satisfied by `StrapiMedia`, but deliberately looser so the
+ * `media-gallery` rich-text widget can feed items parsed from article HTML (which carry a
+ * `mime` and no `documentId`). Anything with a video mime or extension renders as a silent
+ * autoplaying clip, same behaviour as the commercial players.
+ */
+export type GalleryItem = Pick<StrapiMedia, 'url'> & {
+  id: number | string;
+  alternativeText?: string | null;
+  mime?: string;
+};
 
 interface ImageGalleryProps {
-  images: StrapiMedia[];
+  images: GalleryItem[];
   coverImage?: StrapiMedia | null;
   className?: string;
 }
+
+const isVideo = (item: GalleryItem) =>
+  item.mime?.startsWith('video/') || /\.(mp4|webm|mov)(\?|$)/i.test(item.url);
 
 const GRID_CLASSES = [
   // 1 image
@@ -29,12 +45,60 @@ function getGridClasses(total: number, index: number): string {
   return pattern[Math.min(index, pattern.length - 1)];
 }
 
+/**
+ * A silent looping clip in a grid cell — the commercial-page behaviour: `src` stays in
+ * `data-src` so an untouched page transfers zero video bytes, playback starts on
+ * scroll-into-view through the shared concurrency cap (2 at once, decoder limits), and
+ * leaving the viewport releases the source. Respects reduced-motion / data-saver.
+ */
+function VideoCell({ src }: { src: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!autoplayAllowed()) {
+      // Reduced-motion / data-saver: no autoplay, and these clips carry no poster — without
+      // this the cell renders as an empty black box. Load just the first frame instead.
+      if (el.dataset.src && !el.getAttribute('src')) {
+        el.src = el.dataset.src;
+        el.preload = 'metadata';
+      }
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) requestPlay(el);
+        else release(el, true);
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      release(el, true);
+    };
+  }, [src]);
+
+  return (
+    <video
+      ref={ref}
+      data-src={src}
+      muted
+      loop
+      playsInline
+      preload="none"
+      className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+    />
+  );
+}
+
 export default function ImageGallery({ images: galleryImages, coverImage, className = '' }: ImageGalleryProps) {
   const t = useTranslations('gallery');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Fall back to the cover image when the gallery has no images.
-  const images = galleryImages.length > 0 ? galleryImages : coverImage ? [coverImage] : [];
+  const images: GalleryItem[] = galleryImages.length > 0 ? galleryImages : coverImage ? [coverImage] : [];
 
   const displayed = images.slice(0, 5);
   const hasMore = images.length > 5;
@@ -75,6 +139,8 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
     );
   }
 
+  const current = lightboxIndex !== null ? images[lightboxIndex] : null;
+
   return (
     <>
       {/* Grid */}
@@ -86,13 +152,17 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
             onClick={() => setLightboxIndex(i)}
             aria-label={img.alternativeText ?? `Image ${i + 1}`}
           >
-            <Image
-              src={strapiMediaUrl(img)}
-              alt={img.alternativeText ?? ''}
-              fill
-              className="object-cover transition-transform duration-300 hover:scale-105"
-              sizes="(max-width: 768px) 50vw, 33vw"
-            />
+            {isVideo(img) ? (
+              <VideoCell src={strapiMediaUrl(img)} />
+            ) : (
+              <Image
+                src={strapiMediaUrl(img)}
+                alt={img.alternativeText ?? ''}
+                fill
+                className="object-cover transition-transform duration-300 hover:scale-105"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+            )}
             {hasMore && i === 4 && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <span className="text-xl font-bold text-white">+{images.length - 5}</span>
@@ -103,7 +173,7 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
       </div>
 
       {/* Lightbox */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && current && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
           onClick={close}
@@ -132,20 +202,33 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
             </button>
           )}
 
-          {/* Image + counter */}
+          {/* Media + counter */}
           <div
             className="flex flex-col items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative max-h-[90vh] max-w-[90vw] min-w-[50vw] min-h-[50vh]">
-              <Image
-                src={strapiMediaUrl(images[lightboxIndex])}
-                alt={images[lightboxIndex].alternativeText ?? ''}
-                fill
-                className="object-contain rounded-xl"
-                sizes="90vw"
+            {isVideo(current) ? (
+              // Controls in the lightbox — the grid autoplays silently, but opening a clip is
+              // explicit intent, so give the visitor scrubbing and sound.
+              <video
+                src={strapiMediaUrl(current)}
+                controls
+                autoPlay
+                muted
+                playsInline
+                className="max-h-[80vh] max-w-[90vw] rounded-xl"
               />
-            </div>
+            ) : (
+              <div className="relative max-h-[90vh] max-w-[90vw] min-w-[50vw] min-h-[50vh]">
+                <Image
+                  src={strapiMediaUrl(current)}
+                  alt={current.alternativeText ?? ''}
+                  fill
+                  className="object-contain rounded-xl"
+                  sizes="90vw"
+                />
+              </div>
+            )}
             <p className="text-center text-sm text-white/60">
               {t('imageOf', { current: lightboxIndex + 1, total: images.length })}
             </p>
