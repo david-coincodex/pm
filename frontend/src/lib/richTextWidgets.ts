@@ -1,4 +1,4 @@
-import { getSiteById, getArticleById, getCommercialsByIds, Site, Article, Commercial } from '@/lib/strapi';
+import { getSitesByKeys, getArticlesByKeys, getCommercialsByIds, Site, Article, Commercial } from '@/lib/strapi';
 
 export type WidgetData = Map<string, unknown>;
 
@@ -9,37 +9,27 @@ interface WidgetType {
   prefetch: (keys: string[], locale: string) => Promise<Map<string, unknown>>;
 }
 
+/**
+ * Widget id patterns accept `documentId` as well as a numeric id.
+ *
+ * `site`, `article` and `commercial` are all draft-and-publish, and republishing a document
+ * reassigns its published row's numeric id — so a widget keyed on a number silently renders
+ * empty after any later republish. New content is generated with documentIds; the numeric form
+ * stays matched so article bodies already in the database keep working.
+ */
+const ID_PATTERN = '([a-z0-9]+)';
+
 export const widgetTypes: Record<string, WidgetType> = {
   'site-card': {
-    pattern: /data-component="site-card"\s+data-site-id="(\d+)"/g,
-    async prefetch(ids: string[]): Promise<Map<string, Site>> {
-      const entries = await Promise.all(
-        ids.map(async (id) => {
-          const site = await getSiteById(Number(id));
-          return [id, site] as const;
-        })
-      );
-      const map = new Map<string, Site>();
-      for (const [id, site] of entries) {
-        if (site) map.set(id, site);
-      }
-      return map;
+    pattern: new RegExp(`data-component="site-card"\\s+data-site-id="${ID_PATTERN}"`, 'g'),
+    prefetch(ids: string[]): Promise<Map<string, Site>> {
+      return getSitesByKeys(ids);
     },
   },
   'article-card': {
-    pattern: /data-component="article-card"\s+data-article-id="(\d+)"/g,
-    async prefetch(ids: string[], locale: string): Promise<Map<string, Article>> {
-      const entries = await Promise.all(
-        ids.map(async (id) => {
-          const article = await getArticleById(Number(id), locale);
-          return [id, article] as const;
-        })
-      );
-      const map = new Map<string, Article>();
-      for (const [id, article] of entries) {
-        if (article) map.set(id, article);
-      }
-      return map;
+    pattern: new RegExp(`data-component="article-card"\\s+data-article-id="${ID_PATTERN}"`, 'g'),
+    prefetch(ids: string[], locale: string): Promise<Map<string, Article>> {
+      return getArticlesByKeys(ids, locale);
     },
   },
   commercial: {
@@ -55,15 +45,20 @@ export const widgetTypes: Record<string, WidgetType> = {
   'site-card-list': {
     pattern: /data-component="site-card-list"\s+data-site-ids="([^"]+)"/g,
     async prefetch(idStrings: string[]): Promise<Map<string, Site[]>> {
-      const map = new Map<string, Site[]>();
-      await Promise.all(
-        idStrings.map(async (idsStr) => {
-          const ids = idsStr.split(',').map((s) => s.trim()).filter(Boolean);
-          const sites = await Promise.all(ids.map((id) => getSiteById(Number(id))));
-          map.set(idsStr, sites.filter((s): s is Site => s !== null));
-        })
+      const parsed = idStrings.map((idsStr) => ({
+        idsStr,
+        ids: idsStr.split(',').map((s) => s.trim()).filter(Boolean),
+      }));
+      // One fetch for every id across every list on the page, instead of one per id per list.
+      const sites = await getSitesByKeys(parsed.flatMap((p) => p.ids));
+      return new Map(
+        // Re-index by the AUTHORED id order. Strapi returns `$in` matches in its own order,
+        // so mapping over the response instead would silently reshuffle a curated ranking.
+        parsed.map(({ idsStr, ids }) => [
+          idsStr,
+          ids.map((id) => sites.get(id)).filter((s): s is Site => s !== undefined),
+        ])
       );
-      return map;
     },
   },
 };

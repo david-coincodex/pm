@@ -138,7 +138,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return {
       url: pageUrl,
-      lastModified: item.updatedAt,
+      // Editorial dates first, `updatedAt` only as a floor. `updatedAt` moves on any write —
+      // a date backfill, a widget id migration — so on its own it would announce lastmod=today
+      // for every recreated legacy article and tell Google the whole archive changed at once.
+      lastModified: item.modifiedDate ?? item.publishDate ?? item.updatedAt,
       alternates: buildAlternates(item, path),
       ...(videos.length ? { videos } : {}),
     };

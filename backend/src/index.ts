@@ -1,5 +1,7 @@
 // import type { Core } from '@strapi/strapi';
 
+import { normalizeMediaUrls } from './utils/relative-media-urls';
+
 export default {
   /**
    * An asynchronous register function that runs before
@@ -7,7 +9,32 @@ export default {
    *
    * This gives you an opportunity to extend code.
    */
-  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+  register({ strapi }: { strapi: any }) {
+    /**
+     * Store uploaded-media URLs as root-relative paths, always.
+     *
+     * A document-service middleware rather than per-content-type `lifecycles.ts` on purpose:
+     * there are SIX CKEditor fields across five content types (article.content, category.intro,
+     * category.content, page.content, review.content, site.description) plus `blocks` fields on
+     * bundle and sale. One registration covers create/update/publish for all of them, and any
+     * rich-text field added later is protected without anyone remembering to wire it up.
+     *
+     * See src/utils/relative-media-urls.ts for why this is necessary: the CKEditor media library
+     * always inserts an absolute URL built from whatever host the admin is open on.
+     */
+    strapi.documents.use(async (context: any, next: any) => {
+      // Only OUR content types. In particular `plugin::upload.file` must never pass through
+      // here: with a CDN/proxy upload provider its own `url`/`formats` fields hold absolute
+      // URLs that can legitimately contain `/uploads/` — normalising those would corrupt the
+      // media library's records, not article content.
+      if (!context.uid?.startsWith('api::')) return next();
+      const isWrite = context.action === 'create' || context.action === 'update';
+      if (isWrite && context.params?.data) {
+        context.params.data = normalizeMediaUrls(context.params.data);
+      }
+      return next();
+    });
+  },
 
   /**
    * An asynchronous bootstrap function that runs before

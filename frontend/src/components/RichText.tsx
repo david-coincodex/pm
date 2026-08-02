@@ -8,7 +8,21 @@ import ArticleCard from '@/components/ArticleCard';
 import CommercialIndex from '@/components/rich-text/CommercialIndex';
 import CommercialBlock from '@/components/rich-text/CommercialBlock';
 import { prefetchWidgetData, extractCommercialIds, type WidgetData } from '@/lib/richTextWidgets';
-import { type Site, type Article, type Commercial } from '@/lib/strapi';
+import { resolveMediaSrc, type Site, type Article, type Commercial } from '@/lib/strapi';
+
+/**
+ * Attributes per element that hold a media URL and therefore need the media host prefixed.
+ *
+ * `<a href>` is included because the CKEditor media library also inserts plain links for
+ * non-image uploads (PDFs and the like) — `prefixFileUrlWithBackendUrl` treats those the same
+ * as an image `src`, so they arrive in the same shape.
+ */
+const MEDIA_ATTRS: Record<string, readonly string[]> = {
+  img: ['src', 'srcset'],
+  source: ['src', 'srcset'],
+  video: ['src', 'poster'],
+  a: ['href'],
+};
 
 const ELEMENT_CLASSES: Record<string, string> = {
   p: 'text-base leading-relaxed text-slate-700 dark:text-slate-300',
@@ -26,6 +40,12 @@ const ELEMENT_CLASSES: Record<string, string> = {
   code: 'rounded bg-slate-100 px-1 py-0.5 font-mono text-sm dark:bg-slate-800',
   pre: 'overflow-x-auto rounded-lg bg-slate-100 p-4 font-mono text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200',
   img: 'rounded-lg max-w-full h-auto',
+  // Imported legacy Gutenberg bodies use these. Without an entry they fall through to the UA
+  // stylesheet, which gives <figure> a 40px margin on both sides — every image visibly inset.
+  figure: 'my-5',
+  figcaption: 'mt-2 text-center text-sm text-slate-500 dark:text-slate-400',
+  hr: 'my-6 border-slate-200 dark:border-slate-700',
+  video: 'rounded-lg max-w-full h-auto',
   table: 'w-full border-collapse text-sm text-slate-700 dark:text-slate-300',
   th: 'border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left font-semibold',
   td: 'border border-slate-200 dark:border-slate-700 px-3 py-2',
@@ -126,6 +146,33 @@ function replaceNode(
   // Add rel to links
   if (domNode.name === 'a' && !domNode.attribs.rel) {
     domNode.attribs.rel = 'noopener noreferrer';
+  }
+
+  // Prefix stored media paths with the media host.
+  //
+  // Content deliberately stores root-relative `/uploads/...` so no host is baked into the
+  // database — which means the domain has to be added HERE, at render, or the browser resolves
+  // it against the site origin and every inline image 404s (494 refs across 69 articles did).
+  // `resolveMediaSrc` is a no-op on anything already absolute, so this is safe to run over
+  // legacy content and idempotent if the same node is visited twice.
+  if (MEDIA_ATTRS[domNode.name]) {
+    for (const attr of MEDIA_ATTRS[domNode.name]) {
+      const value = domNode.attribs[attr];
+      if (!value) continue;
+      // `srcset` is a comma-separated candidate list ("url 800w, url2 1600w"), and the browser
+      // PREFERS it over `src` — so missing it would leave the fixed `src` unused. Only rewritten
+      // when it actually references our uploads: splitting on "," would corrupt a data-URI
+      // srcset (the comma inside `data:image/png;base64,…` is payload, not a separator), and
+      // CKEditor's config permits image data-URIs.
+      domNode.attribs[attr] = attr === 'srcset'
+        ? (value.includes('/uploads/')
+            ? value.split(',').map((c) => {
+                const [url, ...rest] = c.trim().split(/\s+/);
+                return url ? [resolveMediaSrc(url), ...rest].join(' ') : c.trim();
+              }).join(', ')
+            : value)
+        : resolveMediaSrc(value);
+    }
   }
 }
 

@@ -7,12 +7,39 @@ export const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? 'http://localhos
 // (e.g. http://backend:1339). Falls back to the public URL outside Docker.
 const STRAPI_FETCH_URL = process.env.STRAPI_INTERNAL_URL ?? STRAPI_URL;
 
-// Browser-facing base for uploaded media (images + video). Deliberately separate from
-// STRAPI_URL: /uploads is routed through the FRONTEND host in production (see the
-// promode-uploads Traefik router in docker-compose.prod.yml) so media is same-origin with
-// the site rather than sitting behind the CMS host's separate Cloudflare Access app.
-// Falls back to STRAPI_URL, which is correct for local dev.
-const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE ?? STRAPI_URL;
+/**
+ * Browser-facing base for uploaded media (images + video).
+ *
+ * Media lives wherever Strapi lives, so this defaults to STRAPI_URL. Set
+ * NEXT_PUBLIC_MEDIA_BASE only to serve media from somewhere else — a CDN, a media subdomain, or
+ * the site's own origin (staging does the last of these via the promode-uploads Traefik router).
+ *
+ * The trailing slash is stripped: `https://host/` would otherwise produce `https://host//uploads/x`.
+ */
+const MEDIA_BASE = (process.env.NEXT_PUBLIC_MEDIA_BASE ?? STRAPI_URL).replace(/\/+$/, '');
+
+/**
+ * True for a URL that must be left exactly as-is — already absolute, protocol-relative, or an
+ * inline/blob payload. Prefixing any of these with MEDIA_BASE would corrupt them.
+ */
+const isResolvedUrl = (url: string) => /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);
+
+/**
+ * Prefix a stored media path with MEDIA_BASE.
+ *
+ * Stored content deliberately holds root-relative `/uploads/...` paths so no host is baked into
+ * the database; the domain is added here, at render, and nowhere else. Idempotent — an
+ * already-absolute value passes straight through.
+ *
+ * Scoped to `/uploads/` on purpose. It is applied to `<a href>` too (the CKEditor media library
+ * inserts plain links for non-image uploads), and article bodies are full of internal links like
+ * `/discounts/brazzers/` — prefixing those with the media host would break every one of them.
+ */
+export function resolveMediaSrc(src: string): string {
+  const trimmed = src.trim();
+  if (!trimmed || isResolvedUrl(trimmed)) return src;
+  return trimmed.startsWith('/uploads/') ? `${MEDIA_BASE}${trimmed}` : src;
+}
 
 // Cloudflare Access service-token headers, used only for local dev pointed at a
 // Cloudflare-Access-gated Strapi (e.g. cms-staging.pornmode.com). No-op in
@@ -169,8 +196,7 @@ function nestedSiteCard(key: string, extraPopulate: string[] = []): string {
  * `metadata.openGraph.images` and JSON-LD, which require absolute URLs.
  */
 export function strapiMediaUrl(media: Pick<StrapiMedia, 'url'>): string {
-  if (media.url.startsWith('http')) return media.url;
-  return `${MEDIA_BASE}${media.url}`;
+  return resolveMediaSrc(media.url);
 }
 
 type FetchOptions = Omit<RequestInit, 'body'> & {
@@ -544,12 +570,58 @@ export async function getDealBySiteSlug(slug: string, locale = 'en'): Promise<Si
   return null;
 }
 
-export async function getSiteById(id: number): Promise<Site | null> {
-  const res = await strapiGet<Site[]>(
-    `/sites?${SITE_CARD_FIELDS}&populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[id][$eq]=${id}&filters[isActive][$eq]=true&pagination[pageSize]=1`,
-    { next: { revalidate: 60 } }
+/**
+ * True for a Strapi 5 `documentId` rather than a numeric `id`.
+ *
+ * documentIds are 24+ char lowercase alphanumeric strings, so "all digits" is an unambiguous
+ * test in practice and lets both reference forms coexist in stored article HTML.
+ */
+const isDocumentId = (key: string) => !/^\d+$/.test(key);
+
+/** Build a `filters[<field>][$in][n]=…` clause list. */
+const inFilter = (field: string, keys: string[]) =>
+  keys.map((k, i) => `filters[${field}][$in][${i}]=${encodeURIComponent(k)}`).join('&');
+
+/**
+ * Batch-fetch card-shaped sites by numeric `id` OR `documentId`.
+ *
+ * Widgets embedded in article HTML should reference `documentId`: republishing a
+ * draft-and-publish document reassigns its published row's numeric `id` (measured on
+ * commercials — 18 of them went 6–40 → 41–58 after one metadata edit each), which silently
+ * blanks every widget keyed on the old number, with no error anywhere. `site` has the same
+ * defect. Numeric keys stay supported so existing article bodies keep working.
+ *
+ * Batched because `site-card-list` embeds 3–5 ids and the previous per-id `Promise.all` shape
+ * meant one Strapi round trip each. The result is keyed by BOTH forms, so a caller resolves
+ * whichever string it found in the HTML.
+ */
+export async function getSitesByKeys(keys: string[]): Promise<Map<string, Site>> {
+  const clean = [...new Set(keys.filter((k) => /^[a-z0-9]+$/.test(k)))];
+  if (!clean.length) return new Map();
+
+  const base = `/sites?${SITE_CARD_FIELDS}&populate[0]=logo&populate[1]=cover_image&populate[2]=offers&filters[isActive][$eq]=true`;
+  const groups: Array<[string, string[]]> = [
+    ['id', clean.filter((k) => !isDocumentId(k))],
+    ['documentId', clean.filter(isDocumentId)],
+  ];
+  const responses = await Promise.all(
+    groups
+      .filter(([, ks]) => ks.length)
+      .map(([field, ks]) =>
+        strapiGet<Site[]>(`${base}&${inFilter(field, ks)}&pagination[pageSize]=${ks.length}`, {
+          next: { revalidate: 60 },
+        })
+      )
   );
-  return res.data[0] ?? null;
+
+  const map = new Map<string, Site>();
+  for (const res of responses) {
+    for (const site of res.data) {
+      map.set(String(site.id), site);
+      map.set(site.documentId, site);
+    }
+  }
+  return map;
 }
 
 /** Fetch a single offer by numeric id, populated with its site. */
@@ -732,7 +804,8 @@ const ARTICLE_POPULATE =
  * Every `Article` scalar except `content` — the full rich-text body, ~10 KB per row,
  * which only the article detail page renders. Listing 8 articles on the homepage was
  * shipping ~80 KB of body copy nobody reads. Append to list queries only; the detail
- * fetcher (`getArticleById`) deliberately omits this so it still gets `content`.
+ * fetchers (`getArticleBySlug`/`getArticleByPostId`) deliberately omit this so they still
+ * get `content`.
  */
 const ARTICLE_CARD_FIELDS =
   'fields=metaTitle,title,slug,postId,description,publishDate,modifiedDate,publishedAt,createdAt,updatedAt,locale';
@@ -750,6 +823,17 @@ function articleScheduleFilter(): string {
   return `filters[$and][0][$or][0][publishDate][$lte]=${now}&filters[$and][0][$or][1][publishDate][$null]=true`;
 }
 
+/**
+ * Ordering for article listings.
+ *
+ * `publishDate` is the editorial date, not `publishedAt` (the Strapi publication timestamp):
+ * recreated legacy articles carry their original 2019/2020 dates, so sorting on `publishedAt`
+ * would order them by when we happened to import them and surface a 2019 post at the top of
+ * /blog showing a 2019 date. `id` breaks ties — many legacy posts share a publish date, and
+ * tie order is otherwise unspecified, which makes rows repeat or vanish across pages.
+ */
+const ARTICLE_SORT = 'sort[0]=publishDate:desc&sort[1]=id:desc';
+
 /** Fetch a paginated list of published articles for a locale, newest first. */
 export async function getArticlesPaginated(
   locale: string,
@@ -757,7 +841,7 @@ export async function getArticlesPaginated(
   pageSize = 12
 ): Promise<{ data: Article[]; pagination: NonNullable<StrapiResponse<Article[]>['meta']['pagination']> }> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&${ARTICLE_SORT}&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } }
   );
   const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
@@ -790,7 +874,7 @@ export async function getArticlesByAuthor(
   pageSize = 12
 ): Promise<{ data: Article[]; pagination: NonNullable<StrapiResponse<Article[]>['meta']['pagination']> }> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&filters[author][slug][$eq]=${encodeURIComponent(authorSlug)}&locale=${encodeURIComponent(locale)}&sort=publishDate:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&filters[author][slug][$eq]=${encodeURIComponent(authorSlug)}&locale=${encodeURIComponent(locale)}&${ARTICLE_SORT}&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 300 } }
   );
   const pagination = res.meta.pagination ?? { page, pageSize, pageCount: 1, total: res.data.length };
@@ -800,7 +884,7 @@ export async function getArticlesByAuthor(
 /** Fetch the latest N published articles for a locale. */
 export async function getLatestArticles(locale: string, limit = 8): Promise<Article[]> {
   const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&sort=publishedAt:desc&pagination[pageSize]=${limit}`,
+    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}&${ARTICLE_SORT}&pagination[pageSize]=${limit}`,
     { next: { revalidate: 300 } }
   );
   return res.data;
@@ -834,13 +918,43 @@ export async function getArticleBySlug(slug: string, locale: string): Promise<Ar
   return res.data[0] ?? null;
 }
 
-/** Fetch a single article by numeric id and slug. Returns null if not found. */
-export async function getArticleById(id: number, locale: string): Promise<Article | null> {
-  const res = await strapiGet<Article[]>(
-    `/articles?${ARTICLE_POPULATE}&filters[id][$eq]=${id}&filters[publishedAt][$notNull]=true&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}`,
-    { next: { revalidate: 60 } }
+/**
+ * Batch-fetch card-shaped articles by numeric `id` OR `documentId`, for the `article-card`
+ * widget. Same rationale as `getSitesByKeys`: `article` is draft-and-publish, so a numeric id
+ * embedded in stored HTML is reassigned on republish and the card silently renders empty.
+ *
+ * Uses the CARD query, not `ARTICLE_POPULATE` — the previous per-id path pulled each linked
+ * article's full body and `faqs` just to draw a card.
+ */
+export async function getArticlesByKeys(keys: string[], locale: string): Promise<Map<string, Article>> {
+  const clean = [...new Set(keys.filter((k) => /^[a-z0-9]+$/.test(k)))];
+  if (!clean.length) return new Map();
+
+  const base =
+    `/articles?${ARTICLE_CARD_FIELDS}&${ARTICLE_CARD_POPULATE}&filters[publishedAt][$notNull]=true` +
+    `&${articleScheduleFilter()}&locale=${encodeURIComponent(locale)}`;
+  const groups: Array<[string, string[]]> = [
+    ['id', clean.filter((k) => !isDocumentId(k))],
+    ['documentId', clean.filter(isDocumentId)],
+  ];
+  const responses = await Promise.all(
+    groups
+      .filter(([, ks]) => ks.length)
+      .map(([field, ks]) =>
+        strapiGet<Article[]>(`${base}&${inFilter(field, ks)}&pagination[pageSize]=${ks.length}`, {
+          next: { revalidate: 60 },
+        })
+      )
   );
-  return res.data[0] ?? null;
+
+  const map = new Map<string, Article>();
+  for (const res of responses) {
+    for (const article of res.data) {
+      map.set(String(article.id), article);
+      map.set(article.documentId, article);
+    }
+  }
+  return map;
 }
 
 export type Page = {
@@ -1162,7 +1276,7 @@ export type SitemapSite = { slug: string; updatedAt: string; localizations: Site
 export type SitemapBundle = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapSale = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapCategory = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
-export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; content: string | null; localizations: SitemapLocalization[] };
+export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; publishDate: string | null; modifiedDate: string | null; content: string | null; localizations: SitemapLocalization[] };
 export type SitemapAuthor = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapReview = { updatedAt: string; site: { slug: string }; localizations: SitemapLocalization[] };
 export type SitemapPage = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
@@ -1243,7 +1357,7 @@ export async function getArticlesForSitemap(
   pageSize: number,
 ): Promise<{ data: SitemapArticle[]; pagination: StrapiPaginationMeta }> {
   const res = await strapiGet<SitemapArticle[]>(
-    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&fields[4]=content&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&fields[4]=content&fields[5]=publishDate&fields[6]=modifiedDate&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 86400 } }
   );
   return {

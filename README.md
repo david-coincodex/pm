@@ -59,6 +59,19 @@ npm run dev:frontend   # Next.js at http://localhost:3002
 | Variable | Default | Description |
 |---|---|---|
 | `NEXT_PUBLIC_STRAPI_URL` | `http://localhost:1339` | Strapi API base URL |
+| `NEXT_PUBLIC_MEDIA_BASE` | falls back to `NEXT_PUBLIC_STRAPI_URL` | Where uploaded media is served from. Set this only to serve media from somewhere other than the API host (a CDN, a media subdomain, or the site's own origin). Build-time inlined, so changing it needs an image rebuild. |
+
+### Media URLs
+
+Stored content only ever holds **root-relative** `/uploads/...` paths — an absolute URL would bake
+whichever host wrote it into the database. The domain is added at render by `resolveMediaSrc()`
+(`frontend/src/lib/strapi.ts`), driven by the two variables above, and nowhere else.
+
+Two guards keep that true: a document-service middleware in `backend/src/index.ts` rewrites any
+absolute `/uploads/` URL on every write (the CKEditor media library always inserts one, built from
+whatever host the admin panel is open on), and `node scripts/normalize-media-urls.mjs --check`
+fails if any absolute URL is present. Externally hosted images and internal links are never
+touched.
 
 ## Fetching data from Strapi
 

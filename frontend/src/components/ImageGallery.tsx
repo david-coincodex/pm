@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { type StrapiMedia } from '@/lib/strapi';
+import { strapiMediaUrl, type StrapiMedia } from '@/lib/strapi';
 
 interface ImageGalleryProps {
   images: StrapiMedia[];
@@ -87,7 +87,7 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
             aria-label={img.alternativeText ?? `Image ${i + 1}`}
           >
             <Image
-              src={img.url.startsWith('http') ? img.url : `${process.env.NEXT_PUBLIC_STRAPI_URL ?? ''}${img.url}`}
+              src={strapiMediaUrl(img)}
               alt={img.alternativeText ?? ''}
               fill
               className="object-cover transition-transform duration-300 hover:scale-105"
@@ -139,11 +139,7 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
           >
             <div className="relative max-h-[90vh] max-w-[90vw] min-w-[50vw] min-h-[50vh]">
               <Image
-                src={
-                  images[lightboxIndex].url.startsWith('http')
-                    ? images[lightboxIndex].url
-                    : `${process.env.NEXT_PUBLIC_STRAPI_URL ?? ''}${images[lightboxIndex].url}`
-                }
+                src={strapiMediaUrl(images[lightboxIndex])}
                 alt={images[lightboxIndex].alternativeText ?? ''}
                 fill
                 className="object-contain rounded-xl"
