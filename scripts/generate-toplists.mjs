@@ -623,7 +623,12 @@ async function main() {
         const found = await Promise.all(job.siteSlugs.map((sl) => fetchSiteBySlug(sl)));
         const missing = job.siteSlugs.filter((sl, i) => !found[i]);
         if (missing.length) throw new Error(`job.siteSlugs not in the catalog: ${missing.join(', ')}`);
-        candidates = found;   // authored order is the ranking
+        // MUST go through toCandidate: the raw Strapi rows carry `cover_image`/`externalContext`
+        // but none of the derived fields the prompt and image insertion rely on — `coverUrl`
+        // (so every entry silently lost its cover image), `opinionQuotes` (no source quotes),
+        // `shortDescription`, `highlights`, and an `id` that is the DOCUMENT id rather than the
+        // numeric one. Authored order is the ranking.
+        candidates = found.map(toCandidate);
       } else if (job.referenceSite) {
         const ref = await fetchSiteBySlug(job.referenceSite);
         if (ref) {
