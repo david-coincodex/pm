@@ -37,6 +37,8 @@ const dotenv = _require('dotenv');
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: `${__dirname}/.env`, quiet: true });
 
+import { preflightPostIds } from './lib/jobs.mjs';
+
 const STRAPI_URL = process.env.STRAPI_URL || 'http://localhost:1339';
 const TOKEN = process.env.STRAPI_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -192,7 +194,7 @@ async function placeImages(html, images, slug, isDry) {
     const alt = images[i].alt || `${slug} cancellation step ${i + 1}`;
     let imgUrl = null;
     if (isDry) imgUrl = images[i].src;
-    else { const up = await uploadImageFromUrl(images[i].src, `${slug}-step-${i + 1}${extFromUrl(images[i].src)}`); if (up) imgUrl = `${STRAPI_URL}${up.url}`; }
+    else { const up = await uploadImageFromUrl(images[i].src, `${slug}-step-${i + 1}${extFromUrl(images[i].src)}`); if (up) imgUrl = up.url; }   // relative: interpolating STRAPI_URL bakes the generating host into the stored body
     const tag = imgUrl ? `<img src="${imgUrl}" alt="${alt.replace(/"/g, '')}" />` : '';
     if (imgUrl) placed++;
     html = html.split(marker).join(tag); // literal replace (URLs may contain $)
@@ -218,6 +220,11 @@ async function main() {
   const allJobs = JSON.parse(readFileSync(jobsPath, 'utf-8'));
   const jobs = allMode ? allJobs : allJobs.filter((j) => jobIds.includes(j.id));
   if (jobs.length === 0) { console.error('No matching jobs.'); process.exit(1); }
+
+  // postId is unique in the schema; without this gate a batch dies partway through on a
+  // constraint violation, after paying for every LLM call before it.
+  const resolvedPostIds = await preflightPostIds(jobs.map((j) => ({ slug: j.slug, postId: j.postId })));
+  console.log(`postId preflight OK for ${resolvedPostIds.size} job(s).`);
 
   let author = null;
   if (!dryRun) { author = await fetchAuthor(authorSlug); if (!author) { console.error(`Author "${authorSlug}" not found.`); process.exit(1); } }
@@ -270,6 +277,9 @@ async function main() {
         content: html,
         faqs,
         author: author.documentId,
+        // postId puts the article on the URL production already has indexed. Resolved and
+        // validated up front by preflightPostIds, so it is always present here.
+        postId: resolvedPostIds.get(slug),
         publishDate: new Date().toISOString(),
       };
       if (coverId) data.coverImage = coverId;
@@ -281,7 +291,10 @@ async function main() {
       const { data: createdArticle } = await createArticle(data);
       if (publishMode) await publishArticle(createdArticle.documentId);
       created++;
-      console.log(`  💾 saved ${publishMode ? 'published' : 'draft'}: ${slug} | FAQs: ${faqs.length} | cover: ${coverFrom}`);
+      // See generate-toplists.mjs: a Strapi 5 REST POST creates a published version alongside
+      // the draft, so the article is live on arrival despite publishedAt being null. There is no
+      // REST unpublish; it has to be done from the admin.
+      console.log(`  💾 saved ${publishMode ? 'published' : '(LIVE — unpublish from the admin if it needs review)'}: ${slug} | FAQs: ${faqs.length} | cover: ${coverFrom}`);
     } catch (err) {
       failed++;
       console.error(`  ✗ ${slug}: ${err.message}`);

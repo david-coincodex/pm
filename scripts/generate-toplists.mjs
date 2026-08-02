@@ -29,7 +29,7 @@
  */
 
 import { createRequire } from 'module';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import OpenAI from 'openai';
@@ -48,6 +48,8 @@ if (!OPENAI_API_KEY) { console.error('Error: OPENAI_API_KEY is required.'); proc
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` };
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+import { preflightPostIds } from './lib/jobs.mjs';
+
 const CURRENT_YEAR = new Date().getFullYear();
 
 // USD per 1M tokens. Override via env (OPENAI_PRICE_GPT55_IN, ..._OUT, ..._GPT4O_IN, ..._OUT).
@@ -129,7 +131,10 @@ async function fetchCatalog() {
   let page = 1;
   while (true) {
     const { data, meta } = await strapiFetch(`/sites?fields[0]=name&fields[1]=slug&filters[isActive][$eq]=true&pagination[page]=${page}&pagination[pageSize]=100`);
-    catalog.push(...data.map((s) => ({ id: s.id, name: s.name, slug: s.slug })));
+    // `id` is the DOCUMENT id, deliberately. Widgets embedded in article HTML must never key on
+    // the numeric id: republishing a draft-and-publish document reassigns it, and the widget
+    // then renders as nothing — measured on 60 of 62 references across the existing corpus.
+    catalog.push(...data.map((s) => ({ id: s.documentId, numericId: s.id, name: s.name, slug: s.slug })));
     if (page >= (meta?.pagination?.pageCount ?? 1)) break;
     page++;
   }
@@ -149,7 +154,8 @@ function toCandidate(s) {
         .slice(0, 2)
     : [];
   return {
-    id: s.id,
+    id: s.documentId,          // documentId — see fetchCatalog
+    numericId: s.id,
     name: s.name,
     slug: s.slug,
     shortDescription: s.short_description ?? null,
@@ -327,7 +333,13 @@ function loadStructure(type) {
 }
 
 function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
-  let p = `# Toplist to write\n\n- Title: ${job.title}\n- Type: ${job.type}\n- Current year: ${CURRENT_YEAR} (write for this year; update any older years from sources)\n- Max ranked entries: ${job.maxEntries ?? 10}\n`;
+  // The year instruction is CONDITIONAL. It used to be unconditional, which meant pushing a
+  // dated archive article through this generator would silently rewrite "Black Friday 2019"
+  // as the current year. `job.year: false` (or an explicit job.publishDate) keeps it dated.
+  const yearLine = job.year === false
+    ? `- Year: this article is dated. Do NOT update any year mentioned in the title or body.\n`
+    : `- Current year: ${CURRENT_YEAR} (write for this year; update any older years from sources)\n`;
+  let p = `# Toplist to write\n\n- Title: ${job.title}\n- Type: ${job.type}\n${yearLine}- Max ranked entries: ${job.maxEntries ?? 10}\n`;
 
   if (context) {
     p += `\n## Consolidated research context (validated from external sources — paraphrase, do NOT copy)\n`;
@@ -360,8 +372,28 @@ function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
     for (const r of reviews) p += `- ${r.slug}: score ${r.overallScore ?? '—'}/10 — ${truncate(r.description, 200) ?? ''}\n`;
   }
 
-  p += `\n## Our full site catalog (id | name | slug)\n`;
-  for (const s of catalog) p += `${s.id} | ${s.name} | ${s.slug}\n`;
+  // A TRIMMED catalog slice, not all 305 active sites. The full dump was ~305 lines of
+  // near-identical rows in every prompt; cost is trivial but attention dilution is not, and it
+  // is the most likely source of the hallucinated ids that sanitizeWidgets exists to strip.
+  // Candidates always survive; the rest is filled with title-word matches, capped.
+  const CATALOG_CAP = 60;
+  const chosen = new Map(candidates.map((c) => [c.slug, c]));
+  const titleWords = (job.title || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+  for (const site of catalog) {
+    if (chosen.size >= CATALOG_CAP) break;
+    if (chosen.has(site.slug)) continue;
+    const hay = `${site.name} ${site.slug}`.toLowerCase();
+    if (titleWords.some((w) => hay.includes(w))) chosen.set(site.slug, site);
+  }
+  for (const site of catalog) {
+    if (chosen.size >= CATALOG_CAP) break;
+    if (!chosen.has(site.slug)) chosen.set(site.slug, site);
+  }
+  p += `\n## Our site catalog (id | name | slug) — the ONLY ids you may reference\n`;
+  for (const site of chosen.values()) {
+    const row = catalog.find((c) => c.slug === site.slug) ?? site;
+    p += `${row.id} | ${row.name} | ${row.slug}\n`;
+  }
 
   p += `\n# Structure instructions for type "${job.type}"\n\n${loadStructure(job.type)}`;
   return p;
@@ -371,13 +403,13 @@ function buildUserPrompt({ job, context, candidates, catalog, reviews }) {
 function sanitizeWidgets(html, validIds) {
   let removed = 0;
   html = html.replace(/<div\b[^>]*\bdata-component="site-card"[^>]*>[\s\S]*?<\/div>/g, (block) => {
-    const m = block.match(/data-site-id="(\d+)"/);
-    if (m && validIds.has(Number(m[1]))) return block;
+    const m = block.match(/data-site-id="([a-z0-9]+)"/);
+    if (m && validIds.has(m[1])) return block;
     removed++; return '';
   });
   html = html.replace(/(<div\b[^>]*\bdata-component="site-card-list"[^>]*\bdata-site-ids=")([^"]*)("[\s\S]*?<\/div>)/g, (block, pre, ids, post) => {
     const list = ids.split(',').map((s) => s.trim()).filter(Boolean);
-    const kept = list.filter((id) => validIds.has(Number(id)));
+    const kept = list.filter((id) => validIds.has(id));
     if (kept.length === 0) { removed++; return ''; }
     if (kept.length !== list.length) removed++;
     return `${pre}${kept.join(',')}${post}`;
@@ -460,12 +492,17 @@ async function insertSiteImages(html, catalog, candidates, images, slug, isDry) 
       if (isDry) { used.add(match.src); imgUrl = match.src; source = 'scraped'; }
       else {
         const up = await uploadImageFromUrl(match.src, `${slug}-${normKey(t.name)}${extFromUrl(match.src)}`);
-        if (up) { used.add(match.src); imgUrl = `${STRAPI_URL}${up.url}`; source = 'scraped'; }
+        // RELATIVE path, deliberately. Interpolating STRAPI_URL bakes the generating host into
+        // the stored article body — 42 existing articles carry 273 refs to http://localhost:1339,
+        // which 404 anywhere else. In production /uploads is served same-origin from the
+        // frontend host (see the uploads Traefik router), so a relative src is also the only
+        // form that avoids the CMS host's separate Cloudflare Access app.
+        if (up) { used.add(match.src); imgUrl = up.url; source = 'scraped'; }
       }
     }
     if (!imgUrl && t.site) {
       const coverUrl = await fetchSiteCoverUrl(t.site.slug, coverCache);
-      if (coverUrl) { imgUrl = `${STRAPI_URL}${coverUrl}`; source = 'site-cover'; }
+      if (coverUrl) { imgUrl = coverUrl.replace(/^https?:\/\/[^/]+/, ''); source = 'site-cover'; }
     }
     report.push({ entry: t.name, source });
     // function replacement → `$` in a URL/name can't be interpreted as a replacement pattern
@@ -504,9 +541,17 @@ async function publishArticle(documentId) {
   const res = await fetch(`${STRAPI_URL}/api/articles/${documentId}`, { method: 'PUT', headers, body: JSON.stringify({ data: { publishedAt: new Date().toISOString() } }) });
   if (!res.ok) throw new Error(`Publish failed: ${res.status} ${await res.text()}`);
 }
-async function deleteArticle(documentId) {
-  const res = await fetch(`${STRAPI_URL}/api/articles/${documentId}`, { method: 'DELETE', headers });
-  if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status} ${await res.text()}`);
+/**
+ * Update in place. Replaces the old delete+create --force path, which reassigned `documentId`
+ * AND the numeric id that article-card widgets embed, opened a 404 window on an indexed URL,
+ * and reset `publishedAt`.
+ */
+async function updateArticle(documentId, data) {
+  const res = await fetch(`${STRAPI_URL}/api/articles/${documentId}`, {
+    method: 'PUT', headers, body: JSON.stringify({ data }),
+  });
+  if (!res.ok) throw new Error(`Update failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+  return res.json();
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -525,9 +570,33 @@ async function main() {
     if (!author) { console.error(`Author "${authorSlug}" not found.`); process.exit(1); }
   }
 
+  // postId preflight BEFORE any generation, including --dry-run. postId is unique in the
+  // schema, so without this a batch dies at job N on a constraint violation having already
+  // paid for every LLM call before it.
+  const resolvedPostIds = await preflightPostIds(jobs.map((j) => ({
+    slug: j.slug || slugify(j.title), postId: j.postId,
+  })));
+  console.log(`postId preflight OK for ${resolvedPostIds.size} job(s).`);
+
+  // Counts the articles that ACTUALLY exist, not the job total — a batch of 8 where only one
+  // is a refresh is not a bulk overwrite, and a guard that cried wolf would just get bypassed.
+  if (forceMode && !dryRun) {
+    const present = [];
+    for (const j of jobs) {
+      if (await articleExists(j.slug || slugify(j.title))) present.push(j.slug || slugify(j.title));
+    }
+    if (present.length > 5 && !args.includes('--yes-i-mean-it')) {
+      console.error(`--force would rewrite ${present.length} existing articles (${present.join(', ')}). Re-run with --yes-i-mean-it if that is intended.`);
+      process.exit(1);
+    }
+    if (present.length) console.log(`--force will update in place: ${present.join(', ')}`);
+  }
+
   console.log('Loading site catalog...');
   const catalog = await fetchCatalog();
-  const validIds = new Set(catalog.map((s) => s.id));
+  // Both forms accepted: documentIds are what we now generate, numeric ids keep any
+  // pre-existing hand-authored body from being gutted if it is re-run through this path.
+  const validIds = new Set(catalog.flatMap((s) => [s.id, String(s.numericId)]));
   console.log(`Catalog: ${catalog.length} active sites. Current year: ${CURRENT_YEAR}.\n`);
 
   let created = 0, skipped = 0, failed = 0, totalCost = 0;
@@ -536,21 +605,26 @@ async function main() {
     const slug = job.slug || slugify(job.title);
     console.log(`\n🗒️  ${job.title}  [${job.type}] → /blog/${slug}`);
     try {
+      let existing = null;
       if (!dryRun) {
-        const existing = await articleExists(slug);
+        existing = await articleExists(slug);
         if (existing && !forceMode) {
           console.log('  ⏭  article with this slug exists — skipping (use --force).'); skipped++; continue;
         }
-        if (existing && forceMode) {
-          await deleteArticle(existing.documentId);
-          console.log('  🗑  deleted existing article (force)');
-        }
+        if (existing) console.log('  ↻  updating existing article in place (force)');
       }
 
       // Candidates (main sites preferred; sub-sites added only if too few)
       const maxEntries = job.maxEntries ?? 10;
       let candidates = [];
-      if (job.referenceSite) {
+      // An explicit list, for jobs the parent/child and category lookups cannot serve —
+      // networks with no children recorded, cross-network genre lists, curated comparisons.
+      if (job.siteSlugs?.length) {
+        const found = await Promise.all(job.siteSlugs.map((sl) => fetchSiteBySlug(sl)));
+        const missing = job.siteSlugs.filter((sl, i) => !found[i]);
+        if (missing.length) throw new Error(`job.siteSlugs not in the catalog: ${missing.join(', ')}`);
+        candidates = found;   // authored order is the ranking
+      } else if (job.referenceSite) {
         const ref = await fetchSiteBySlug(job.referenceSite);
         if (ref) {
           candidates = job.type === 'best-network-sites'
@@ -618,6 +692,13 @@ async function main() {
       const cover = pickCover(allImages);
 
       if (dryRun) {
+        // Write the full body, not just a 400-char preview: reviewing widget ids, entry count
+        // and prose is impossible from the preview, and the pre-publish overlap check needs
+        // the real text of every job in the batch.
+        const outDir = join(__dirname, 'data', 'runs', 'dry');
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(join(outDir, `${slug}.html`), html);
+        console.log(`  · dry-run body written to data/runs/dry/${slug}.html`);
         console.log('  · dry-run output:');
         console.log(JSON.stringify({ metaTitle: gen.metaTitle, title: gen.title, slug, description: gen.description, faqs: faqs.length, coverCandidate: cover?.src ?? null, siteImages: imgCounts, contentPreview: html.slice(0, 400) }, null, 2));
         continue;
@@ -637,7 +718,16 @@ async function main() {
         content: html,
         faqs,
         author: author.documentId,
-        publishDate: new Date().toISOString(),
+        // postId is what puts the article on the URL production already has indexed. Resolved
+        // and validated up front by preflightPostIds, so it is always present here.
+        postId: resolvedPostIds.get(slug),
+        // An update keeps the article's original publishDate and stamps modifiedDate; only a
+        // brand-new article gets today's date. Overwriting publishDate on a refresh would
+        // reorder /blog and tell Google a 2019 post is new.
+        ...(existing
+          ? { modifiedDate: new Date().toISOString() }
+          : { publishDate: job.publishDate ?? new Date().toISOString() }),
+        ...(job.modifiedDate ? { modifiedDate: job.modifiedDate } : {}),
       };
       if (coverId) data.coverImage = coverId;
       const cats = await resolveRelationIds('categories', job.categories);
@@ -645,11 +735,18 @@ async function main() {
       if (cats.length) data.categories = cats;
       if (tags.length) data.tags = tags;
 
-      const { data: createdArticle } = await createArticle(data);
-      if (publishMode) await publishArticle(createdArticle.documentId);
+      const { data: savedArticle } = existing
+        ? await updateArticle(existing.documentId, data)
+        : await createArticle(data);
+      if (publishMode) await publishArticle(savedArticle.documentId);
       created++;
       const fromSrc = imgCounts['scraped'] || 0, fromCover = imgCounts['site-cover'] || 0, noImg = imgCounts['none'] || 0;
-      console.log(`  💾 ${publishMode ? 'published' : 'saved draft'}: ${slug}`);
+      // NOT "saved draft". Measured: a REST POST to /api/articles creates a PUBLISHED version
+      // as well as the draft — `publishedAt` is null on the draft, yet the article is served by
+      // the frontend immediately. There is no REST unpublish: `PUT {publishedAt: null}` is
+      // ignored, and `DELETE ?status=published` destroys the whole document, draft included.
+      // Unpublishing has to be done from the admin. Say what actually happened.
+      console.log(`  💾 ${publishMode ? 'published' : 'saved (LIVE — unpublish from the admin if it needs review)'}: /blog/${data.postId}/${slug}/`);
       console.log(`     FAQs: ${faqs.length} | cover: ${coverId ? 'uploaded from source' : 'none'} | section images — from source: ${fromSrc}, from our cover: ${fromCover}, none: ${noImg}`);
     } catch (e) {
       failed++;

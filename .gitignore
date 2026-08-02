@@ -35,3 +35,14 @@ scripts/data/commercial-archive/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+scripts/data/media-trash/
+# generate-toplists.mjs --dry-run writes full article bodies here for review
+scripts/data/runs/
+
+# WordPress migration: one-off tooling + the harvested legacy corpus. Kept out of the branch to
+# avoid clutter. NOTE: wp-migration/data holds the only copy of the legacy dates, body text and
+# /go/ affiliate targets, which cannot be reconstructed once WordPress is decommissioned — a
+# committed snapshot lives at scripts/wp-migration-snapshot.tar.gz, refresh it after any
+# re-harvest with:  make -C scripts snapshot   (or see wp-migration/README.md)
+scripts/wp-migration/
+!scripts/wp-migration-snapshot.tar.gz

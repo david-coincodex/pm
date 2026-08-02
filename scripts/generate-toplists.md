@@ -70,6 +70,10 @@ Or via npm: `npm run generate-toplists -- <args>`.
 - "Similar to" / "alternatives" articles use clean editorial (prose, lists, pros/cons, attributed source quotes) — no SiteCard/CTA.
 - Draft by default; `--publish` sets `publishedAt`.
 
-> Inline image URLs are absolute to `STRAPI_URL`. For production runs, set `STRAPI_URL` to the public Strapi/media domain so the rewritten `<img>` URLs resolve for end users.
+> Inline image URLs are stored **relative** (`/uploads/...`). Never interpolate a host into them:
+> that bakes whichever machine ran the script into the article body. The frontend prefixes the
+> media host at render (`resolveMediaSrc` in `frontend/src/lib/strapi.ts`, driven by
+> `NEXT_PUBLIC_MEDIA_BASE`, defaulting to the Strapi origin), and a Strapi middleware normalises
+> anything absolute on write. Verify with `node scripts/normalize-media-urls.mjs --check`.
 
 > Note (Strapi v5 draft/publish): `--publish` uses `PUT { publishedAt }`. If a published article doesn't surface the change, publish from the admin or extend the script with the document-service `publish()` (as used in the overallScore backfill).

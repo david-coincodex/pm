@@ -51,3 +51,14 @@ Return ONLY valid JSON (no markdown, no code fences) in exactly this shape:
 - `faqs` is 0–6 entries, plain-text answers, grounded in the context (e.g. selection criteria, how the list was compiled). Omit or use `[]` if the structure says no FAQs.
 - Do NOT generate a `slug` — it is supplied by the system.
 - Return JSON only.
+
+## Never write figures
+
+Do not write a price, monetary amount, discount percentage, or trial term anywhere in the prose
+— not in the intro, not in an entry, not in the verdict, not in a FAQ answer. No "$9.99", no
+"70% off", no "2-day trial for $1".
+
+Those numbers change, and prose cannot be updated when they do. This is exactly why the
+2019/2020 articles are now unmaintainable: they hardcode prices that expired years ago. The
+widgets read live offers, so the figures come from them. Refer to the deal qualitatively
+instead — "our discount", "our current deal", "a lower price than signing up direct".

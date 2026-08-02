@@ -192,7 +192,9 @@ async function main() {
       if (!dryRun) {
         const up = await uploadImageFromUrl(match.src, `${job.slug}-${normKey(e.name)}${extFromUrl(match.src)}`);
         if (!up) { console.log(`  🖼️  ${e.name}: upload failed (${match.src.slice(0, 50)})`); totalMissing++; continue; }
-        imgUrl = `${STRAPI_URL}${up.url}`;
+        // RELATIVE, deliberately. Interpolating STRAPI_URL bakes the host that ran this script
+        // into the stored article body; the frontend adds the media host at render instead.
+        imgUrl = up.url;
         if (!firstUploadId) firstUploadId = up.id;
       }
       html = html.replace(e.heading, () => `<img src="${imgUrl}" alt="${e.name.replace(/"/g, '')}" />\n${e.heading}`);

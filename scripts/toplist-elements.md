@@ -5,13 +5,15 @@ Our renderer recognizes the following custom elements inside `content`. Emit the
 ### SiteCard — one featured site
 Use for a single highlighted site (e.g. the top pick, or inside a per-site section).
 ```html
-<div data-component="site-card" data-site-id="ID" class="pm-widget" contenteditable="false"><span class="pm-widget__label">Site Card: NAME</span></div>
+<div data-component="site-card" data-site-id="DOCUMENT_ID" class="pm-widget" contenteditable="false"><span class="pm-widget__label">Site Card: NAME</span></div>
 ```
 
 ### SiteList — the ranked set of sites, up front
-Use ONCE near the top to show the ranked list of our matching sites. `data-site-ids` is a comma-separated list of catalog IDs in ranked order; `data-show` is how many show before "show more".
+Use ONCE near the top to show the ranked list of our matching sites. `data-site-ids` is a comma-separated list of catalog IDs in ranked order, copied EXACTLY from
+the `id` column of the catalog you were given (they are opaque 24-character strings, not
+numbers — never shorten, renumber or invent one); `data-show` is how many show before "show more".
 ```html
-<div data-component="site-card-list" data-site-ids="ID1,ID2,ID3" data-show="5" class="pm-widget" contenteditable="false"><span class="pm-widget__label">Site List: NAME1, NAME2, NAME3</span></div>
+<div data-component="site-card-list" data-site-ids="DOCUMENT_ID1,DOCUMENT_ID2,DOCUMENT_ID3" data-show="5" class="pm-widget" contenteditable="false"><span class="pm-widget__label">Site List: NAME1, NAME2, NAME3</span></div>
 ```
 
 ### Pros / Cons — per entry (optional)
@@ -23,9 +25,11 @@ Use ONCE near the top to show the ranked list of our matching sites. `data-site-
 ### CTA button — link to the deal/offer (optional)
 Use the offer/deal URL we provide for the site; omit if none is given.
 ```html
-<a href="URL" class="inline-flex">Get the Deal</a>
+<a href="URL" data-button="true">Get the Deal</a>
 ```
-The button styling is applied automatically by the `inline-flex` class — do not add other classes.
+The button styling is applied automatically from the `data-button` attribute — do not add any
+`class`. (A `class="inline-flex"` does NOT work: the renderer keys on `data-button` and would
+style this as an ordinary text link.)
 
 ### Source quote (optional)
 A short attributed quote drawn from EITHER the consolidated source context OR a candidate site's "quotable reviewer opinions" in our data:
