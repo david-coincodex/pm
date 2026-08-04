@@ -1,6 +1,5 @@
 {
   "metadata": {
-    "title": "pm",
     "description": "Verzeichnis für Erwachsenenseiten"
   },
   "pageSEO": {
@@ -26,7 +25,7 @@
       "detailMetaTitle": "{name} — Bundle-Angebot"
     },
     "reviews": {
-      "metaTitle": "Testberichte zu Erwachsenen-Websites — PornMode",
+      "metaTitle": "Testberichte zu Erwachsenen-Websites",
       "metaDescription": "Ausführliche Testberichte zu den besten Erwachsenen-Websites, mit Expertenbewertungen im Detail.",
       "pageTitle": "Testberichte zu Erwachsenen-Websites",
       "pageSubtitle": "Ausführliche Testberichte zu den besten Erwachsenen-Websites, mit Expertenbewertungen im Detail.",
@@ -38,6 +37,10 @@
       "metaTitle": "Blog",
       "pageTitle": "Blog",
       "authorMetaTitle": "Artikel von {name}"
+    },
+    "categories": {
+      "metaTitle": "Porno-Kategorien",
+      "metaDescription": "Durchsuche alle Porno-Kategorien, von VR und Hentai bis Ebony, MILF und BDSM. Jede Kategorie listet die besten Paysites mit aktuellen Rabatten und Testberichten."
     }
   },
   "category": {
@@ -327,7 +330,7 @@
     "eyebrow": "Nach Kategorie stöbern",
     "title": "Mehr entdecken",
     "viewAll": "Alle anzeigen",
-    "allCategories": "Alle Kategorien",
+    "allCategories": "Alle Porno-Kategorien",
     "sites": "{count, plural, one {# Website} other {# Websites}}"
   },
   "reviews": {

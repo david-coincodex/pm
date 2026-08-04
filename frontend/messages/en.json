@@ -1,6 +1,5 @@
 {
   "metadata": {
-    "title": "pm",
     "description": "Adult site directory"
   },
   "pageSEO": {
@@ -26,7 +25,7 @@
       "detailMetaTitle": "{name} — Bundle Deal"
     },
     "reviews": {
-      "metaTitle": "Adult Site Reviews — PornMode",
+      "metaTitle": "Adult Site Reviews",
       "metaDescription": "In-depth reviews of the best adult sites, with expert score breakdowns.",
       "pageTitle": "Adult Site Reviews",
       "pageSubtitle": "In-depth reviews of the best adult sites, with expert score breakdowns.",
@@ -38,6 +37,10 @@
       "metaTitle": "Blog",
       "pageTitle": "Blog",
       "authorMetaTitle": "Articles by {name}"
+    },
+    "categories": {
+      "metaTitle": "Porn Categories",
+      "metaDescription": "Browse every porn category we cover, from VR and hentai to ebony, MILF and BDSM. Each category ranks the best paysites with current discounts and expert reviews."
     }
   },
   "category": {
@@ -327,7 +330,7 @@
     "eyebrow": "Browse by Category",
     "title": "Discover More",
     "viewAll": "View all",
-    "allCategories": "All Categories",
+    "allCategories": "All Porn Categories",
     "sites": "{count, plural, one {# site} other {# sites}}"
   },
   "reviews": {

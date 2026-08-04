@@ -1,13 +1,26 @@
 import Image from 'next/image';
+import type { Metadata } from 'next';
 import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCategoriesGrid, strapiMediaUrl } from '@/lib/strapi';
 import Container from '@/components/Container';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SectionTitle from '@/components/SectionTitle';
+import { localizedAlternates } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
 
 type Props = { params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pageSEO' });
+
+  return {
+    title: t('categories.metaTitle'),
+    description: t('categories.metaDescription'),
+    alternates: localizedAlternates(routes.categories(), locale),
+  };
+}
 
 export default async function CategoriesPage({ params }: Props) {
   const { locale } = await params;
@@ -22,7 +35,7 @@ export default async function CategoriesPage({ params }: Props) {
       <Breadcrumbs locale={locale} crumbs={[{ label: tBc('categories'), href: routes.categories() }]} />
       <section>
         <Container>
-          <SectionTitle as="h1" title={t('allCategories') || 'All Categories'} />
+          <SectionTitle as="h1" title={t('allCategories') || 'All Porn Categories'} />
 
           {/* Grid */}
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

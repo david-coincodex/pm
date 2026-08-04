@@ -25,9 +25,11 @@ export async function generateMetadata({
 
   return {
     metadataBase: new URL(siteSettings.baseUrl),
+    // The brand name is a constant, never a translated string — it reads the same in every locale,
+    // and sourcing it from messages is how every page ended up titled "… | pm".
     title: {
-      default: t("title"),
-      template: `%s | ${t("title")}`,
+      default: siteSettings.siteName,
+      template: `%s | ${siteSettings.siteName}`,
     },
     description: t("description"),
   };
