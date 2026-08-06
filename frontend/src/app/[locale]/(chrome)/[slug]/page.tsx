@@ -2,14 +2,13 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCategoryBySlug, getSitesByCategorySlug } from '@/lib/strapi';
-import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
+import { localizedAlternates } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
 import Container from '@/components/Container';
 import SidebarLayout from '@/components/SidebarLayout';
 import SectionTitle from '@/components/SectionTitle';
-import SiteCardInlineList from '@/components/rich-text/SiteCardInlineList';
-import Pagination from '@/components/Pagination';
-import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
+import SiteCardInline from '@/components/rich-text/SiteCardInline';
+import CategorySitesList from '@/components/CategorySitesList';
 import RichText from '@/components/RichText';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SidebarFeaturedSites from '@/components/SidebarFeaturedSites';
@@ -23,11 +22,10 @@ function parseCategorySlug(slug: string): string | null {
   return m ? m[1] : null;
 }
 
-type Props = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ page?: string }> };
+type Props = { params: Promise<{ locale: string; slug: string }> };
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const { page: pageStr } = await searchParams;
 
   const categorySlug = parseCategorySlug(slug);
   if (!categorySlug) return {};
@@ -37,32 +35,30 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     getTranslations({ locale, namespace: 'pageSEO' }),
   ]);
   if (!category) return {};
-  const page = parsePage(pageStr);
   const categoryPath = routes.category(categorySlug);
+  // The list grows in place via "show more" — there are no ?page= URLs any more, so any
+  // legacy /best-x-sites/?page=N that search engines still hold canonicalises to the base path.
   return {
-    title: paginatedTitle(t('category.metaTitle', { name: category.name }), page),
+    title: t('category.metaTitle', { name: category.name }),
     description: category.description ?? undefined,
-    alternates: paginatedAlternates(categoryPath, page, locale),
+    alternates: localizedAlternates(categoryPath, locale),
   };
 }
 
-export default async function CategoryPage({ params, searchParams }: Props) {
+export default async function CategoryPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const { page: pageStr } = await searchParams;
 
   const categorySlug = parseCategorySlug(slug);
   if (!categorySlug) notFound();
 
-  const page = parsePage(pageStr);
   const PAGE_SIZE = 12;
-  const basePath = routes.category(categorySlug);
 
   // Guard the Strapi fetches: a backend error/timeout for this category must degrade gracefully
   // (empty sites, or notFound if the category itself can't load) rather than crash the page (500).
   const [category, { sites, pagination }, t] = await Promise.all([
     getCategoryBySlug(categorySlug).catch(() => null),
-    getSitesByCategorySlug(categorySlug, page, PAGE_SIZE).catch(() => ({
+    getSitesByCategorySlug(categorySlug, 1, PAGE_SIZE).catch(() => ({
       sites: [],
       pagination: { page: 1, pageSize: PAGE_SIZE, pageCount: 1, total: 0 },
     })),
@@ -71,15 +67,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   if (!category) notFound();
 
-  const { prevHref, nextHref } = paginatedNavLinks(basePath, page, pagination.pageCount);
-
   return (
     <>
       <Breadcrumbs locale={locale} crumbs={[
         { label: category.name, href: routes.category(categorySlug) },
       ]} />
-      {prevHref && <link rel="prev" href={prevHref} />}
-      {nextHref && <link rel="next" href={nextHref} />}
       <Container padded={false} className="pt-6 lg:pt-12">
         <SidebarLayout
           reversed
@@ -98,12 +90,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           }
         >
           {category.intro && <RichText content={category.intro} locale={locale} />}
-          <PaginationScrollAnchor page={page} />
-          <SiteCardInlineList sites={sites} initialShow={5} />
+          <CategorySitesList
+            categorySlug={categorySlug}
+            total={pagination.total}
+            initialShow={5}
+            pageSize={PAGE_SIZE}
+          >
+            {sites.map((site) => (
+              <SiteCardInline key={site.id} site={site} />
+            ))}
+          </CategorySitesList>
           {category.content && <RichText content={category.content} locale={locale} />}
-          {pagination.pageCount > 1 && (
-            <Pagination currentPage={pagination.page} totalPages={pagination.pageCount} basePath={basePath} />
-          )}
         </SidebarLayout>
       </Container>
       <CategoryGrid />
