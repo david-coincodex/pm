@@ -14,6 +14,9 @@ services:
       NEXT_PUBLIC_STRAPI_URL: https://cms-staging.pornmode.com
       # Shared secret for the Strapi publish webhook -> /api/revalidate
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      # GA4 Measurement Protocol secret for server-side offer-click events. Server-only on purpose
+      # — as NEXT_PUBLIC_* it would ship to the browser and let anyone forge hits.
+      GA_API_SECRET: ${GA_API_SECRET}
     # No ports here — Traefik routes external traffic via labels below
     labels:
       - traefik.enable=true

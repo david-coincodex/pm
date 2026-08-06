@@ -89,6 +89,7 @@ jobs:
           DATABASE_USERNAME: ${{ vars.DATABASE_USERNAME }}
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -101,6 +102,8 @@ jobs:
             echo "DATABASE_USERNAME=$DATABASE_USERNAME"
             echo "DATABASE_PASSWORD=$DATABASE_PASSWORD"
             echo "REVALIDATE_SECRET=$REVALIDATE_SECRET"
+            # Empty until the GA_API_SECRET repo secret exists; server events then no-op silently.
+            echo "GA_API_SECRET=$GA_API_SECRET"
           } > .env.deploy
 
       - name: Rsync compose file and .env to server

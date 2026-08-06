@@ -44,6 +44,11 @@ services:
       STRAPI_INTERNAL_URL: http://backend:1339
       # Shared secret for the Strapi publish webhook -> /api/revalidate
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-local-dev-revalidate-secret}
+      # GA4 Measurement Protocol secret for server-side events (offer clicks). Unset locally means
+      # events are skipped with a warning, never sent to the live property by accident.
+      # GA_MP_DEBUG=1 routes hits to Google's validation endpoint instead. See docs/analytics-server-side.md
+      GA_API_SECRET: ${GA_API_SECRET:-}
+      GA_MP_DEBUG: ${GA_MP_DEBUG:-}
     depends_on:
       backend:
         condition: service_healthy
