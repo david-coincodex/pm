@@ -44,6 +44,11 @@ export default function LanguageSwitcher({ showLabel = false }: Props) {
   const t = useTranslations('language');
   const current = LOCALE_META[locale];
 
+  // Single-locale build (launch is English-only): a language switcher with one option is noise.
+  // Guarded here rather than at the call sites so re-enabling locales in i18n/routing.ts
+  // brings the switcher back everywhere at once.
+  if (routing.locales.length < 2) return null;
+
   function switchLocale(next: string) {
     router.replace(pathname, { locale: next });
   }

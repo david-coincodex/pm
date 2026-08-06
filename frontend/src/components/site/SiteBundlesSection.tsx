@@ -4,6 +4,7 @@ import BundleCard from '@/components/bundle/BundleCard';
 import CardCarousel from '@/components/site/CardCarousel';
 import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
+import { siteSettings } from '@/lib/siteSettings';
 
 interface SiteBundlesSectionProps {
   bundles: Bundle[];
@@ -19,6 +20,9 @@ export default async function SiteBundlesSection({
   siteName,
   locale,
 }: SiteBundlesSectionProps) {
+  // Feature-flagged for launch. Guarded here rather than at call sites so every bundle section
+  // (home, site pages, review pages, sale pages) disappears with the one flag.
+  if (!siteSettings.features.bundles) return null;
   if (bundles.length === 0) return null;
 
   const t = await getTranslations({ locale, namespace: 'bundles' });

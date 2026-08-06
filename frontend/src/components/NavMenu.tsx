@@ -8,6 +8,7 @@ import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import MobileSearchOverlay from './MobileSearchOverlay';
 import { routes } from '@/lib/routes';
+import { siteSettings } from '@/lib/siteSettings';
 
 function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const pathname = usePathname();
@@ -62,7 +63,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
 
         <nav className="flex items-center gap-6">
           <NavLink href={routes.home()} label={t('pornDeals')} />
-          <NavLink href={routes.bundles()} label={t('bundles')} />
+          {siteSettings.features.bundles && <NavLink href={routes.bundles()} label={t('bundles')} />}
           <NavLink href={routes.category('live-sex')} label={t('liveSex')} />
           <NavLink href={routes.reviews()} label={t('reviews')} />
           <NavLink href={routes.categories()} label={t('categories')} />
@@ -158,7 +159,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         <nav className="flex flex-col overflow-y-auto px-2 py-3">
           {[
             { href: routes.home(), label: t('pornDeals') },
-            { href: routes.bundles(), label: t('bundles') },
+            ...(siteSettings.features.bundles ? [{ href: routes.bundles(), label: t('bundles') }] : []),
             { href: routes.category('live-sex'), label: t('liveSex') },
             { href: routes.reviews(), label: t('reviews') },
             { href: routes.categories(), label: t('categories') },

@@ -2,6 +2,7 @@ import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import LanguageSwitcher from './LanguageSwitcher';
 import { routes } from '@/lib/routes';
+import { siteSettings } from '@/lib/siteSettings';
 
 export default async function Footer() {
   const t = await getTranslations('footer');
@@ -34,7 +35,7 @@ export default async function Footer() {
             <ul className="space-y-2.5">
               {[
                 { href: routes.home(), label: t('pornDeals') },
-                { href: routes.bundles(), label: t('bundles') },
+                ...(siteSettings.features.bundles ? [{ href: routes.bundles(), label: t('bundles') }] : []),
                 { href: routes.category('live-sex'), label: t('liveSex') },
                 { href: routes.reviews(), label: t('reviews') },
                 { href: routes.categories(), label: t('categories') },

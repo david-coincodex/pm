@@ -11,10 +11,12 @@ import SidebarLayout from '@/components/SidebarLayout';
 import DealBuy from '@/components/site/DealBuy';
 import RichText from '@/components/RichText';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import { siteSettings } from '@/lib/siteSettings';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!siteSettings.features.bundles) return {};
   const { locale, slug } = await params;
   const bundle = await getBundleBySlug(slug, locale).catch(() => null);
   if (!bundle) return {};
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BundleDetailPage({ params }: Props) {
+  if (!siteSettings.features.bundles) notFound();
   const { locale, slug } = await params;
   setRequestLocale(locale);
   // Guard the Strapi fetch: a backend error/timeout must degrade to notFound (404), not crash (500).

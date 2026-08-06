@@ -12,6 +12,11 @@ export function localizedAlternates(
   path: string,
   locale: string
 ): Pick<NonNullable<import('next').Metadata['alternates']>, 'canonical' | 'languages'> {
+  // Single-locale build: hreflang pointing only at yourself is noise — canonical is enough.
+  if (routing.locales.length < 2) {
+    return { canonical: localizedPath(path, locale) };
+  }
+
   const languages: Record<string, string> = Object.fromEntries(
     routing.locales.map((loc) => [loc, localizedPath(path, loc)])
   );

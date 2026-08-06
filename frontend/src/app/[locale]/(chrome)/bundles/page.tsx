@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getBundlesPaginated } from '@/lib/strapi';
 import { parsePage, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import { routes } from '@/lib/routes';
+import { siteSettings } from '@/lib/siteSettings';
 import Container from '@/components/Container';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import BundleGrid from '@/components/bundle/BundleGrid';
@@ -19,6 +21,7 @@ type Props = {
 };
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  if (!siteSettings.features.bundles) return {};
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const t = await getTranslations({ locale, namespace: 'pageSEO' });
@@ -32,6 +35,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export default async function BundlesPage({ params, searchParams }: Props) {
+  if (!siteSettings.features.bundles) notFound();
   const { locale } = await params;
   const { page: pageStr } = await searchParams;
   const page = parsePage(pageStr);
