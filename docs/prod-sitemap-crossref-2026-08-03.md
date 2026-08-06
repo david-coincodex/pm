@@ -74,27 +74,27 @@ Production had published this article twice (2736 on 2020-05-03, 4239 on 2020-11
 
 ---
 
-## 1. Still open — our sitemap omits 410 pages
+## 1. FIXED (2026-08-06) — the sitemap omitted 410 pages, and carried media it shouldn't
 
-**Unchanged from the first pass and still the highest-impact item.** Nothing below is measurable until it
-is fixed, because our sitemap is not a truthful picture of what we publish.
+The original bug: the old single `app/sitemap.ts` requested `pageSize = 50_000`, `backend/config/api.ts`
+caps every REST response at `maxLimit: 100`, and Strapi clamps silently — so we published ~750 pages and
+advertised 345. It also attached `<video:video>` blocks (poster + clip URLs) to ad articles.
 
-`frontend/src/app/sitemap.ts` requests `pageSize = 50_000`; `backend/config/api.ts` caps every REST
-response at `maxLimit: 100`. Strapi clamps silently — no error, no warning.
+Replaced by a **sitemap index + four named children** (hand-rolled route handlers — Next has no native
+index support), mirroring the Yoast layout production ran:
 
-| Collection | In Strapi | In sitemap | Lost |
-|---|---|---|---|
-| sites (`/discounts/…`) | 305 | 100 | **205** |
-| reviews (`/reviews/…`) | 304 | 100 | **204** |
-| categories, articles, bundles, pages, sales, authors | 40 / 76 / 15 / 8 / 1 / 1 | same | 0 |
+| Sitemap | Contents | URLs |
+|---|---|---|
+| `/sitemap.xml` | index only | 4 children |
+| `/discounts-sitemap.xml` | every site page | 304 |
+| `/reviews-sitemap.xml` | `/reviews/` listing + every review | 305 |
+| `/blog-sitemap.xml` | `/blog/` listing + articles + authors | 78 |
+| `/pages-sitemap.xml` | home, `/bundles/`, `/categories/`, category/bundle/sale/CMS pages | 61 |
 
-So we publish **755 pages and advertise 345.** 63 of the pages we are relying on to absorb production
-ranking signal are themselves absent from the sitemap — including `/discounts/brazzers/`, `/mofos/`,
-`/reality-kings/`, and both slugs renamed above.
-
-**Fix:** page the sitemap loops in 100s until `pageCount` is exhausted, rather than raising `maxLimit` —
-that keeps the API contract unchanged for every other consumer. Add `routes.categories()` to `staticPaths`
-at the same time; `/categories/` is a working page (200) that the sitemap never mentions.
+748 URLs total (verified against per-collection published counts), pages only — no video/image entries —
+with hreflang alternates preserved and the truncation fixed by paging at the 100-row cap
+(`src/lib/sitemapData.ts`). `/categories/` is included for the first time. Each child sitemap gets its own
+indexing stats in Search Console.
 
 ---
 
