@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { siteSettings } from '@/lib/siteSettings';
 
 // Public URL — shown in the UI and used by the browser for client-side calls
 export const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? 'http://localhost:1339';
@@ -354,6 +355,9 @@ const BUNDLE_CARD_FIELDS = 'fields=name,slug,description,included';
 
 /** Fetch up to `limit` published bundles with their sites + offers. */
 export async function getPublishedBundles(limit = 3): Promise<Bundle[]> {
+  // Feature-flagged for launch: an empty result makes every bundle section render nothing,
+  // without a wasted Strapi round-trip from the pages that request bundles alongside other data.
+  if (!siteSettings.features.bundles) return [];
   const res = await strapiGet<Bundle[]>(
     `/bundles?${BUNDLE_CARD_FIELDS}&${nestedSiteCard('sites')}&populate[offers]=true&sort=createdAt:desc&pagination[pageSize]=${limit}`,
     { next: { revalidate: 300 } }
@@ -363,6 +367,7 @@ export async function getPublishedBundles(limit = 3): Promise<Bundle[]> {
 
 /** Fetch up to `limit` bundles that contain the given site slug. */
 export async function getBundlesForSite(siteSlug: string, limit = 3): Promise<Bundle[]> {
+  if (!siteSettings.features.bundles) return []; // see getPublishedBundles
   const res = await strapiGet<Bundle[]>(
     `/bundles?filters[sites][slug][$eq]=${encodeURIComponent(siteSlug)}&${BUNDLE_CARD_FIELDS}&${nestedSiteCard('sites')}&populate[offers]=true&sort=createdAt:desc&pagination[pageSize]=${limit}`,
     { next: { revalidate: 300 } }
@@ -1276,20 +1281,10 @@ export type SitemapSite = { slug: string; updatedAt: string; localizations: Site
 export type SitemapBundle = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapSale = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapCategory = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
-export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; publishDate: string | null; modifiedDate: string | null; content: string | null; localizations: SitemapLocalization[] };
+export type SitemapArticle = { id: number; postId: number | null; slug: string; updatedAt: string; publishDate: string | null; modifiedDate: string | null; localizations: SitemapLocalization[] };
 export type SitemapAuthor = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
 export type SitemapReview = { updatedAt: string; site: { slug: string }; localizations: SitemapLocalization[] };
 export type SitemapPage = { slug: string; updatedAt: string; localizations: SitemapLocalization[] };
-
-/** Fetch the total count of published entries for a content type (used by generateSitemaps). */
-export async function getSitemapCount(contentType: string, locale?: string): Promise<number> {
-  const localeParam = locale ? `&locale=${encodeURIComponent(locale)}` : '';
-  const res = await strapiGet<unknown[]>(
-    `/${contentType}?filters[publishedAt][$notNull]=true${localeParam}&pagination[pageSize]=1&pagination[page]=1`,
-    { next: { revalidate: 86400 } }
-  );
-  return res.meta.pagination?.total ?? 0;
-}
 
 /** Fetch a page of published sites for the sitemap (includes subsites). */
 export async function getSitesForSitemap(
@@ -1356,8 +1351,10 @@ export async function getArticlesForSitemap(
   page: number,
   pageSize: number,
 ): Promise<{ data: SitemapArticle[]; pagination: StrapiPaginationMeta }> {
+  // No `content` here: it was only ever fetched so the old combined sitemap could extract
+  // commercial ids for <video:video> entries, which the sitemap no longer carries.
   const res = await strapiGet<SitemapArticle[]>(
-    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&fields[4]=content&fields[5]=publishDate&fields[6]=modifiedDate&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    `/articles?fields[0]=id&fields[1]=slug&fields[2]=updatedAt&fields[3]=postId&fields[4]=publishDate&fields[5]=modifiedDate&filters[publishedAt][$notNull]=true&locale=en&populate[localizations][fields][0]=locale&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
     { next: { revalidate: 86400 } }
   );
   return {
