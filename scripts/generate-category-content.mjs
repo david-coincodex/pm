@@ -14,9 +14,10 @@
  * per-site detail, and the Q&A — never the card list, which the template owns.
  *
  * ⚠️ The prose is a ranked top 5 (main sites by review score, then channels by review score — see
- * rankCategorySites). The template's card list is a separate, name-sorted, paginated browse list,
- * so the two orders deliberately DIFFER and the prompt tells the model not to reference the cards
- * as "the list above". If the card list is ever changed to share this ranking, drop that caveat.
+ * rankCategorySites). The template's card list is a separate, name-sorted browse list revealed
+ * incrementally by a show-more button, so the two orders deliberately DIFFER and the prompt tells
+ * the model not to reference the cards as "the list above". If the card list is ever changed to
+ * share this ranking, drop that caveat.
  *
  * Dry run is the DEFAULT — it still calls the model (that is the part worth previewing) but writes
  * nothing, and prints the description, intro, and the head of the content for review.

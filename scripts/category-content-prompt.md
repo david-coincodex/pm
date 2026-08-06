@@ -11,7 +11,7 @@ A category page renders in this fixed order, and you are writing parts 1, 3 and 
 
 Because the cards already sit between `intro` and `content`, treat `intro` as the setup a reader needs *before* seeing the list, and `content` as the per-site detail they want *after* skimming it.
 
-The card list and your `content` entries are **not in the same order**: the cards are a name-sorted, paginated browse list of everything we carry in the genre, while your entries are a ranked top 5. So never write "the list above", "the first site in the list", or any phrasing that assumes the reader sees your ranking in the cards. Refer to your own entries by name or by their number.
+The card list and your `content` entries are **not in the same order**: the cards are a name-sorted browse list of everything we carry in the genre (revealed incrementally by a show-more button), while your entries are a ranked top 5. So never write "the list above", "the first site in the list", or any phrasing that assumes the reader sees your ranking in the cards. Refer to your own entries by name or by their number.
 
 ## Voice & audience
 

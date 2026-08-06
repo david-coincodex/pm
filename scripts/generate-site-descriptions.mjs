@@ -67,19 +67,28 @@ const INCLUDED_PROMPT = readFileSync(join(__dirname, 'site-included-prompt.md'),
 const args = process.argv.slice(2);
 const forceMode = args.includes('--force');
 const allMode = args.includes('--all');
+const descriptionFlag = args.includes('--description');
 const shortDescriptionFlag = args.includes('--short-description');
 const includedFlag = args.includes('--included');
 const slugs = args.filter((a) => !a.startsWith('--'));
 
-// Determine which fields to generate
+const anyFieldFlag = descriptionFlag || shortDescriptionFlag || includedFlag;
+
+/**
+ * Which fields to generate.
+ *
+ * `description` is opt-in via --description, deliberately NOT part of the no-flags default: it is
+ * the most expensive field (full 200-word body per site) and adding it to the default would make
+ * every existing `--all` run several times costlier without the caller asking for it.
+ */
 const fieldsToGenerate = {
-  description: false,
-  shortDescription: shortDescriptionFlag || (!shortDescriptionFlag && !includedFlag),
-  included: includedFlag || (!shortDescriptionFlag && !includedFlag),
+  description: descriptionFlag,
+  shortDescription: shortDescriptionFlag || !anyFieldFlag,
+  included: includedFlag || !anyFieldFlag,
 };
 
 if (!allMode && slugs.length === 0) {
-  console.error('Usage: node scripts/generate-site-descriptions.mjs [--all | slug1 slug2 ...] [--short-description | --included] [--force]');
+  console.error('Usage: node scripts/generate-site-descriptions.mjs [--all | slug1 slug2 ...] [--description | --short-description | --included] [--force]');
   process.exit(1);
 }
 
@@ -299,6 +308,7 @@ async function main() {
   let skippedMissingReview = 0;
   let skippedParentSite = 0;
   const fieldStats = {
+    description: 0,
     shortDescription: 0,
     included: 0,
   };
@@ -312,10 +322,11 @@ async function main() {
     const parentSite = await fetchParentSite(site.documentId);
 
     // Check which fields need generation
+    const needsDescription = fieldsToGenerate.description && (forceMode || !site.description);
     const needsShortDescription = fieldsToGenerate.shortDescription && (forceMode || !site.short_description);
     const needsIncluded = fieldsToGenerate.included && (forceMode || !site.included) && !parentSite;
 
-    if (!needsShortDescription && !needsIncluded) {
+    if (!needsDescription && !needsShortDescription && !needsIncluded) {
       console.log(`⏭  ${site.name} — all target fields populated, skipping`);
       skipped++;
       continue;
@@ -342,10 +353,23 @@ async function main() {
     processed++;
 
     try {
+      // Generate description FIRST: short_description is written from the full description, so
+      // generating in this order lets a freshly written body feed the tagline in the same pass
+      // (otherwise the tagline is derived from review content alone and reads less on-message).
+      let description = site.description;
+      if (needsDescription) {
+        console.log(`   • Generating description...`);
+        description = await generateDescription(site, review.content);
+        fieldsToUpdate.description = description;
+        generatedFields.push('description');
+        fieldStats.description++;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+
       // Generate short_description if needed
       if (needsShortDescription) {
         console.log(`   • Generating short_description...`);
-        const shortDesc = await generateShortDescription(site, site.description, review.content);
+        const shortDesc = await generateShortDescription(site, description, review.content);
         fieldsToUpdate.short_description = shortDesc;
         generatedFields.push('short_description');
         fieldStats.shortDescription++;
@@ -387,6 +411,9 @@ async function main() {
   }
   if (updated > 0) {
     console.log(`\nFields generated:`);
+    if (fieldStats.description > 0) {
+      console.log(`  • description: ${fieldStats.description}`);
+    }
     if (fieldStats.shortDescription > 0) {
       console.log(`  • short_description: ${fieldStats.shortDescription}`);
     }

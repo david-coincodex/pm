@@ -391,7 +391,8 @@
   },
   "richText": {
     "showMore": "{count} weitere anzeigen",
-    "showLess": "Weniger anzeigen"
+    "showLess": "Weniger anzeigen",
+    "showMoreError": "Weitere Websites konnten nicht geladen werden — bitte erneut versuchen."
   },
   "commercials": {
     "indexTitle": "Alle Werbespots in dieser Liste",

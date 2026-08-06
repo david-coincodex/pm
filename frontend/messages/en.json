@@ -391,7 +391,8 @@
   },
   "richText": {
     "showMore": "Show {count} more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "showMoreError": "Could not load more sites — try again."
   },
   "commercials": {
     "indexTitle": "All ads in this list",
