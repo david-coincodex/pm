@@ -65,7 +65,12 @@ export default function MobileSearchOverlay({ open, onClose }: Props) {
         <div className="relative flex-1">
           <input
             ref={inputRef}
-            type="text"
+            // Distinct id from the desktop SearchBar: both can be in the DOM at once, and
+            // duplicate ids are invalid and break label/ARIA association.
+            id="site-search-mobile"
+            name="site-search-mobile"
+            type="search"
+            aria-label={t('label')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('placeholder')}

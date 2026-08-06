@@ -61,6 +61,7 @@
   },
   "search": {
     "placeholder": "Sites suchen…",
+    "label": "Sites suchen",
     "clearLabel": "Suche löschen",
     "noResults": "Keine Ergebnisse gefunden.",
     "recentlyViewed": "Zuletzt angesehen",

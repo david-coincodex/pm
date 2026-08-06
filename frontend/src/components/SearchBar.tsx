@@ -54,7 +54,13 @@ export default function SearchBar({
 
         <input
           ref={inputRef}
-          type="text"
+          // id/name: a field with neither is flagged by Chrome ("might prevent autofilling") and
+          // leaves the input with no name in the accessibility tree — a placeholder is not a label.
+          // "search" rather than a generic id because the mobile overlay renders a second one.
+          id="site-search"
+          name="site-search"
+          type="search"
+          aria-label={t('label')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
