@@ -186,7 +186,8 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
       >
         {/* Gallery */}
         <div className="mb-8">
-          <ImageGallery images={site.gallery ?? []} coverImage={image} />
+          {/* Above the fold: the first gallery cell is this page's LCP element. */}
+          <ImageGallery images={site.gallery ?? []} coverImage={image} priorityFirst />
         </div>
 
         {/* Rich-text content */}

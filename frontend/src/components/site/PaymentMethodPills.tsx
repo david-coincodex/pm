@@ -14,6 +14,10 @@ function MethodTile({ method, label, large = false }: { method: string; label: s
           <img
             src={`/payment-logos/${method}.svg`}
             alt={label}
+            // Explicit dimensions reserve layout space before CSS applies (CLS); the real
+            // rendered size is still governed by the fixed box + object-contain.
+            width={120}
+            height={40}
             className="max-h-full max-w-full object-contain"
           />
         </div>
@@ -31,6 +35,8 @@ function MethodTile({ method, label, large = false }: { method: string; label: s
         <img
           src={`/payment-logos/${method}.svg`}
           alt={label}
+          width={44}
+          height={24}
           className="max-h-full max-w-full object-contain"
         />
       </div>

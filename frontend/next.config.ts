@@ -26,6 +26,17 @@ const nextConfig: NextConfig = {
   async redirects() {
     return buildLegacyRedirects(routing.locales, routing.defaultLocale);
   },
+  async headers() {
+    // Static brand assets in /public. Next serves public/ files with no Cache-Control of its
+    // own, so intermediaries fall back to short heuristics (Lighthouse measured a 4 h TTL via
+    // Cloudflare). These files change ~never, and a change would ship under a new filename
+    // anyway — a year + immutable is the standard answer.
+    const immutable = [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }];
+    return [
+      { source: '/payment-logos/:path*', headers: immutable },
+      { source: '/flags/:path*', headers: immutable },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
