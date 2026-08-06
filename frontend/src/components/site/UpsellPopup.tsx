@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
 import { getDiscountPercent } from '@/lib/strapi';
+import { trackEvent } from '@/lib/analytics';
 import PopoverSheet from '@/components/PopoverSheet';
 import type { OfferInfo, CrossSellSite } from '@/components/offer/types';
 
@@ -43,9 +44,35 @@ export default function UpsellPopup({ offer, featured, open, onClose }: UpsellPo
     onClose();
   }
 
+  /**
+   * Report the answer to "Did the discount work?" to GA4.
+   *
+   * `site_slug` is the useful dimension — it is the stable key, so a report grouped by it tells you
+   * which specific deal is failing, which is the whole point of asking. The offer shape rides along
+   * so a broken price tier can be told apart from a broken site.
+   *
+   * Fired before the phase change so a slow/blocked analytics call can never delay the UI, and
+   * trackEvent already no-ops when gtag is unavailable.
+   */
+  function reportFeedback(worked: 'yes' | 'no') {
+    trackEvent('discount_feedback', {
+      worked,
+      site_slug: offer?.siteSlug ?? undefined,
+      site_name: offer?.siteName ?? undefined,
+      offer_type: offer?.offerKind === 'credits' ? 'credits' : (offer?.offerType ?? undefined),
+      offer_price: offer?.price ?? undefined,
+    });
+  }
+
   function handleYes() {
+    reportFeedback('yes');
     setCrossSell(pickCrossSell(featured, offer?.siteSlug));
     setPhase('thanks');
+  }
+
+  function handleNo() {
+    reportFeedback('no');
+    setPhase('sorry');
   }
 
   // Offer summary shown in the feedback question so it's clear which deal we're asking about.
@@ -101,7 +128,7 @@ export default function UpsellPopup({ offer, featured, open, onClose }: UpsellPo
             </button>
             <button
               type="button"
-              onClick={() => setPhase('sorry')}
+              onClick={handleNo}
               className="rounded-xl border border-slate-200 bg-white px-8 py-3 text-base font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               {t('feedbackNo')}

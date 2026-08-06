@@ -1,5 +1,6 @@
 import "./globals.css";
 import ScrollToTopOnNavigate from "@/components/ScrollToTopOnNavigate";
+import Analytics from "@/components/Analytics";
 
 // Root layout: provides <html> and <body> required by Next.js 16.
 // suppressHydrationWarning allows the [locale] subtree to set lang.
@@ -17,6 +18,7 @@ export default function RootLayout({
         )}
       </head>
       <body className="antialiased bg-slate-50 dark:bg-slate-900">
+        <Analytics />
         <ScrollToTopOnNavigate />
         {children}
       </body>
