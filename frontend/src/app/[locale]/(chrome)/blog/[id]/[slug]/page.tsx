@@ -1,8 +1,8 @@
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { getArticleByPostId, getArticleBySlug, getLatestArticles, strapiMediaUrl } from '@/lib/strapi';
+import { ARTICLE_COLUMN_SIZES, strapiImgSources } from '@/lib/strapiImage';
 import { routes } from '@/lib/routes';
 import { localizedAlternates } from '@/lib/pagination';
 import { siteSettings } from '@/lib/siteSettings';
@@ -104,13 +104,20 @@ export default async function ArticlePage({ params }: Props) {
           {/* Cover image */}
           <div className="mb-8 aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
             {article.coverImage ? (
-              <Image
-                src={strapiMediaUrl(article.coverImage)}
+              // Plain <img>, not next/image: with the optimizer off, next/image would ship the
+              // original file to every viewport, and `priority` alone does not set fetchpriority
+              // in Next 16. This is the page's LCP element — a hand-built srcset from Strapi's
+              // resizes plus an explicit fetchpriority lets each viewport pull a right-sized file.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                {...strapiImgSources(article.coverImage)}
+                sizes={ARTICLE_COLUMN_SIZES}
                 alt={article.coverImage.alternativeText ?? article.title}
                 width={article.coverImage.width}
                 height={article.coverImage.height}
+                decoding="async"
+                fetchPriority="high"
                 className="h-full w-full object-cover"
-                priority
               />
             ) : (
               <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">

@@ -16,7 +16,10 @@ export default function UpdatedOnBadge({ modifiedDate, locale, updatedLabel }: U
 
   return (
     <span className="relative inline-flex items-center group">
+      {/* role="img": aria-label is prohibited on a bare <span> (flagged by axe/Lighthouse);
+          with the role, this icon-plus-tooltip reads as one labelled graphic. */}
       <span
+        role="img"
         className="inline-flex items-center justify-center text-slate-400 dark:text-slate-500 cursor-default"
         aria-label={`${updatedLabel} ${label}`}
       >
@@ -36,7 +39,12 @@ export default function UpdatedOnBadge({ modifiedDate, locale, updatedLabel }: U
           <path d="M22 12c0 5.52-4.48 10-10 10-3.17 0-6.01-1.4-8-3.62" />
         </svg>
       </span>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity dark:bg-slate-700">
+      {/* aria-hidden: opacity-0 keeps this in the accessibility tree, and the icon's
+          aria-label already carries the same text — without it the date reads twice. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-full left-1/2 z-50 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity dark:bg-slate-700"
+      >
         {updatedLabel} {label}
       </span>
     </span>

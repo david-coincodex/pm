@@ -1,7 +1,7 @@
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { type Commercial, type Offer, strapiMediaUrl } from '@/lib/strapi';
+import { ARTICLE_COLUMN_SIZES, strapiImgSources } from '@/lib/strapiImage';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
 import ImageGallery from '@/components/ImageGallery';
@@ -28,9 +28,11 @@ export default async function CommercialBlock({ commercial, ordinal, canonicalPa
   const c = commercial;
 
   const still = c.poster ?? c.gallery?.[0] ?? null;
-  const stillUrl = still
-    ? strapiMediaUrl(still.formats?.medium ? { url: still.formats.medium.url } : still)
-    : null;
+  // Hand-built srcset (plain <img>) instead of a flat `medium` src: with the optimizer off,
+  // next/image ignores `sizes`, so every viewport paid for the 750px file. This also lets the
+  // article hero and the first ad block (often the same poster) resolve to one cached file.
+  const stillSources = still ? strapiImgSources(still) : null;
+  const stillSizes = ARTICLE_COLUMN_SIZES;
   const clipUrl = c.clip ? strapiMediaUrl(c.clip) : null;
 
   // Cheapest active offer for the advertised site — "lowest deal price". Routed through
@@ -88,23 +90,27 @@ export default async function CommercialBlock({ commercial, ordinal, canonicalPa
       </h2>
 
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
-        {clipUrl && stillUrl ? (
+        {clipUrl && stillSources ? (
           <CommercialPlayer clipUrl={clipUrl} label={c.title} mode="inview" promo={promo}>
-            <Image
-              src={stillUrl}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              {...stillSources}
+              sizes={stillSizes}
               alt={still?.alternativeText ?? c.title}
-              fill
-              sizes="(min-width: 1024px) 66vw, 100vw"
-              className="object-cover"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           </CommercialPlayer>
-        ) : stillUrl ? (
-          <Image
-            src={stillUrl}
+        ) : stillSources ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            {...stillSources}
+            sizes={stillSizes}
             alt={still?.alternativeText ?? c.title}
-            fill
-            sizes="(min-width: 1024px) 66vw, 100vw"
-            className="object-cover"
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : null}
       </div>

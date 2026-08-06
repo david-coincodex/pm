@@ -35,6 +35,24 @@ const nextConfig: NextConfig = {
     return [
       { source: '/payment-logos/:path*', headers: immutable },
       { source: '/flags/:path*', headers: immutable },
+      {
+        // Baseline security headers (Lighthouse Best Practices flags all of these as High
+        // when absent). Neither Traefik nor Cloudflare sets any of them for this site.
+        source: '/:path*',
+        headers: [
+          // One year, no `preload`: preload submits the domain to a browser-baked list and
+          // is effectively irreversible — that needs an explicit decision, not a default.
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          // Nothing embeds this site in a frame; blocks clickjacking.
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // allow-popups (not plain same-origin): offer clicks open affiliate pages in new
+          // tabs, and a hard COOP would sever those windows' ability to load correctly via
+          // the opener relationship some trackers rely on.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+        ],
+      },
     ];
   },
 };

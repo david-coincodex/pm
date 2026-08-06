@@ -25,6 +25,11 @@ automatically:
 | Legacy redirects | `frontend/redirects.config.mjs` expands every rule per locale (`/de/dmca/` → `/de/page/disclaimer/`) — **requires an image rebuild**, see below |
 | Static params / layout | `generateStaticParams` and the `hasLocale` guard in `src/app/[locale]/layout.tsx` read the array directly |
 
+**One thing that does NOT react automatically:** `<html lang>` in `src/app/layout.tsx` is
+hard-coded to `routing.defaultLocale` (fine while there is one locale). With a second locale,
+German pages would claim `lang="en"` — make it per-request, e.g. move `lang` onto the `[locale]`
+layout's rendered subtree or set it from the request locale.
+
 ## Steps
 
 1. Restore `locales: ['en', 'de']` in `frontend/src/i18n/routing.ts`.

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { strapiMediaUrl, type StrapiMedia } from '@/lib/strapi';
+import { strapiImgSources } from '@/lib/strapiImage';
 import { requestPlay, release, autoplayAllowed } from '@/lib/clipPlayback';
 
 /**
@@ -51,20 +52,10 @@ interface ImageGalleryProps {
  * by the rich-text media-gallery widget carry no `formats` and degrade to a bare src.
  */
 function gridImgProps(img: GalleryItem, index: number, total: number) {
-  const f = img.formats ?? {};
-  const candidates = [f.thumbnail, f.small, f.medium, f.large].filter(
-    (x): x is NonNullable<typeof x> => Boolean(x?.url && x?.width),
-  );
-  const src = strapiMediaUrl({ url: candidates[0]?.url ?? img.url });
-  if (candidates.length === 0) return { src };
+  const { src, srcSet } = strapiImgSources(img);
+  if (!srcSet) return { src };
 
   const isLarge = total === 1 || index === 0;
-  const srcSet = candidates
-    .map((c) => `${strapiMediaUrl({ url: c.url })} ${c.width}w`)
-    // Original as the top step. When its true width is unknown, an inflated descriptor keeps the
-    // correct "largest available" semantics: it is only ever picked when nothing smaller suffices.
-    .concat(`${strapiMediaUrl(img)} ${img.width ?? 10000}w`)
-    .join(', ');
   const sizes = total === 1
     ? '(max-width: 768px) 92vw, 740px'
     : isLarge

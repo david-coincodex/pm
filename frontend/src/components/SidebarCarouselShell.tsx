@@ -110,17 +110,23 @@ export default function SidebarCarouselShell({ title, children }: SidebarCarouse
           {children.map((_, idx) => {
             const isActive = idx === activeIndex;
             return (
+              // The button is the touch target (≥24×24px, WCAG 2.5.8 / Lighthouse); the
+              // inner span is the 4px-tall visual dot.
               <button
                 key={idx}
                 aria-label={`Go to slide ${idx + 1}`}
                 aria-current={isActive}
                 onClick={() => goTo(idx)}
-                className={`block h-1 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? 'w-6 bg-emerald-500'
-                    : 'w-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'
-                }`}
-              />
+                className="flex min-h-6 min-w-6 items-center justify-center"
+              >
+                <span
+                  className={`block h-1 rounded-full transition-all duration-300 ${
+                    isActive
+                      ? 'w-6 bg-emerald-500'
+                      : 'w-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  }`}
+                />
+              </button>
             );
           })}
         </div>
