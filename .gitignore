@@ -46,3 +46,9 @@ scripts/data/runs/
 # re-harvest with:  make -C scripts snapshot   (or see wp-migration/README.md)
 scripts/wp-migration/
 !scripts/wp-migration-snapshot.tar.gz
+
+# Staging snapshot artifacts (scripts/sync-content-to-staging.mjs). Strapi export tars and
+# snapshot volumes run to hundreds of MB and must never be committable.
+scripts/data/transfer/
+*.strapi-export.tar
+*.strapi-export.tar.gz

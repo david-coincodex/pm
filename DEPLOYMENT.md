@@ -70,6 +70,24 @@ Set these under **Settings → Environments → `staging`**.
 > `deploy` user's GHCR login. Either make the `pm-frontend`/`pm-backend` packages
 > public, or add registry credentials for watchtower on the host.
 
+## Copying content to staging
+
+Deploys ship **code**, never content. To push content types and media from local dev
+to staging, see [`scripts/sync-content-to-staging.md`](scripts/sync-content-to-staging.md):
+
+```bash
+node scripts/sync-content-to-staging.mjs        # dry run: how far has staging drifted?
+```
+
+It copies content + media only — admin users, API tokens, webhooks and Strapi settings
+are never touched — and it snapshots staging first, because the transfer replaces rather
+than merges. Those snapshots are content-level and separate from the infra repo's
+proxmox Postgres backups above; the two cover different failure modes.
+
+Note that `strapi transfer` cannot reach `cms-staging.pornmode.com` directly: it is behind
+Cloudflare Access and the CLI has no way to send service-token headers. The script proxies
+through `scripts/lib/cf-access-proxy.mjs`.
+
 ## Production
 
 There's no production target yet. When added, branch `staging → production` and

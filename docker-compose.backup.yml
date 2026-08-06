@@ -1,0 +1,59 @@
+# Scratch Strapi used only to hold snapshots of a REMOTE Strapi (staging).
+#
+# Why a whole extra instance: `strapi export` can only export the project it runs in, and
+# `pg_dump` would need shell access on the staging host — which the CF-Access-proxy transport
+# deliberately avoids. `strapi transfer --from <remote>` pulls into the LOCAL project, so we give
+# it a disposable local project to pull into. The resulting volume is a real, restorable
+# Strapi-format snapshot, and rollback is the same command pointed the other way.
+#
+# Isolation matters: this service must NEVER share `strapi_tmp` (the dev database) or the dev
+# uploads bind mount, or a backup pull would overwrite local dev content. It gets its own volumes,
+# and `snapshot_uploads` is a volume rather than a bind mount so 385 MB of media never lands in the
+# working tree.
+#
+# Usage: driven by scripts/sync-content-to-staging.mjs. By hand:
+#   SNAPSHOT=20260806-120000 docker compose -f docker-compose.backup.yml run --rm scratch \
+#     /app/node_modules/.bin/strapi transfer \
+#       --from http://host.docker.internal:8443/admin --from-token "$STAGING_TRANSFER_TOKEN" \
+#       --only content,files --force
+
+services:
+  scratch:
+    # Reuse the image the main compose already built (project `pm`, service `backend` -> tag
+    # `pm-backend`). Without the explicit image name, every snapshot project (-p pmsnap-<TS>)
+    # builds and tags its OWN copy — measured at 4.42 GB of image clutter per snapshot.
+    # `build` stays as a fallback so this file works even before the main stack was ever built.
+    image: pm-backend
+    build:
+      context: ./backend
+      target: development
+    env_file:
+      - ./backend/.env
+    environment:
+      # Force sqlite regardless of what backend/.env says, and keep the file inside this
+      # service's own volume.
+      DATABASE_CLIENT: sqlite
+      DATABASE_FILENAME: .tmp/data.db
+      # Strapi boots before transferring; nothing should reach out to the dev frontend.
+      FRONTEND_URL: http://localhost:9999
+    volumes:
+      - snapshot_db:/app/.tmp
+      # Mount the PARENT of uploads, not uploads itself. Strapi's local file destination renames
+      # `public/uploads` to a backup directory before writing, and you cannot rename a volume mount
+      # point — it fails instantly with "Local: backing up existing upload folder…". This is why
+      # docker-compose.prod.yml also mounts the whole `public` dir rather than just `uploads`.
+      - snapshot_public:/app/public
+    # No ports: this instance is never served, only transferred into and out of.
+    extra_hosts:
+      # Reach the CF-Access proxy running on the host (Linux hosts need this; Docker Desktop
+      # provides it already, but declaring it keeps the file portable).
+      - "host.docker.internal:host-gateway"
+    # Long transfers must not be killed by a health/restart policy.
+    restart: "no"
+
+volumes:
+  # Namespaced per snapshot by the compose project name, e.g.
+  #   docker compose -f docker-compose.backup.yml -p pmsnap-20260806 run --rm scratch ...
+  # which prefixes both volumes with that project name.
+  snapshot_db:
+  snapshot_public:

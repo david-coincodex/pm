@@ -16,7 +16,9 @@
     "build-wp-post-ids": "node build-wp-post-ids.mjs",
     "build-avn-awards": "node build-avn-awards.mjs",
     "translate-messages": "node translate-messages.mjs",
-    "translation-context": "node translation-context.mjs"
+    "translation-context": "node translation-context.mjs",
+    "sync-staging": "node sync-content-to-staging.mjs",
+    "cf-proxy": "node lib/cf-access-proxy.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -5,3 +5,10 @@ dist
 build
 .strapi-cloud.json
 *.log
+
+# Media is CONTENT, not code — it ships via scripts/sync-content-to-staging.mjs, never in the
+# image. Without this the image bakes ~385 MB of stale uploads, and Docker's named-volume
+# initialisation then silently seeds every fresh /app/public volume with them (which is exactly
+# how a broken snapshot once ended up "containing" 5,797 local files that never crossed the wire).
+public/uploads
+!public/uploads/.gitkeep
