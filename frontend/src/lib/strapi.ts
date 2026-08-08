@@ -740,8 +740,12 @@ export async function getSitesByCategorySlug(
 export async function searchSites(query: string): Promise<Site[]> {
   const q = encodeURIComponent(query.trim());
   if (!q) return [];
+  // Match the site NAME only. short_description was also matched here, but every Brazzers
+  // subsite (Real Wife Stories, Big Tits At Work, …) mentions "Brazzers" in its description,
+  // so a network search surfaced two dozen unrelated-by-name channels. Name-only keeps a search
+  // for a brand to the sites actually called that.
   const res = await strapiGet<Site[]>(
-    `/sites?${SITE_CARD_FIELDS}&populate[logo]=true&populate[cover_image]=true&populate[offers]=true&populate[parent_site][fields]=slug,name&populate[parent_site][populate][offers]=true&filters[isActive][$eq]=true&filters[$or][0][name][$containsi]=${q}&filters[$or][1][short_description][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
+    `/sites?${SITE_CARD_FIELDS}&populate[logo]=true&populate[cover_image]=true&populate[offers]=true&populate[parent_site][fields]=slug,name&populate[parent_site][populate][offers]=true&filters[isActive][$eq]=true&filters[name][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
     { next: { revalidate: 0 } }
   );
   return res.data;
