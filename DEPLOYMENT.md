@@ -90,6 +90,33 @@ through `scripts/lib/cf-access-proxy.mjs`.
 
 ## Production
 
-There's no production target yet. When added, branch `staging → production` and
-duplicate this workflow with production image tags, domains, and a separate
-environment — do not point the staging workflow at production.
+Push to the **`production`** branch (or run **Deploy — Production** manually *from that
+branch*) → `.github/workflows/deploy-production.yml`. Same shape as staging, with these
+differences:
+
+| What | Staging | Production |
+|---|---|---|
+| Host | `vars.DEPLOY_HOST` — `167.233.101.88` | `vars.DEPLOY_HOST_PROD` — `167.233.77.129` |
+| Environment | `staging` | `production` |
+| Compose file | `docker-compose.prod.yml` | `docker-compose.production.yml` |
+| Site / CMS | `staging.pornmode.com` / `cms-staging.pornmode.com` | `pornmode.com` / `cms.pornmode.com` |
+| Image tags | `:latest`, `:<sha>` | `:prod`, `:prod-<sha>` |
+| Media | re-served from the site host (`promode-uploads` router) | straight from `cms.pornmode.com` |
+
+- **Images are rebuilt, not promoted.** `NEXT_PUBLIC_STRAPI_URL` is inlined into the client
+  bundle at build time, so the staging image points at `cms-staging` for good. The `prod-`
+  tag prefix keeps the two builds of the same commit from overwriting each other in GHCR.
+- **Deploys are pinned.** The workflow writes `IMAGE_TAG=prod-<sha>` into the host's `.env`.
+  To roll back without a rebuild, edit that line to an earlier `prod-<sha>` on the host and
+  re-run `docker compose up -d`.
+- A `guard` job refuses any ref other than `refs/heads/production`, and a `deploy-production`
+  concurrency group queues overlapping deploys rather than racing them.
+- Secrets and variables resolve from the `production` environment first, falling back to the
+  repo-level ones shared with staging. Set environment-scoped overrides (at minimum
+  `SSH_PRIVATE_KEY`, `DATABASE_PASSWORD` and the Strapi key/salt set) under **Settings →
+  Environments → `production`** so the two hosts don't share credentials.
+- The production host needs the same prerequisites as staging: Docker + Compose, Traefik on
+  `:80`, the external `traefik_public` network, and a `deploy` user in the `docker` group
+  holding the public half of `SSH_PRIVATE_KEY`.
+- DNS for `pornmode.com` still points at the legacy WordPress site — deploying does not cut
+  over. Traefik on `167.233.77.129` will answer for the host once DNS is repointed.

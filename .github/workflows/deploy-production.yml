@@ -1,0 +1,169 @@
+name: Deploy — Production
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+# A second push while a deploy is mid-flight would race two `compose up`s on the same
+# host. Queue instead, and never cancel a production rollout half-applied.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # ── 0. Refuse to deploy anything that isn't the production branch ────────────
+  # workflow_dispatch can be fired from any ref; without this, running it from a
+  # feature branch would ship that branch to the live host.
+  guard:
+    name: Check ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless ref is refs/heads/production
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/production" ]; then
+            echo "::error::Refusing to deploy ${{ github.ref }} — production deploys must run from the production branch."
+            exit 1
+          fi
+
+  # ── 1. Build both images and push to GHCR ───────────────────────────────────
+  # Production cannot reuse the staging images: NEXT_PUBLIC_* is inlined into the client
+  # bundle at build time, so the staging build has cms-staging baked in. Hence a separate
+  # build with production URLs, under a prod- tag prefix so it can never collide with the
+  # staging :<sha> tag for the same commit.
+  build-and-push:
+    name: Build & push images
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          target: production
+          push: true
+          # No NEXT_PUBLIC_MEDIA_BASE here, unlike staging: production's CMS host is public,
+          # so media is served straight from cms.pornmode.com (see DEPLOYMENT.md).
+          build-args: |
+            NEXT_PUBLIC_STRAPI_URL=https://cms.pornmode.com
+          tags: |
+            ghcr.io/david-coincodex/pm-frontend:prod
+            ghcr.io/david-coincodex/pm-frontend:prod-${{ github.sha }}
+          cache-from: type=gha,scope=frontend-prod
+          cache-to: type=gha,mode=max,scope=frontend-prod
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/david-coincodex/pm-backend:prod
+            ghcr.io/david-coincodex/pm-backend:prod-${{ github.sha }}
+          cache-from: type=gha,scope=backend-prod
+          cache-to: type=gha,mode=max,scope=backend-prod
+
+  # ── 2. Deploy to the production server via SSH ───────────────────────────────
+  deploy:
+    name: Deploy to production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+      # Write the .env file locally; rsync copies it (never echoed to logs)
+      - name: Write .env file
+        env:
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          DATABASE_NAME: ${{ vars.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ vars.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+        run: |
+          {
+            echo "APP_KEYS=$APP_KEYS"
+            echo "API_TOKEN_SALT=$API_TOKEN_SALT"
+            echo "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET"
+            echo "TRANSFER_TOKEN_SALT=$TRANSFER_TOKEN_SALT"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "ENCRYPTION_KEY=$ENCRYPTION_KEY"
+            echo "DATABASE_NAME=$DATABASE_NAME"
+            echo "DATABASE_USERNAME=$DATABASE_USERNAME"
+            echo "DATABASE_PASSWORD=$DATABASE_PASSWORD"
+            echo "REVALIDATE_SECRET=$REVALIDATE_SECRET"
+            # Empty until the GA_API_SECRET repo secret exists; server events then no-op silently.
+            echo "GA_API_SECRET=$GA_API_SECRET"
+            # Pins compose to this exact build. To roll back, edit this line on the host
+            # to an earlier prod-<sha> and re-run `docker compose up -d`.
+            echo "IMAGE_TAG=prod-${{ github.sha }}"
+          } > .env.deploy
+
+      - name: Rsync compose file and .env to server
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST_PROD }} \
+            "mkdir -p /opt/promode"
+
+          rsync -az --checksum \
+            -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+            .env.deploy \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST_PROD }}:/opt/promode/
+
+          rsync -az --checksum \
+            -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
+            docker-compose.production.yml \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST_PROD }}:/opt/promode/docker-compose.yml
+
+      - name: Pull images and restart services
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no \
+            ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST_PROD }} bash << 'ENDSSH'
+              set -e
+              cd /opt/promode
+              mv .env.deploy .env
+
+              echo "${{ secrets.GITHUB_TOKEN }}" | \
+                docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+              docker compose pull
+              docker compose up -d --remove-orphans
+          ENDSSH
+
+      - name: Clean up local secrets
+        if: always()
+        run: rm -f private_key.pem .env.deploy

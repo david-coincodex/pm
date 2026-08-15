@@ -1,0 +1,103 @@
+services:
+  frontend:
+    # Pinned to the deployed commit by IMAGE_TAG in .env (written by the workflow).
+    # The moving :prod tag is only the fallback — pinning is what makes a rollback a
+    # one-line .env edit rather than a rebuild.
+    image: ghcr.io/david-coincodex/pm-frontend:${IMAGE_TAG:-prod}
+    restart: unless-stopped
+    # Next.js standalone server. Server components fetch the CMS over the internal
+    # Docker network (STRAPI_INTERNAL_URL); the browser uses NEXT_PUBLIC_STRAPI_URL,
+    # which is baked into the client bundle at BUILD time (see deploy-production.yml
+    # build-args) — the runtime value here only affects server-side reads.
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOSTNAME: "0.0.0.0"
+      STRAPI_INTERNAL_URL: http://backend:1339
+      NEXT_PUBLIC_STRAPI_URL: https://cms.pornmode.com
+      # Shared secret for the Strapi publish webhook -> /api/revalidate
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      # GA4 Measurement Protocol secret for server-side offer-click events. Server-only on purpose
+      # — as NEXT_PUBLIC_* it would ship to the browser and let anyone forge hits.
+      GA_API_SECRET: ${GA_API_SECRET}
+    # No ports here — Traefik routes external traffic via labels below
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik_public
+      - traefik.http.routers.promode.rule=Host(`pornmode.com`)
+      - traefik.http.routers.promode.entrypoints=web
+      - traefik.http.services.promode.loadbalancer.server.port=3002
+    networks:
+      - traefik_public
+      - internal
+    depends_on:
+      - backend
+
+  backend:
+    image: ghcr.io/david-coincodex/pm-backend:${IMAGE_TAG:-prod}
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "1339"
+      NODE_ENV: production
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DATABASE_CLIENT: postgres
+      # 'db' resolves to the postgres service inside the Docker network
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-promode}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_SSL: "false"
+      # CORS origin for the public frontend (config/middlewares.ts reads FRONTEND_URL)
+      FRONTEND_URL: https://pornmode.com
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik_public
+      - traefik.http.routers.promode-cms.rule=Host(`cms.pornmode.com`)
+      - traefik.http.routers.promode-cms.entrypoints=web
+      - traefik.http.services.promode-cms.loadbalancer.server.port=1339
+      # No promode-uploads router here, unlike staging. Staging re-serves /uploads through the
+      # frontend host because cms-staging is a separate Cloudflare Access application and media
+      # would 302 to a login page; production's CMS host is public, so media is fetched straight
+      # from cms.pornmode.com and NEXT_PUBLIC_MEDIA_BASE is left unset at build time.
+    volumes:
+      - strapi_public:/app/public
+    networks:
+      - traefik_public
+      - internal
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-promode}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres} -d ${DATABASE_NAME:-promode}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+networks:
+  traefik_public:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  strapi_public:
