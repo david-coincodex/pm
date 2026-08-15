@@ -20,9 +20,12 @@ images, pushes them to GHCR, and rolls them out on the `promode-staging` host.
 - Strapi CORS allows the frontend origin via `FRONTEND_URL` (`config/middlewares.ts`).
 - **Media** is stored relative (`/uploads/...`) and resolved at render. Staging sets the
   `NEXT_PUBLIC_MEDIA_BASE` build arg to `https://staging.pornmode.com`, served by the
-  `promode-uploads` Traefik router (priority 100) so media is same-origin with the site. Omit the
-  variable to serve media straight from the CMS host instead — correct for production, where the
-  CMS is not behind Cloudflare Access. Verify with `node scripts/normalize-media-urls.mjs --check`.
+  `promode-uploads` Traefik router (priority 100) so media is same-origin with the site.
+  Verify with `node scripts/normalize-media-urls.mjs --check`.
+- **Always pass `NEXT_PUBLIC_MEDIA_BASE` explicitly**, on every environment. `lib/strapi.ts`
+  falls back to `NEXT_PUBLIC_STRAPI_URL` when it is unset, but `frontend/Dockerfile` defaults
+  the ARG to `http://localhost:1339`, so the value is never actually undefined and the fallback
+  never fires. Omitting the arg bakes `localhost:1339` into every image URL in the bundle.
 
 ## Flow
 

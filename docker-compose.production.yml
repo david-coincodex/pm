@@ -68,7 +68,8 @@ services:
       # No promode-uploads router here, unlike staging. Staging re-serves /uploads through the
       # frontend host because cms-staging is a separate Cloudflare Access application and media
       # would 302 to a login page; production's CMS host is public, so media is fetched straight
-      # from cms.pornmode.com and NEXT_PUBLIC_MEDIA_BASE is left unset at build time.
+      # from cms.pornmode.com — passed as the NEXT_PUBLIC_MEDIA_BASE build arg, not left unset
+      # (the Dockerfile ARG defaults to localhost:1339, so unset means broken images).
     volumes:
       - strapi_public:/app/public
     networks:

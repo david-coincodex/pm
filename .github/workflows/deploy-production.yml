@@ -59,10 +59,13 @@ jobs:
           file: ./frontend/Dockerfile
           target: production
           push: true
-          # No NEXT_PUBLIC_MEDIA_BASE here, unlike staging: production's CMS host is public,
-          # so media is served straight from cms.pornmode.com (see DEPLOYMENT.md).
+          # NEXT_PUBLIC_MEDIA_BASE must be passed explicitly even though it equals the CMS
+          # host: frontend/Dockerfile defaults the ARG to http://localhost:1339, so the
+          # `?? STRAPI_URL` fallback in lib/strapi.ts never fires and omitting it bakes
+          # localhost into the bundle — every image 404s in the visitor's browser.
           build-args: |
             NEXT_PUBLIC_STRAPI_URL=https://cms.pornmode.com
+            NEXT_PUBLIC_MEDIA_BASE=https://cms.pornmode.com
           tags: |
             ghcr.io/david-coincodex/pm-frontend:prod
             ghcr.io/david-coincodex/pm-frontend:prod-${{ github.sha }}
