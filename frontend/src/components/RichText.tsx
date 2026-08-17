@@ -33,8 +33,10 @@ const ELEMENT_CLASSES: Record<string, string> = {
   h4: 'text-base font-semibold text-slate-900 dark:text-white mt-3 mb-1',
   h5: 'text-sm font-semibold text-slate-900 dark:text-white mt-3 mb-1',
   h6: 'text-sm font-medium text-slate-900 dark:text-white mt-2 mb-1',
-  ul: 'list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300',
-  ol: 'list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300',
+  // list-outside + pl: markers sit in the padding, so wrapped lines align with the text
+  // instead of tucking under the bullet, and the whole list is indented from the prose.
+  ul: 'list-disc list-outside pl-6 space-y-1 text-slate-700 dark:text-slate-300',
+  ol: 'list-decimal list-outside pl-6 space-y-1 text-slate-700 dark:text-slate-300',
   li: 'text-slate-700 dark:text-slate-300',
   a: 'text-emerald-600 hover:underline dark:text-emerald-400',
   blockquote: 'border-l-4 border-emerald-400 pl-4 italic text-slate-600 dark:border-emerald-600 dark:text-slate-400',
