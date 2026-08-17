@@ -84,6 +84,30 @@ export default async function ArticlePage({ params }: Props) {
   const blogBase = routes.blog().slice(0, -1);
   const relatedArticles = latestArticles.filter((a) => a.id !== article.id).slice(0, 8);
 
+  // Celebrity articles are about a person, and saying so is the strongest entity signal the
+  // page can send. The trigger is the article-only `celebrity` tag (categories are shared
+  // with site genre pages, so a category could not carry this without leaking into
+  // /best-…-sites/); the person is the other tag, anchored by the Wikipedia/IMDb links the
+  // body already carries.
+  let aboutPerson: Record<string, unknown> | undefined;
+  // The type says array, but modern articles hold the CKEditor HTML string (RichText makes
+  // the same runtime distinction).
+  const contentHtml = article.content as unknown;
+  const personTag = article.tags?.some((t) => t.slug === 'celebrity')
+    ? article.tags.find((t) => t.slug !== 'celebrity')
+    : undefined;
+  if (personTag && typeof contentHtml === 'string') {
+    const sameAs = [
+      contentHtml.match(/href="(https?:\/\/[a-z.]*wikipedia\.org\/wiki\/[^"]+)"/i)?.[1],
+      contentHtml.match(/href="(https?:\/\/(?:www\.)?imdb\.com\/[^"]+)"/i)?.[1],
+    ].filter((u): u is string => !!u);
+    aboutPerson = {
+      '@type': 'Person',
+      name: personTag.name,
+      ...(sameAs.length && { sameAs }),
+    };
+  }
+
   return (
     <>
       <Breadcrumbs locale={locale} crumbs={[
@@ -172,6 +196,7 @@ export default async function ArticlePage({ params }: Props) {
             ...(article.coverImage && { image: strapiMediaUrl(article.coverImage) }),
             datePublished: article.publishDate ?? article.publishedAt,
             ...(isSignificantUpdate(article.publishDate ?? article.publishedAt, article.modifiedDate) && { dateModified: article.modifiedDate }),
+            ...(aboutPerson && { about: aboutPerson }),
             author: article.author ? [{
               '@type': 'Person',
               name: article.author.name,
