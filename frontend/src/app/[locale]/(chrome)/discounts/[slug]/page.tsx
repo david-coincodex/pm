@@ -241,7 +241,10 @@ export default async function DiscountDetailPage({ params, searchParams }: Props
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'Service',
+            // Product, not Service: Google's review-snippet rich results only accept certain
+            // parent types (Product, Book, Movie, LocalBusiness, …) — Service fails GSC with
+            // "Invalid object type for field". A subscription is a (digital) Product.
+            '@type': 'Product',
             name: site.name,
             url: `${siteSettings.baseUrl}${routes.site(site.slug)}`,
             ...(site.short_description && { description: site.short_description }),
