@@ -112,7 +112,9 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
 
   return (
     <>
-    <div ref={cardRef} className="relative rounded-none border-b border-slate-200 bg-white px-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-6 dark:border-slate-700 dark:bg-slate-800">
+    {/* Background is desktop-only: on mobile the card is full-bleed and must blend into the
+        page in BOTH themes (a bg here reads as a stray block, most visibly in dark mode). */}
+    <div ref={cardRef} className="relative rounded-none border-b border-slate-200 px-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-6 dark:border-slate-700 dark:md:bg-slate-800">
       {/* Parent site tag */}
       {parentSite && (
         <div className="mb-4 flex justify-center">

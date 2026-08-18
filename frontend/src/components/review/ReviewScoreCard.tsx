@@ -89,7 +89,9 @@ export default function ReviewScoreCard({ overall, entries, bestOffer, discountP
 
   return (
     <>
-    <div ref={cardRef} className="rounded-none border-0 bg-white p-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:p-5 dark:bg-slate-800 dark:md:border-slate-700">
+    {/* Background is desktop-only, same reasoning as DealBuy: mobile is full-bleed and must
+        blend into the page in both themes. */}
+    <div ref={cardRef} className="rounded-none border-0 p-0 pb-6 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-5 dark:md:border-slate-700 dark:md:bg-slate-800">
       {/* Overall score: star + large number */}
       <div className="mb-5 flex flex-col items-start gap-1">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
