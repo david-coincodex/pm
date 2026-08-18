@@ -238,10 +238,11 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
             </svg>
           </button>
 
-          {/* Prev */}
+          {/* Prev — desktop only; mobile navigation lives in the bottom bar so the side
+              arrows never eat into the (now full-width) image. */}
           {images.length > 1 && (
             <button
-              className="absolute left-4 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+              className="absolute left-4 hidden rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 md:block"
               onClick={(e) => { e.stopPropagation(); prev(); }}
               aria-label={t('prev')}
             >
@@ -251,9 +252,9 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
             </button>
           )}
 
-          {/* Media + counter */}
+          {/* Media + controls */}
           <div
-            className="flex flex-col items-center gap-2"
+            className="flex w-full flex-col items-center gap-3 md:w-auto md:gap-2"
             onClick={(e) => e.stopPropagation()}
           >
             {isVideo(current) ? (
@@ -265,28 +266,59 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
                 autoPlay
                 muted
                 playsInline
-                className="max-h-[80vh] max-w-[90vw] rounded-xl"
+                className="max-h-[80vh] w-full md:w-auto md:max-w-[90vw] md:rounded-xl"
               />
             ) : (
-              <div className="relative max-h-[90vh] max-w-[90vw] min-w-[50vw] min-h-[50vh]">
+              // Mobile: the full viewport width — the image is the point of the lightbox.
+              // Desktop keeps the contained, rounded presentation.
+              <div className="relative h-[70vh] w-full md:h-auto md:w-auto md:max-h-[90vh] md:max-w-[90vw] md:min-w-[50vw] md:min-h-[50vh]">
                 <Image
                   src={strapiMediaUrl(current)}
                   alt={current.alternativeText ?? ''}
                   fill
-                  className="object-contain rounded-xl"
-                  sizes="90vw"
+                  className="object-contain md:rounded-xl"
+                  sizes="(max-width: 768px) 100vw, 90vw"
                 />
               </div>
             )}
-            <p className="text-center text-sm text-white/60">
+
+            {/* Mobile: prev / counter / next in one bottom bar */}
+            <div className="flex items-center gap-8 md:hidden">
+              {images.length > 1 && (
+                <button
+                  className="rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                  onClick={(e) => { e.stopPropagation(); prev(); }}
+                  aria-label={t('prev')}
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              <p className="text-center text-sm text-white/60">
+                {t('imageOf', { current: lightboxIndex + 1, total: images.length })}
+              </p>
+              {images.length > 1 && (
+                <button
+                  className="rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                  onClick={(e) => { e.stopPropagation(); next(); }}
+                  aria-label={t('next')}
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <p className="hidden text-center text-sm text-white/60 md:block">
               {t('imageOf', { current: lightboxIndex + 1, total: images.length })}
             </p>
           </div>
 
-          {/* Next */}
+          {/* Next — desktop only (see prev) */}
           {images.length > 1 && (
             <button
-              className="absolute right-4 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+              className="absolute right-4 hidden rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 md:block"
               onClick={(e) => { e.stopPropagation(); next(); }}
               aria-label={t('next')}
             >
