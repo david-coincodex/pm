@@ -61,6 +61,10 @@ if (!DRY_RUN && !AUTHOR_SLUG) { console.error('Error: --author <slug> is require
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` };
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 const SYSTEM_PROMPT = readFileSync(join(__dirname, 'ad-article-prompt.md'), 'utf8');
+// Multi-site roundup jobs (`sites: [...]` instead of `site`) use their own prompt: the
+// single-site prompt explicitly forbids mentioning other networks, which is the opposite
+// of what a cross-network roundup needs.
+const GENERAL_PROMPT = readFileSync(join(__dirname, 'general-ads-prompt.md'), 'utf8');
 
 const escapeHtml = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -166,11 +170,13 @@ async function findArticleBySlug(slug) {
 
 // ── Generation ──────────────────────────────────────────────────────────────────
 
-async function generate(job, site, commercials, review) {
+async function generate(job, sites, commercials, reviews) {
+  const multi = sites.length > 1;
   const adContext = commercials
     .map((c, i) => {
       const parts = [
         `AD_${i + 1}:`,
+        multi ? `  network: ${c.siteName}` : null,
         `  title: ${c.title}`,
         c.sceneTitle ? `  scene: ${c.sceneTitle}` : null,
         c.performers ? `  performers: ${c.performers}` : null,
@@ -181,9 +187,7 @@ async function generate(job, site, commercials, review) {
     })
     .join('\n\n');
 
-  const user = [
-    '## The paysite this article is about',
-    '',
+  const siteBlock = (site, review) => [
     `- name: ${site.name}`,
     `- slug: ${site.slug}`,
     `- type: ${site.siteType ?? 'paysite'}`,
@@ -194,9 +198,18 @@ async function generate(job, site, commercials, review) {
       ? `- our review: ${review.overallScore ?? '—'}/10 — ${review.description ?? ''}`
       : '- our review: none on file',
     `- our offer: ${describeOffer(site)}`,
+  ].filter((l) => l !== null).join('\n');
+
+  const user = [
+    multi ? '## The paysites featured in this roundup' : '## The paysite this article is about',
     '',
-    'Every ad below is one of THIS site\'s own commercials. The article is about this site',
-    'only — no comparisons with other paysites, no alternatives.',
+    sites.map((s, i) => (multi ? `### ${s.name}\n` : '') + siteBlock(s, reviews[i])).join('\n\n'),
+    '',
+    multi
+      ? 'Every ad below belongs to one of the networks above (marked per ad). The roundup covers'
+        + ' these networks only — never invent or recommend others.'
+      : 'Every ad below is one of THIS site\'s own commercials. The article is about this site'
+        + ' only — no comparisons with other paysites, no alternatives.',
     '',
     '## Article',
     '',
@@ -215,7 +228,7 @@ async function generate(job, site, commercials, review) {
   const response = await openai.chat.completions.create({
     model: 'gpt-5.5',
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: multi ? GENERAL_PROMPT : SYSTEM_PROMPT },
       { role: 'user', content: user },
     ],
     max_completion_tokens: 8000,
@@ -263,11 +276,17 @@ function placeAdWidgets(html, commercials) {
   return out.replace(/\{\{AD_\d+\}\}/g, '');
 }
 
-/** Offer at the very top + the derived index below the intro. */
-function addFixedWidgets(html, siteNumericId) {
-  const offer =
-    `<div data-component="site-card" data-site-id="${siteNumericId}" class="pm-widget" contenteditable="false">` +
-    `<span class="pm-widget__label">Site Card</span></div>`;
+/**
+ * Offer at the very top + the derived index below the intro. One site -> a single site-card;
+ * a multi-site roundup -> a site-card-list of every featured network. documentIds, not
+ * numeric ids: republishing reassigns numeric ids and would orphan the widget.
+ */
+function addFixedWidgets(html, sites) {
+  const offer = sites.length === 1
+    ? `<div data-component="site-card" data-site-id="${sites[0].documentId}" class="pm-widget" contenteditable="false">` +
+      `<span class="pm-widget__label">Site Card</span></div>`
+    : `<div data-component="site-card-list" data-site-ids="${sites.map((s) => s.documentId).join(',')}" data-show="${sites.length}" class="pm-widget" contenteditable="false">` +
+      `<span class="pm-widget__label">Site Cards: ${escapeHtml(sites.map((s) => s.name).join(', '))}</span></div>`;
   const index =
     `<div data-component="commercial-index" class="pm-widget" contenteditable="false">` +
     `<span class="pm-widget__label">Ad Index (auto — lists every ad below, in order)</span></div>`;
@@ -291,10 +310,26 @@ function addFixedWidgets(html, siteNumericId) {
 // ── Main ────────────────────────────────────────────────────────────────────────
 
 async function run(job) {
-  const site = await getSite(job.site);
-  const commercials = await getCommercials(job.site, job.maxAds ?? 20);
-  if (!commercials.length) throw new Error(`no commercials for site ${job.site} — run import-commercials first`);
-  console.log(`  site: ${site.name} | ads: ${commercials.length}`);
+  const siteSlugs = job.sites ?? [job.site];
+  const sites = await Promise.all(siteSlugs.map(getSite));
+  const perSite = await Promise.all(sites.map((s) => getCommercials(s.slug, job.maxAds ?? 20)));
+  perSite.forEach((list, i) => list.forEach((c) => { c.siteName = sites[i].name; }));
+
+  let commercials;
+  if (sites.length === 1) {
+    commercials = perSite[0];
+  } else {
+    // Interleave by per-site rank (each site's list is already popularity-sorted): raw
+    // popularity values are per-site ranks and would bias whichever network has more clips.
+    commercials = [];
+    const longest = Math.max(...perSite.map((l) => l.length));
+    for (let rank = 0; rank < longest; rank += 1) {
+      for (const list of perSite) if (list[rank]) commercials.push(list[rank]);
+    }
+    commercials = commercials.slice(0, job.maxAds ?? 20);
+  }
+  if (!commercials.length) throw new Error(`no commercials for ${siteSlugs.join(', ')} — run import-commercials first`);
+  console.log(`  site(s): ${sites.map((s) => s.name).join(', ')} | ads: ${commercials.length}`);
 
   if (!job.postId) {
     console.warn('  ⚠ job has no postId — the article will fall back to its Strapi id in the URL');
@@ -306,14 +341,14 @@ async function run(job) {
     return 0;
   }
 
-  const review = await getReview(job.site);
-  const { data: gen, usage } = await generate(job, site, commercials, review);
+  const reviews = await Promise.all(sites.map((s) => getReview(s.slug)));
+  const { data: gen, usage } = await generate(job, sites, commercials, reviews);
   console.log(`  generated (${usage?.total_tokens ?? '?'} tokens)`);
 
   assertMarkers(gen.contentHtml ?? '', commercials.length);
 
   let html = placeAdWidgets(gen.contentHtml, commercials);
-  html = addFixedWidgets(html, site.id);
+  html = addFixedWidgets(html, sites);
 
   const faqs = (gen.faqs ?? [])
     .filter((f) => f?.question && f?.answer)
