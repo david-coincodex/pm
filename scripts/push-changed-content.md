@@ -9,10 +9,28 @@ diff).
 
 ```bash
 cd scripts && export $(cat .env | xargs)
-node push-changed-content.mjs                  # DRY RUN — full diff, nothing written
+node push-changed-content.mjs                  # DRY RUN — full diff + approval report, nothing written
 node push-changed-content.mjs --apply          # push new/changed entries + new files
 node push-changed-content.mjs --apply --prune  # also delete staging-only entries
 ```
+
+## The approval report
+
+Every run with something to push writes a markdown report to
+`scripts/data/push-reports/push-report-<ts>.md` (gitignored) **before** anything is written:
+
+- **NEW** entries with their natural key, human title, and publish state;
+- **CHANGED** entries with a field-level diff — which fields differ, with truncated
+  before → after previews (relations/media compared by name, components by item count);
+  a timestamps-only change is called out as a no-op re-write;
+- new media files (with alt text), staging-only files, and — with `--prune` — exactly what
+  would be deleted.
+
+The workflow is: dry run → review/approve the report → `--apply` (the PUSH confirmation
+references the report path). Publish state in the report and in the write logic comes from
+the published-version set, NOT from `publishedAt` on the draft fetch — that field is always
+null on a `status=draft` read of a draft&publish type (measured; trusting it would have made
+every write silently skip `?status=published`).
 
 Flags: `--only <plurals>`, `--yes` (skip the PUSH confirmation), `--port <n>`, `--keep-proxy`.
 

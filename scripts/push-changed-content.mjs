@@ -62,7 +62,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -169,14 +169,31 @@ const PUSH_ORDER = [
   'reviews', 'pages', 'sales', 'featureds', 'articles',
 ];
 
-/** Natural key per collection — the cross-instance identity (documentIds differ, see header). */
+/**
+ * Natural key per collection — the cross-instance identity (documentIds differ, see header).
+ * Queries also fetch a human label so the diff report can say what an entry IS, not just
+ * its key.
+ */
 const KEY_QUERY = {
-  offers: 'fields[0]=offerKind&fields[1]=offerType&fields[2]=credits&fields[3]=updatedAt&fields[4]=publishedAt&populate[site][fields][0]=slug',
-  reviews: 'fields[0]=updatedAt&fields[1]=publishedAt&populate[site][fields][0]=slug',
+  offers: 'fields[0]=offerKind&fields[1]=offerType&fields[2]=credits&fields[3]=updatedAt&fields[4]=publishedAt&fields[5]=price&fields[6]=full_price&populate[site][fields][0]=slug',
+  reviews: 'fields[0]=updatedAt&fields[1]=publishedAt&fields[2]=displayTitle&populate[site][fields][0]=slug',
   featureds: 'fields[0]=name&fields[1]=updatedAt&fields[2]=publishedAt&populate[site][fields][0]=slug',
   platforms: 'fields[0]=name&fields[1]=updatedAt&fields[2]=publishedAt',
 };
-const keyQueryFor = (plural) => KEY_QUERY[plural] ?? 'fields[0]=slug&fields[1]=updatedAt&fields[2]=publishedAt';
+const LABEL_FIELD = {
+  articles: 'title', pages: 'title', sales: 'title',
+  sites: 'name', bundles: 'name', categories: 'name', tags: 'name', authors: 'name',
+  platforms: 'name', featureds: 'name', commercials: 'title', reviews: 'displayTitle',
+};
+const keyQueryFor = (plural) => {
+  const base = KEY_QUERY[plural] ?? 'fields[0]=slug&fields[1]=updatedAt&fields[2]=publishedAt';
+  const extra = LABEL_FIELD[plural] && !base.includes(LABEL_FIELD[plural]) ? `&fields[9]=${LABEL_FIELD[plural]}` : '';
+  return base + extra;
+};
+const entryLabel = (plural, e) => {
+  if (plural === 'offers') return `$${e.price}${e.full_price ? ` (was $${e.full_price})` : ''}`;
+  return e[LABEL_FIELD[plural]] ?? e.slug ?? '';
+};
 const naturalKey = (plural, e) => {
   const key =
     plural === 'offers' ? `${e.site?.slug ?? '?'}|${e.offerKind}|${e.offerType}|${e.credits ?? ''}`
@@ -205,9 +222,18 @@ function assertUniqueKeys(plural, side, entities) {
   }
 }
 
-async function diffCollection(local, staging, plural) {
+async function diffCollection(local, staging, plural, draftAndPublish) {
   const q = `${keyQueryFor(plural)}&status=draft`;
-  const [ls, ss] = await Promise.all([local.fetchAll(plural, q), staging.fetchAll(plural, q)]);
+  // publishedAt on a status=draft row of a draft&publish type is ALWAYS null (measured on
+  // pages) — the publish state must come from the published-version set, or every entity
+  // reads as a draft and the ?status=published write logic silently never fires.
+  const [ls, ss, publishedRows] = await Promise.all([
+    local.fetchAll(plural, q),
+    staging.fetchAll(plural, q),
+    draftAndPublish ? local.fetchAll(plural, 'fields[0]=updatedAt') : Promise.resolve(null),
+  ]);
+  const publishedSet = publishedRows ? new Set(publishedRows.map((e) => e.documentId)) : null;
+  const isPublished = (le) => (publishedSet ? publishedSet.has(le.documentId) : true);
   assertUniqueKeys(plural, 'local', ls);
   assertUniqueKeys(plural, 'staging', ss);
   const sByKey = new Map(ss.map((e) => [naturalKey(plural, e), e]));
@@ -217,14 +243,99 @@ async function diffCollection(local, staging, plural) {
   for (const le of ls) {
     const key = naturalKey(plural, le);
     const se = sByKey.get(key);
-    if (!se) { created.push({ key, local: le }); continue; }
+    if (!se) { created.push({ key, local: le, published: isPublished(le) }); continue; }
     docIdMap.set(le.documentId, se.documentId);
     // Strictly newer: a push stamps staging's own updatedAt (> local's), so pushed entries
     // settle as unchanged and the diff is idempotent. != would re-push forever.
-    if (new Date(le.updatedAt) > new Date(se.updatedAt)) changed.push({ key, local: le, staging: se });
+    if (new Date(le.updatedAt) > new Date(se.updatedAt)) {
+      changed.push({ key, local: le, staging: se, published: isPublished(le) });
+    }
   }
   const stagingOnly = ss.filter((e) => !lKeys.has(naturalKey(plural, e))).map((e) => ({ key: naturalKey(plural, e), staging: e }));
   return { plural, created, changed, stagingOnly, docIdMap };
+}
+
+// ── Approval report ───────────────────────────────────────────────────────────
+const summarizeValue = (v) => {
+  if (v === null || v === undefined) return '*(empty)*';
+  if (typeof v === 'string') {
+    const s = v.replace(/\s+/g, ' ').trim();
+    return s.length > 120 ? `${s.slice(0, 120)}… *(${v.length} chars)*` : s || '*(empty)*';
+  }
+  if (typeof v === 'object') {
+    const s = JSON.stringify(v);
+    return s.length > 120 ? `${s.slice(0, 120)}…` : s;
+  }
+  return String(v);
+};
+
+/**
+ * Field-level diff of one changed entity: which writable fields differ between the local and
+ * staging versions, with short before → after previews. Relations and media compare by human
+ * labels (documentIds/file ids legitimately differ across the two instances).
+ */
+function diffEntityFields(model, localFull, stagingFull) {
+  const changes = [];
+  for (const key of model.scalars) {
+    const a = stagingFull[key] ?? null, b = localFull[key] ?? null;
+    if (JSON.stringify(a) !== JSON.stringify(b)) {
+      changes.push({ field: key, before: summarizeValue(a), after: summarizeValue(b) });
+    }
+  }
+  const labels = (v) => (v == null ? '*(none)*'
+    : (Array.isArray(v) ? v : [v]).map((x) => x?.name ?? x?.title ?? x?.slug ?? x?.documentId ?? '?').join(', ') || '*(none)*');
+  for (const key of [...model.media, ...model.writeRelations]) {
+    const a = labels(stagingFull[key]), b = labels(localFull[key]);
+    if (a !== b) changes.push({ field: key, before: a, after: b });
+  }
+  for (const key of model.components) {
+    const strip = (v) => JSON.stringify(v ?? null, (k, val) => (k === 'id' || k === 'documentId' || k === '__temp_key__' ? undefined : val));
+    if (strip(stagingFull[key]) !== strip(localFull[key])) {
+      const count = (v) => (Array.isArray(v) ? `${v.length} item(s)` : v ? '1 item' : '*(none)*');
+      changes.push({ field: key, before: count(stagingFull[key]), after: count(localFull[key]) });
+    }
+  }
+  return changes;
+}
+
+/** Markdown approval report: everything an --apply would do, reviewable before consenting. */
+function renderReport({ pushed, diffs, fieldDiffs, newFiles, stagingOnlyFiles, prune }) {
+  const lines = [
+    `# Content push report — local → staging`,
+    ``,
+    `Generated ${new Date().toISOString()}. Nothing has been written; this is what \`--apply\` would do.`,
+    ``,
+  ];
+  for (const plural of pushed) {
+    const d = diffs.get(plural);
+    if (!d.created.length && !d.changed.length && !d.stagingOnly.length) continue;
+    lines.push(`## ${plural}`, ``);
+    for (const { key, local: le, published } of d.created) {
+      lines.push(`- **NEW** \`${key}\` — “${entryLabel(plural, le)}” (${published ? 'published' : 'DRAFT'})`);
+    }
+    for (const { key, local: le, published } of d.changed) {
+      lines.push(`- **CHANGED** \`${key}\` — “${entryLabel(plural, le)}” (${published ? 'published' : 'DRAFT'})`);
+      const fields = fieldDiffs.get(`${plural}:${key}`) ?? [];
+      if (!fields.length) lines.push(`  - *(no field-level differences — timestamps only; the push is a no-op re-write)*`);
+      for (const c of fields) lines.push(`  - \`${c.field}\`: ${c.before} → ${c.after}`);
+    }
+    for (const { key, staging: se } of d.stagingOnly) {
+      lines.push(`- **${prune ? 'WILL DELETE' : 'only on staging'}** \`${key}\` — “${entryLabel(plural, se)}”`);
+    }
+    lines.push(``);
+  }
+  if (newFiles.length) {
+    lines.push(`## New media files (${newFiles.length})`, ``);
+    for (const f of newFiles) lines.push(`- ${f.name} (${f.size} KB${f.alternativeText ? `, alt: “${f.alternativeText}”` : ''})`);
+    lines.push(``);
+  }
+  if (stagingOnlyFiles.length) {
+    lines.push(`## Staging-only files (never deleted by this script)`, ``,
+      ...stagingOnlyFiles.slice(0, 30).map((f) => `- ${f.name}`),
+      ...(stagingOnlyFiles.length > 30 ? [`- … +${stagingOnlyFiles.length - 30} more`] : []), ``);
+  }
+  lines.push(`---`, `Approve by running: \`node scripts/push-changed-content.mjs --apply\``, ``);
+  return lines.join('\n');
 }
 
 /**
@@ -557,7 +668,7 @@ async function main() {
 
     // Phase 1 — diff (collections in parallel; PUSH_ORDER only matters for writes)
     console.log('\n── Diff (by natural key; changed = local updatedAt strictly newer) ──');
-    const diffResults = await Promise.all(collections.map((p) => diffCollection(local, staging, p)));
+    const diffResults = await Promise.all(collections.map((p) => diffCollection(local, staging, p, schemas.get(p).draftAndPublish)));
     const diffs = new Map(diffResults.map((d) => [d.plural, d]));
     const docIdMap = new Map();
     for (const d of diffResults) for (const [k, v] of d.docIdMap) docIdMap.set(k, v);
@@ -591,16 +702,44 @@ async function main() {
     const totalChg = pushed.reduce((n, c) => n + diffs.get(c).changed.length, 0);
     const totalDel = PRUNE ? pushed.reduce((n, c) => n + diffs.get(c).stagingOnly.length, 0) : 0;
 
+    if (totalNew + totalChg + newFiles.length + totalDel === 0) {
+      console.log(`\nNothing to push — staging is up to date.${APPLY ? '' : ' No report written.'}`);
+      return;
+    }
+
+    // ── Approval report: field-level diffs for every changed entry, written to disk so the
+    // push can be reviewed and approved before any --apply. The full local entities fetched
+    // here double as the payload sources in phase 3 (no refetch).
+    const fieldDiffs = new Map();
+    const fullCache = new Map(); // local documentId -> full local entity
+    for (const plural of pushed) {
+      const model = schemas.get(plural);
+      const { changed } = diffs.get(plural);
+      const pairs = await pool(changed, 5, async ({ key, local: le, staging: se }) => {
+        const [lf, sf] = await Promise.all([
+          local.api(`/${plural}/${le.documentId}?populate=*&status=draft`).then((r) => r.data),
+          staging.api(`/${plural}/${se.documentId}?populate=*&status=draft`).then((r) => r.data),
+        ]);
+        return { key, lf, sf, localDocId: le.documentId };
+      });
+      for (const { key, lf, sf, localDocId } of pairs) {
+        fullCache.set(localDocId, lf);
+        fieldDiffs.set(`${plural}:${key}`, diffEntityFields(model, lf, sf));
+      }
+    }
+    const report = renderReport({ pushed, diffs, fieldDiffs, newFiles, stagingOnlyFiles, prune: PRUNE });
+    const reportDir = join(__dirname, 'data', 'push-reports');
+    mkdirSync(reportDir, { recursive: true });
+    const reportPath = join(reportDir, `push-report-${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)}.md`);
+    writeFileSync(reportPath, report);
+    console.log(`\n  Report written: ${reportPath.replace(REPO + '/', '')}`);
+
     if (!APPLY) {
       console.log(`\nDry run: ${totalNew} to create, ${totalChg} to update, ${newFiles.length} files to upload` +
-        `${totalDel ? `, ${totalDel} to delete` : ''}. Re-run with --apply to push.`);
+        `${totalDel ? `, ${totalDel} to delete` : ''}. Review the report, then re-run with --apply.`);
       return;
     }
-    if (totalNew + totalChg + newFiles.length + totalDel === 0) {
-      console.log('\nNothing to push — staging is up to date.');
-      return;
-    }
-    if (!(await confirm(`  create ${totalNew}, update ${totalChg}, upload ${newFiles.length} file(s)${totalDel ? `, DELETE ${totalDel}` : ''}`))) {
+    if (!(await confirm(`  create ${totalNew}, update ${totalChg}, upload ${newFiles.length} file(s)${totalDel ? `, DELETE ${totalDel}` : ''}\n  Full report: ${reportPath}`))) {
       console.log('Aborted.'); process.exitCode = 1; return;
     }
 
@@ -630,34 +769,38 @@ async function main() {
     // generate-toplists.mjs), so relying on either is wrong. status=published writes both
     // versions (the established pattern in seed-info-pages.mjs). Locally-unpublished entities
     // are written WITHOUT it and stay draft on staging.
-    const statusFor = (model, full) => (model.draftAndPublish && full.publishedAt ? '?status=published' : '');
+    // `published` comes from the diff's published-version set — NOT from full.publishedAt,
+    // which is always null on a status=draft fetch of a draft&publish type (measured).
+    const statusFor = (model, published) => (model.draftAndPublish && published ? '?status=published' : '');
     for (const plural of pushed) {
       const model = schemas.get(plural);
       const d = diffs.get(plural);
       const work = [...d.created, ...d.changed];
+      // Changed entities were already fetched for the report; only creations need a read.
       const fulls = await pool(work, 5, async ({ local: le }) =>
+        fullCache.get(le.documentId) ??
         (await local.api(`/${plural}/${le.documentId}?populate=*&status=draft`)).data);
-      for (const [i, { key, local: le, staging: se }] of work.entries()) {
+      for (const [i, { key, local: le, staging: se, published }] of work.entries()) {
         const full = fulls[i];
-        if (model.draftAndPublish && !full.publishedAt) {
+        if (model.draftAndPublish && !published) {
           console.log(warn(`${plural}/${key}: unpublished locally — pushed as a DRAFT on staging`));
         }
         const { data, deferred } = buildPayload(model, full, maps, rewrite);
         if (deferred.length) {
           fixups.push({
-            plural, key, localDocId: le.documentId, publish: Boolean(model.draftAndPublish && full.publishedAt),
+            plural, key, localDocId: le.documentId, publish: Boolean(model.draftAndPublish && published),
             fields: Object.fromEntries(deferred.map(({ key: f, value }) => [f, value])),
           });
         }
         if (se) {
-          await write(staging, 'PUT', `/${plural}/${docIdMap.get(le.documentId)}${statusFor(model, full)}`, { data });
+          await write(staging, 'PUT', `/${plural}/${docIdMap.get(le.documentId)}${statusFor(model, published)}`, { data });
           console.log(`  ✎ ${plural}/${key} updated`);
         } else {
-          const created = (await write(staging, 'POST', `/${plural}${statusFor(model, full)}`, { data })).data;
+          const created = (await write(staging, 'POST', `/${plural}${statusFor(model, published)}`, { data })).data;
           docIdMap.set(le.documentId, created.documentId);
           console.log(`  + ${plural}/${key} created (${created.documentId})`);
         }
-        if (model.draftAndPublish && full.publishedAt) await verifyPublished(staging, plural, docIdMap.get(le.documentId), key);
+        if (model.draftAndPublish && published) await verifyPublished(staging, plural, docIdMap.get(le.documentId), key);
       }
     }
 
@@ -690,7 +833,7 @@ async function main() {
       const d = diffs.get(c);
       return d.created.length + d.changed.length + (PRUNE ? d.stagingOnly.length : 0) > 0;
     });
-    const reDiffs = await Promise.all(touched.map((p) => diffCollection(local, staging, p)));
+    const reDiffs = await Promise.all(touched.map((p) => diffCollection(local, staging, p, schemas.get(p).draftAndPublish)));
     let leftovers = 0;
     for (const d of reDiffs) {
       const n = d.created.length + d.changed.length + (PRUNE ? d.stagingOnly.length : 0);
