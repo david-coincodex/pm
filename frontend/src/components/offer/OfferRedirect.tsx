@@ -14,38 +14,38 @@ interface OfferRedirectProps {
 export default function OfferRedirect({ offer }: OfferRedirectProps) {
   const t = useTranslations('offer');
   const [count, setCount] = useState(COUNTDOWN);
-  const [gone, setGone] = useState(false);
 
   const site = offer.site;
   const saving = (offer.full_price ?? 0) - offer.price;
   const hasSaving = saving > 0;
   const image = site.cover_image ?? site.logo;
 
+  // The display never reaches 0: at 1 the next tick performs the redirect instead of
+  // decrementing, so the visitor sees 3 → 2 → 1 → gone.
   useEffect(() => {
-    if (count <= 0) {
-      setGone(true);
-      window.location.href = offer.affiliateLink;
-      return;
-    }
-    const timer = setTimeout(() => setCount((n) => n - 1), 1000);
+    const timer = setTimeout(() => {
+      if (count <= 1) window.location.href = offer.affiliateLink;
+      else setCount((n) => n - 1);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [count, offer.affiliateLink]);
 
-  // Fraction of the circle filled (goes from 1 → 0)
+  // Fraction of the circle filled — scaled so the ring empties exactly at count 1 (the last
+  // displayed number), not at the never-shown 0.
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
-  const progress = count / COUNTDOWN;
+  const progress = (count - 1) / (COUNTDOWN - 1);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-8 px-4 py-16 text-center">
       {/* Site image */}
       {image && (
-        <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-100 shadow-md dark:bg-slate-800">
+        <div className="h-28 w-28 overflow-hidden rounded-2xl bg-slate-100 shadow-md dark:bg-slate-800">
           <Image
             src={strapiMediaUrl(image)}
             alt={image.alternativeText ?? site.name}
-            width={80}
-            height={80}
+            width={112}
+            height={112}
             className="h-full w-full object-cover"
           />
         </div>
@@ -105,17 +105,15 @@ export default function OfferRedirect({ offer }: OfferRedirectProps) {
         </span>
       </div>
 
-      {/* Manual link in case redirect is blocked */}
-      {!gone && (
-        <a
-          href={offer.affiliateLink}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="rounded-xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-        >
-          {t('goNow')}
-        </a>
-      )}
+      {/* Manual link in case the redirect is blocked — always visible, never removed. */}
+      <a
+        href={offer.affiliateLink}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="rounded-xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+      >
+        {t('goNow')}
+      </a>
 
       {/* Affiliate disclaimer */}
       <p className="max-w-sm text-xs text-slate-400 dark:text-slate-500">
