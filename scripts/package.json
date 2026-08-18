@@ -19,6 +19,7 @@
     "translate-messages": "node translate-messages.mjs",
     "translation-context": "node translation-context.mjs",
     "sync-staging": "node sync-content-to-staging.mjs",
+    "push-changed": "node push-changed-content.mjs",
     "cf-proxy": "node lib/cf-access-proxy.mjs"
   },
   "engines": {
