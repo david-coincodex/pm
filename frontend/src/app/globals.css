@@ -36,8 +36,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* slate-900 / slate-100, NOT the scaffold's neutral #0a0a0a: every dark surface (cards
+       slate-800, borders slate-700) is blue-tinted slate, and on neutral near-black the
+       sidebar offer card floated as a navy box. This body rule is unlayered CSS, so it beats
+       the layered Tailwind utilities on <body> — these values are what actually paints. */
+    --background: #0f172a;
+    --foreground: #f1f5f9;
   }
 }
 
