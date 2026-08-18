@@ -57,7 +57,10 @@
     "closeMenu": "Close menu",
     "search": "Search",
     "allCategories": "All Categories",
-    "close": "Close"
+    "close": "Close",
+    "toggleTheme": "Toggle dark mode",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode"
   },
   "search": {
     "placeholder": "Search sites…",

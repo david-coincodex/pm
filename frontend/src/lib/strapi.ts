@@ -738,14 +738,19 @@ export async function getSitesByCategorySlug(
 
 /** Search sites by name or short_description (includes subsites). Runs server-side (no cache). */
 export async function searchSites(query: string): Promise<Site[]> {
-  const q = encodeURIComponent(query.trim());
-  if (!q) return [];
+  // Tokenize on non-alphanumerics and AND-match each token, so punctuation in the query or the
+  // site name never has to line up: "mr skin", "mr. skin", and "mr-skin" all find "Mr. Skin".
+  const tokens = query.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (tokens.length === 0) return [];
   // Match the site NAME only. short_description was also matched here, but every Brazzers
   // subsite (Real Wife Stories, Big Tits At Work, …) mentions "Brazzers" in its description,
   // so a network search surfaced two dozen unrelated-by-name channels. Name-only keeps a search
   // for a brand to the sites actually called that.
+  const nameFilters = tokens
+    .map((t, i) => `filters[$and][${i}][name][$containsi]=${encodeURIComponent(t)}`)
+    .join('&');
   const res = await strapiGet<Site[]>(
-    `/sites?${SITE_CARD_FIELDS}&populate[logo]=true&populate[cover_image]=true&populate[offers]=true&populate[parent_site][fields]=slug,name&populate[parent_site][populate][offers]=true&filters[isActive][$eq]=true&filters[name][$containsi]=${q}&sort=name:asc&pagination[pageSize]=10`,
+    `/sites?${SITE_CARD_FIELDS}&populate[logo]=true&populate[cover_image]=true&populate[offers]=true&populate[parent_site][fields]=slug,name&populate[parent_site][populate][offers]=true&filters[isActive][$eq]=true&${nameFilters}&sort=name:asc&pagination[pageSize]=10`,
     { next: { revalidate: 0 } }
   );
   return res.data;

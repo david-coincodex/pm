@@ -12,12 +12,14 @@
     "generate-cancel-guides": "node generate-cancel-guides.mjs",
     "import-commercials": "node import-commercials.mjs",
     "generate-ad-articles": "node generate-ad-articles.mjs",
+    "generate-celebrity-articles": "node generate-celebrity-articles.mjs",
     "backfill-post-ids": "node backfill-post-ids.mjs",
     "build-wp-post-ids": "node build-wp-post-ids.mjs",
     "build-avn-awards": "node build-avn-awards.mjs",
     "translate-messages": "node translate-messages.mjs",
     "translation-context": "node translation-context.mjs",
     "sync-staging": "node sync-content-to-staging.mjs",
+    "push-changed": "node push-changed-content.mjs",
     "cf-proxy": "node lib/cf-access-proxy.mjs"
   },
   "engines": {

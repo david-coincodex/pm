@@ -7,6 +7,7 @@ import { Link, usePathname } from '@/i18n/navigation';
 import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import MobileSearchOverlay from './MobileSearchOverlay';
+import ThemeToggle from './ThemeToggle';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
 
@@ -81,6 +82,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
 
         <div className="ml-auto flex items-center gap-3">
           <SearchBar className="w-80" />
+          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </div>
@@ -186,9 +188,10 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           )}
         </nav>
 
-        {/* Drawer footer: language switcher */}
-        <div className="mt-auto shrink-0 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+        {/* Drawer footer: theme toggle + language switcher */}
+        <div className="mt-auto flex shrink-0 items-center justify-between border-t border-slate-200 px-5 py-4 dark:border-slate-800">
           <LanguageSwitcher showLabel />
+          <ThemeToggle showLabel />
         </div>
       </div>
         </>,

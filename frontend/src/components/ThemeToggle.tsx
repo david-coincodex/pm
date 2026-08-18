@@ -1,0 +1,59 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { toggleTheme } from '@/lib/theme';
+
+/**
+ * Light/dark toggle button. All theme logic lives in lib/theme.ts (the pre-paint script in
+ * the root layout owns resolution, OS-following, and cross-tab sync) — this component is
+ * just the button. The icons are CSS-swapped via the dark: variant, so the server markup is
+ * theme-agnostic and nothing mismatches on hydration; React state exists only to expose the
+ * current state to assistive tech (aria-pressed), observed from data-theme so it stays
+ * correct no matter what flipped the theme (this button, another instance, the OS, a
+ * different tab).
+ */
+export default function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
+  const t = useTranslations('nav');
+  const [dark, setDark] = useState<boolean | null>(null); // null until mounted (SSR-agnostic)
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => setDark(root.dataset.theme === 'dark');
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    // Same visual language as the LanguageSwitcher trigger it sits next to: a labeled pill
+    // when showLabel (mobile drawer), a true circle matching the 38px search-box height when
+    // icon-only (desktop bar).
+    <button
+      type="button"
+      aria-label={t('toggleTheme')}
+      aria-pressed={dark ?? undefined}
+      onClick={toggleTheme}
+      className={`flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
+        showLabel ? 'gap-1.5 px-3 py-1.5' : 'h-[38px] w-[38px]'
+      }`}
+    >
+      {/* Icon and label both name the mode a click switches TO, CSS-swapped by theme so the
+          server markup stays theme-agnostic. Solid fills — the outline crescent read badly
+          at this size. */}
+      <svg className="h-5 w-5 dark:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+      </svg>
+      <svg className="hidden h-5 w-5 dark:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+      </svg>
+      {showLabel && (
+        <>
+          <span className="dark:hidden">{t('darkMode')}</span>
+          <span className="hidden dark:inline">{t('lightMode')}</span>
+        </>
+      )}
+    </button>
+  );
+}

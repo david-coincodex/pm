@@ -67,8 +67,18 @@ const BLOG_CATEGORIES = [
  * corrected in the CMS (`scripts/fix-url-parity.mjs`) rather than papered over with a redirect.
  */
 
+/**
+ * WordPress blog tag archives folded into the article that now owns the topic. Only tags with
+ * a genuine successor get a rule — a redirect into a loosely-related page is worse than a 404.
+ */
 /** @type {LegacyRedirect[]} */
-export const LEGACY_REDIRECTS = [...STATIC_PAGES, ...BLOG_CATEGORIES];
+const BLOG_TAGS = [
+  // The cross-network ads roundup (postId pinned in scripts/ad-jobs.json).
+  { source: '/blog/tag/porn-ads', destination: '/blog/4270/best-porn-ads/' },
+];
+
+/** @type {LegacyRedirect[]} */
+export const LEGACY_REDIRECTS = [...STATIC_PAGES, ...BLOG_CATEGORIES, ...BLOG_TAGS];
 
 /**
  * Expand every rule across the configured locales.

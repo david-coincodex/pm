@@ -245,9 +245,11 @@ export default async function ReviewDetailPage({ params }: Props) {
             },
           }),
           itemReviewed: {
-            '@type': 'Service',
+            // Product, not Service: Service is not an eligible review-snippet parent type
+            // (GSC: "Invalid object type for field").
+            '@type': 'Product',
             name: site.name,
-            url: `${siteSettings.baseUrl}/${site.slug}/`,
+            url: `${siteSettings.baseUrl}${routes.site(site.slug)}`,
             ...(site.short_description && { description: site.short_description }),
             ...(siteImage && { image: strapiMediaUrl(siteImage) }),
             ...(activeOffers.length > 0 && { offers: buildOffersSchema(activeOffers) }),

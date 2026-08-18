@@ -38,6 +38,8 @@ yarn-error.log*
 scripts/data/media-trash/
 # generate-toplists.mjs --dry-run writes full article bodies here for review
 scripts/data/runs/
+# push-changed-content.mjs writes approval reports here before each push
+scripts/data/push-reports/
 
 # WordPress migration: one-off tooling + the harvested legacy corpus. Kept out of the branch to
 # avoid clutter. NOTE: wp-migration/data holds the only copy of the legacy dates, body text and
