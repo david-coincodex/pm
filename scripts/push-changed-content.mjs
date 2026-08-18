@@ -51,6 +51,9 @@
  *   node scripts/push-changed-content.mjs --apply --prune   # also delete staging-only entries
  *
  * Options:
+ *   --to <dest>    staging (default) or production. Production is gated by STAGING PARITY:
+ *                  it refuses unless local ≡ staging everywhere, so production only ever
+ *                  receives staging-approved content. Confirmation word: PUSH PRODUCTION.
  *   --only <a,b>   Restrict to these collections (plural api ids)
  *   --yes          Skip the confirmation prompt
  *   --port <n>     Pin the CF Access proxy port (default: ephemeral)
@@ -58,7 +61,9 @@
  *
  * Env: STRAPI_URL + STRAPI_TOKEN (local), STAGING_STRAPI_TOKEN (staging API token — REQUIRED,
  * the transfer token cannot serve REST), CF_ACCESS_CLIENT_ID/SECRET, STAGING_TRANSFER_URL
- * (host only; defaults to cms-staging.pornmode.com).
+ * (host only; defaults to cms-staging.pornmode.com). Production: PRODUCTION_STRAPI_TOKEN,
+ * optional PRODUCTION_CMS_URL (default https://cms.pornmode.com) and a dedicated
+ * PRODUCTION_CF_ACCESS_CLIENT_ID/SECRET pair (falls back to the shared one).
  */
 
 import { createRequire } from 'node:module';
@@ -91,14 +96,43 @@ const YES = has('--yes');
 const KEEP_PROXY = has('--keep-proxy');
 const PORT = Number(flag('--port', 0));
 const ONLY = flag('--only', '').split(',').filter(Boolean);
+const TO = flag('--to', 'staging');
 
 const STAGING_URL = process.env.STAGING_TRANSFER_URL ?? 'https://cms-staging.pornmode.com';
 const LOCAL_URL = process.env.STRAPI_URL ?? 'http://localhost:1339';
 const CF_ID = process.env.CF_ACCESS_CLIENT_ID;
 const CF_SECRET = process.env.CF_ACCESS_CLIENT_SECRET;
 
-/** Only this host may ever be a destination. A production push must be a code change, not a flag. */
-const ALLOWED_DESTINATIONS = ['cms-staging.pornmode.com'];
+/**
+ * The two possible destinations — hard-coded, never a free-form flag, and each pinned to one
+ * exact host. Production additionally requires STAGING PARITY: the preflight refuses unless
+ * local ≡ staging for every collection being pushed, so production can only ever receive
+ * content that staging already carries (push staging first, review there, then production).
+ * A dedicated CF Access pair can be set for production; it falls back to the shared one.
+ */
+const DESTINATIONS = {
+  staging: {
+    url: STAGING_URL,
+    host: 'cms-staging.pornmode.com',
+    token: process.env.STAGING_STRAPI_TOKEN,
+    tokenName: 'STAGING_STRAPI_TOKEN',
+    cfId: CF_ID,
+    cfSecret: CF_SECRET,
+    confirmWord: 'PUSH',
+    requiresStagingParity: false,
+  },
+  production: {
+    url: process.env.PRODUCTION_CMS_URL ?? 'https://cms.pornmode.com',
+    host: 'cms.pornmode.com',
+    token: process.env.PRODUCTION_STRAPI_TOKEN,
+    tokenName: 'PRODUCTION_STRAPI_TOKEN',
+    cfId: process.env.PRODUCTION_CF_ACCESS_CLIENT_ID ?? CF_ID,
+    cfSecret: process.env.PRODUCTION_CF_ACCESS_CLIENT_SECRET ?? CF_SECRET,
+    confirmWord: 'PUSH PRODUCTION',
+    requiresStagingParity: true,
+  },
+};
+const DEST = DESTINATIONS[TO];
 
 const ok = (s) => `  \x1b[32mOK\x1b[0m   ${s}`;
 const bad = (s) => `  \x1b[31mFAIL\x1b[0m ${s}`;
@@ -301,7 +335,7 @@ function diffEntityFields(model, localFull, stagingFull) {
 /** Markdown approval report: everything an --apply would do, reviewable before consenting. */
 function renderReport({ pushed, diffs, fieldDiffs, newFiles, stagingOnlyFiles, prune }) {
   const lines = [
-    `# Content push report — local → staging`,
+    `# Content push report — local → ${TO}`,
     ``,
     `Generated ${new Date().toISOString()}. Nothing has been written; this is what \`--apply\` would do.`,
     ``,
@@ -320,7 +354,7 @@ function renderReport({ pushed, diffs, fieldDiffs, newFiles, stagingOnlyFiles, p
       for (const c of fields) lines.push(`  - \`${c.field}\`: ${c.before} → ${c.after}`);
     }
     for (const { key, staging: se } of d.stagingOnly) {
-      lines.push(`- **${prune ? 'WILL DELETE' : 'only on staging'}** \`${key}\` — “${entryLabel(plural, se)}”`);
+      lines.push(`- **${prune ? 'WILL DELETE' : `only on ${TO}`}** \`${key}\` — “${entryLabel(plural, se)}”`);
     }
     lines.push(``);
   }
@@ -330,11 +364,11 @@ function renderReport({ pushed, diffs, fieldDiffs, newFiles, stagingOnlyFiles, p
     lines.push(``);
   }
   if (stagingOnlyFiles.length) {
-    lines.push(`## Staging-only files (never deleted by this script)`, ``,
+    lines.push(`## Destination-only files (never deleted by this script)`, ``,
       ...stagingOnlyFiles.slice(0, 30).map((f) => `- ${f.name}`),
       ...(stagingOnlyFiles.length > 30 ? [`- … +${stagingOnlyFiles.length - 30} more`] : []), ``);
   }
-  lines.push(`---`, `Approve by running: \`node scripts/push-changed-content.mjs --apply\``, ``);
+  lines.push(`---`, `Approve by running: \`node scripts/push-changed-content.mjs --apply${TO === 'staging' ? '' : ` --to ${TO}`}\``, ``);
   return lines.join('\n');
 }
 
@@ -533,16 +567,16 @@ async function write(staging, method, path, body) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.STAGING_STRAPI_TOKEN}`,
+      Authorization: `Bearer ${DEST.token}`,
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok) throw new Error(`staging ${method} ${path}: ${res.status} ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`${TO} ${method} ${path}: ${res.status} ${(await res.text()).slice(0, 300)}`);
   const text = await res.text();
   if (method === 'DELETE' && (res.status === 204 || text.length === 0)) return null;
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('json')) {
-    throw new Error(`staging ${method} ${path}: expected JSON, got ${ct || 'no content-type'} — ${text.slice(0, 120)}`);
+    throw new Error(`${TO} ${method} ${path}: expected JSON, got ${ct || 'no content-type'} — ${text.slice(0, 120)}`);
   }
   return JSON.parse(text);
 }
@@ -561,7 +595,7 @@ async function uploadNewFile(staging, lf) {
   }));
   const res = await fetch(`${staging.root}/api/upload`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.STAGING_STRAPI_TOKEN}` },
+    headers: { Authorization: `Bearer ${DEST.token}` },
     body: form,
   });
   if (!res.ok) throw new Error(`upload ${lf.name}: ${res.status} ${(await res.text()).slice(0, 200)}`);
@@ -606,26 +640,29 @@ async function confirm(summaryLines) {
     return false;
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await rl.question(`\nAbout to write to STAGING:\n${summaryLines}\nType PUSH to continue: `);
+  const answer = await rl.question(`\nAbout to write to ${TO.toUpperCase()}:\n${summaryLines}\nType ${DEST.confirmWord} to continue: `);
   rl.close();
-  return answer.trim() === 'PUSH';
+  return answer.trim() === DEST.confirmWord;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log(`── push-changed-content ${APPLY ? '(APPLY)' : '(dry run)'} ─────────────────`);
+  console.log(`── push-changed-content ${APPLY ? '(APPLY)' : '(dry run)'} → ${TO} ─────────────`);
 
   // Preflight
-  const host = new URL(STAGING_URL).host;
-  if (!ALLOWED_DESTINATIONS.includes(host)) {
-    console.log(bad(`destination ${host} is not allowlisted (${ALLOWED_DESTINATIONS.join(', ')})`)); process.exit(1);
+  if (!DEST) {
+    console.log(bad(`--to must be one of: ${Object.keys(DESTINATIONS).join(', ')} — got "${TO}"`)); process.exit(1);
+  }
+  const host = new URL(DEST.url).host;
+  if (host !== DEST.host) {
+    console.log(bad(`destination ${host} does not match the pinned host for ${TO} (${DEST.host})`)); process.exit(1);
   }
   if (!process.env.STRAPI_TOKEN) { console.log(bad('STRAPI_TOKEN missing (scripts/.env)')); process.exit(1); }
-  if (!process.env.STAGING_STRAPI_TOKEN) {
-    console.log(bad('STAGING_STRAPI_TOKEN missing — mint a FULL ACCESS API token in staging admin → Settings → API Tokens, put it in scripts/.env. (The transfer token cannot serve REST.)'));
+  if (!DEST.token) {
+    console.log(bad(`${DEST.tokenName} missing — mint a FULL ACCESS API token in the ${TO} admin → Settings → API Tokens, put it in scripts/.env. (A transfer token cannot serve REST.)`));
     process.exit(1);
   }
-  if (!CF_ID || !CF_SECRET) { console.log(bad('CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET missing')); process.exit(1); }
+  if (!DEST.cfId || !DEST.cfSecret) { console.log(bad('Cloudflare Access service token missing for this destination')); process.exit(1); }
   assertNoComponentMedia();
 
   const schemas = loadSchemas();
@@ -648,15 +685,16 @@ async function main() {
   const pushSet = new Set(ONLY.length ? ONLY : PUSH_ORDER);
 
   const proxy = await startCfAccessProxy({
-    target: STAGING_URL, clientId: CF_ID, clientSecret: CF_SECRET, port: PORT, quiet: true,
+    target: DEST.url, clientId: DEST.cfId, clientSecret: DEST.cfSecret, port: PORT, quiet: true,
   });
   const local = createClient({ baseUrl: LOCAL_URL, token: process.env.STRAPI_TOKEN, label: 'local' });
-  const staging = createClient({ baseUrl: proxy.url, token: process.env.STAGING_STRAPI_TOKEN, label: 'staging' });
+  const staging = createClient({ baseUrl: proxy.url, token: DEST.token, label: TO });
+  let parityProxy = null;
 
   try {
     const health = await staging.raw('/_health');
     if (health.status !== 204) throw new Error(`/_health ${health.status}`);
-    console.log(ok(`staging reachable through the CF Access proxy`));
+    console.log(ok(`${TO} reachable through the CF Access proxy`));
 
     // Multi-locale guard: these REST reads return only the default locale, so a second locale
     // would be invisible to the diff and silently never push. The full transfer handles locales.
@@ -664,6 +702,30 @@ async function main() {
     if (Array.isArray(locales) && locales.length > 1) {
       console.log(bad(`${locales.length} locales exist (${locales.map((l) => l.code).join(', ')}) — this script diffs the default locale only; use sync-content-to-staging.mjs`));
       process.exit(1);
+    }
+
+    // Staging-parity gate for production: local must equal staging for everything being
+    // pushed, so production only ever receives what staging already carries (and was
+    // presumably reviewed there). Refuses on ANY drift — push staging first.
+    if (DEST.requiresStagingParity) {
+      parityProxy = await startCfAccessProxy({
+        target: STAGING_URL, clientId: CF_ID, clientSecret: CF_SECRET, port: 0, quiet: true,
+      });
+      const stagingRef = createClient({ baseUrl: parityProxy.url, token: process.env.STAGING_STRAPI_TOKEN, label: 'staging(parity)' });
+      const parityDiffs = await Promise.all(
+        PUSH_ORDER.map((p) => diffCollection(local, stagingRef, p, schemas.get(p).draftAndPublish)),
+      );
+      const drift = parityDiffs.filter((d) => d.created.length + d.changed.length > 0);
+      const [lf, sf] = await Promise.all([fetchAllFiles(local), fetchAllFiles(stagingRef)]);
+      const fileDrift = diffFiles(lf, sf).newFiles.length;
+      if (drift.length || fileDrift) {
+        for (const d of drift) console.log(bad(`staging parity: ${d.plural} has ${d.created.length} new / ${d.changed.length} changed not yet on staging`));
+        if (fileDrift) console.log(bad(`staging parity: ${fileDrift} file(s) not yet on staging`));
+        console.log(bad('local is ahead of staging — push staging first, review there, then production'));
+        process.exitCode = 1;
+        return;
+      }
+      console.log(ok('staging parity confirmed — local ≡ staging for all collections and files'));
     }
 
     // Phase 1 — diff (collections in parallel; PUSH_ORDER only matters for writes)
@@ -843,6 +905,7 @@ async function main() {
     console.log('\nSpot-check the staging frontend for the touched content (draft-vs-published and rendered widgets are not provable from here).');
     if (leftovers) process.exitCode = 1;
   } finally {
+    parityProxy?.close();
     if (!KEEP_PROXY) proxy.close();
     else console.log(`\nProxy left running at ${proxy.url}`);
   }

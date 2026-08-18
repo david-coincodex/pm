@@ -32,7 +32,23 @@ the published-version set, NOT from `publishedAt` on the draft fetch — that fi
 null on a `status=draft` read of a draft&publish type (measured; trusting it would have made
 every write silently skip `?status=published`).
 
-Flags: `--only <plurals>`, `--yes` (skip the PUSH confirmation), `--port <n>`, `--keep-proxy`.
+Flags: `--to staging|production`, `--only <plurals>`, `--yes` (skip the confirmation), `--port <n>`, `--keep-proxy`.
+
+## Production pushes
+
+```bash
+node push-changed-content.mjs --to production                # dry run + report
+node push-changed-content.mjs --to production --apply        # confirmation word: PUSH PRODUCTION
+```
+
+Destination `cms.pornmode.com`, authenticated by `PRODUCTION_STRAPI_TOKEN` (full-access API
+token from the production admin, in `scripts/.env`; optional `PRODUCTION_CMS_URL` and a
+dedicated `PRODUCTION_CF_ACCESS_CLIENT_ID/SECRET` pair — falls back to the shared one).
+
+Production is gated by **staging parity**: the preflight diffs local against staging across
+every collection and all media, and refuses if local is ahead anywhere. Production can only
+ever receive content staging already carries — the pipeline is always local → staging
+(review there) → production. Destinations are hard-coded; there is no free-form host flag.
 
 `--only` restricts what gets **written** — every collection is still diffed, because the
 documentId map must be complete for the HTML rewrites (with `--only articles`, an article
