@@ -1,6 +1,30 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by data-theme on <html>: the pre-paint script (lib/theme.ts, injected
+   by layout.tsx) resolves localStorage.theme ?? system preference into data-theme, and the
+   ThemeToggle in the nav flips it. Every dark:* utility in the app keys on this variant.
+   The prefers-color-scheme branch matches only when data-theme is ABSENT — i.e. JavaScript
+   never ran — so no-JS visitors keep their system theme instead of being forced light. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
 :root {
+  color-scheme: light;
+  /* These tokens are what actually paints the page: the body rule below is UNLAYERED CSS,
+     so it beats any layered Tailwind utilities on <body>.
+     Light stays PURE WHITE — the site has always rendered white (mobile cards like the
+     review score card are borderless bg-white below md: and rely on blending into it).
+     Dark is slate-900, NOT the scaffold's neutral #0a0a0a: every dark surface (cards
+     slate-800, borders slate-700) is blue-tinted slate, and on neutral near-black the
+     sidebar offer card floated as a navy box. */
   --background: #ffffff;
   --foreground: #171717;
 
@@ -34,12 +58,17 @@
   }
 }
 
+/* slate-900 / slate-100 — the dark surfaces (cards slate-800, borders slate-700) sit on
+   this as one coherent ramp instead of clashing with a neutral black. The media-query block
+   is the no-JS fallback, mirroring the @custom-variant above. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
-    /* slate-900 / slate-100, NOT the scaffold's neutral #0a0a0a: every dark surface (cards
-       slate-800, borders slate-700) is blue-tinted slate, and on neutral near-black the
-       sidebar offer card floated as a navy box. This body rule is unlayered CSS, so it beats
-       the layered Tailwind utilities on <body> — these values are what actually paints. */
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --background: #0f172a;
     --foreground: #f1f5f9;
   }

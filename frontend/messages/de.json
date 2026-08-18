@@ -57,7 +57,10 @@
     "closeMenu": "Menü schließen",
     "search": "Suche",
     "allCategories": "Alle Kategorien",
-    "close": "Schließen"
+    "close": "Schließen",
+    "toggleTheme": "Dunkelmodus umschalten",
+    "darkMode": "Dunkelmodus",
+    "lightMode": "Hellmodus"
   },
   "search": {
     "placeholder": "Sites suchen…",

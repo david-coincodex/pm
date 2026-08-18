@@ -88,7 +88,7 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
                           offerKind: offer.offerKind,
                           credits: offer.credits,
                         }}
-                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-emerald-500 dark:text-white dark:hover:bg-emerald-600"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -146,7 +146,7 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
                           offerKind: offer.offerKind,
                           credits: offer.credits,
                         }}
-                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 dark:bg-emerald-500 dark:text-white dark:hover:bg-emerald-600"
                       >
                         {t('getDiscount')}
                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
