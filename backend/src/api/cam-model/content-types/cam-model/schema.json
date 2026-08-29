@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cam_models",
+  "info": {
+    "singularName": "cam-model",
+    "pluralName": "cam-models",
+    "displayName": "Cam Model",
+    "description": "Live-cam model registry synced from provider feeds. Environment-local operational data: excluded from content sync (push-changed-content.mjs), publicly readable (model pages + sitemap)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "provider": {
+      "type": "enumeration",
+      "enum": [
+        "cb",
+        "bc"
+      ],
+      "required": true
+    },
+    "username": {
+      "type": "string",
+      "required": true
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "enumeration",
+      "enum": [
+        "f",
+        "m",
+        "c",
+        "t"
+      ]
+    },
+    "country": {
+      "type": "string"
+    },
+    "languages": {
+      "type": "json"
+    },
+    "tags": {
+      "type": "json"
+    },
+    "firstSeenAt": {
+      "type": "datetime"
+    },
+    "lastSeenAt": {
+      "type": "datetime"
+    },
+    "peakViewers": {
+      "type": "integer",
+      "default": 0
+    },
+    "profileImageUrl": {
+      "type": "string"
+    },
+    "profileImageIngestedUrl": {
+      "type": "string"
+    },
+    "thumbUrl": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "photosCapturedAt": {
+      "type": "datetime"
+    }
+  }
+}

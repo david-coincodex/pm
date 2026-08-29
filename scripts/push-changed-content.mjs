@@ -199,9 +199,16 @@ function assertNoComponentMedia() {
  * relations to bundles (offer.bundle, sale.bundles) — the reverse order 400s on a new bundle.
  */
 const PUSH_ORDER = [
-  'platforms', 'authors', 'categories', 'tags', 'sites', 'bundles', 'offers', 'commercials',
-  'reviews', 'pages', 'sales', 'featureds', 'articles',
+  'platforms', 'authors', 'categories', 'tags', 'cam-categories', 'sites', 'bundles', 'offers',
+  'commercials', 'reviews', 'pages', 'sales', 'featureds', 'articles',
 ];
+
+/**
+ * Environment-local collections: user data that must NEVER sync between instances in either
+ * direction (each environment owns its own users and their favorites). Filtered out after
+ * loadSchemas() so the missing-from-PUSH_ORDER guard still refuses genuinely unknown types.
+ */
+const EXCLUDED_COLLECTIONS = new Set(['cam-favorites', 'cam-models']);
 
 /**
  * Natural key per collection — the cross-instance identity (documentIds differ, see header).
@@ -218,6 +225,7 @@ const LABEL_FIELD = {
   articles: 'title', pages: 'title', sales: 'title',
   sites: 'name', bundles: 'name', categories: 'name', tags: 'name', authors: 'name',
   platforms: 'name', featureds: 'name', commercials: 'title', reviews: 'displayTitle',
+  'cam-categories': 'name',
 };
 const keyQueryFor = (plural) => {
   const base = KEY_QUERY[plural] ?? 'fields[0]=slug&fields[1]=updatedAt&fields[2]=publishedAt';
@@ -666,6 +674,7 @@ async function main() {
   assertNoComponentMedia();
 
   const schemas = loadSchemas();
+  for (const excluded of EXCLUDED_COLLECTIONS) schemas.delete(excluded);
   // A schema outside PUSH_ORDER would be silently skipped forever — refuse instead.
   const unordered = [...schemas.keys()].filter((c) => !PUSH_ORDER.includes(c));
   if (unordered.length) {

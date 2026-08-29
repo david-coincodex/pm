@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'pm_recently_viewed';
 const MAX_ITEMS = 10;
@@ -35,14 +34,4 @@ export function trackView(site: RecentItem) {
   const items = readStorage().filter((i) => i.slug !== site.slug);
   items.unshift(site);
   writeStorage(items.slice(0, MAX_ITEMS));
-}
-
-export function useRecentlyViewed(): RecentItem[] {
-  const [items, setItems] = useState<RecentItem[]>([]);
-
-  useEffect(() => {
-    setItems(readStorage());
-  }, []);
-
-  return items;
 }

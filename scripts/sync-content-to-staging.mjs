@@ -39,6 +39,8 @@
  *   --only <scopes>      content | files | content,files   (default content,files)
  *   --no-snapshot        (reserved for --apply) skip the pre-sync snapshot
  *   --yes                (reserved for --apply) skip the typed REPLACE confirmation
+ *   --force-user-wipe    Proceed even though staging has registered user accounts (the transfer
+ *                        DELETES them — users-permissions data is replaced wholesale)
  *   --port <n>           Pin the CF Access proxy port (default: an ephemeral free port, so a
  *                        manually started proxy on 8443 never collides)
  *   --keep-proxy         Leave the proxy running after exit (for manual follow-up commands)
@@ -77,6 +79,7 @@ const APPLY = has('--apply');
 const VERIFY_ONLY = has('--verify-only');
 const NO_SNAPSHOT = has('--no-snapshot'); // reserved: takes effect once --apply is wired
 const YES = has('--yes');                 // reserved: takes effect once --apply is wired
+const FORCE_USER_WIPE = has('--force-user-wipe');
 const KEEP_PROXY = has('--keep-proxy');
 // Default 0 = ephemeral: the OS picks a free port, so this never collides with a manually
 // started `npm run cf-proxy` on 8443. --port pins it when a fixed port is genuinely needed.
@@ -141,6 +144,11 @@ function localSchemaFingerprint() {
 // ── preflight ─────────────────────────────────────────────────────────────────
 async function preflight() {
   console.log('── Preflight ─────────────────────────────────────────────');
+
+  console.log(warn(
+    'This transfer REPLACES staging users-permissions data (users, roles, perms). Once real ' +
+    'user accounts exist on staging, prefer push-changed-content.mjs — it never touches users.',
+  ));
 
   // 1. destination allowlist
   const host = new URL(STAGING_URL).host;
@@ -224,7 +232,31 @@ async function preflight() {
     `exec -T backend sh -c "cd /app && ${FINGERPRINT_CMD}"`,
   ));
 
-  // 6. media-URL invariant: an absolute localhost URL would ship into staging content
+  // 6. registered users on staging — the transfer REPLACES users-permissions data wholesale,
+  // so real accounts (cam favorites, logins) would be silently erased. This is a hard stop,
+  // not a warning: once accounts exist, content must flow through push-changed-content.mjs.
+  try {
+    const res = await staging.raw('/api/users/count');
+    if (res.status === 200) {
+      const n = Number((await res.text()).trim());
+      if (Number.isFinite(n) && n > 0) {
+        if (FORCE_USER_WIPE) {
+          console.log(warn(`staging has ${n} registered user account(s) — proceeding because --force-user-wipe was passed. They WILL be deleted.`));
+        } else {
+          fail(`staging has ${n} registered user account(s); the transfer would DELETE them. Use push-changed-content.mjs for content, or pass --force-user-wipe if erasing the accounts is intended.`);
+          return null;
+        }
+      } else {
+        console.log(ok('staging has no registered user accounts'));
+      }
+    } else {
+      console.log(warn(`could not count staging users (HTTP ${res.status}) — verify manually in staging admin before --apply, or grant the staging API token access to users-permissions count`));
+    }
+  } catch (e) {
+    console.log(warn(`could not count staging users: ${e.message} — verify manually in staging admin before --apply`));
+  }
+
+  // 7. media-URL invariant: an absolute localhost URL would ship into staging content
   try {
     const out = execFileSync('node', [join(__dirname, 'normalize-media-urls.mjs'), '--check'], { encoding: 'utf-8' });
     if (/all stored media URLs are relative/.test(out)) console.log(ok('media URLs are all root-relative'));

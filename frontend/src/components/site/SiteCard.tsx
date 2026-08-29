@@ -39,7 +39,7 @@ function scoreColor(score: number): string {
   return 'bg-red-500';
 }
 
-export default async function SiteCard({ site, bestPrice, bestFullPrice, currency = 'USD', bestOfferId, discountPercent, review, variant, isCamSite, forcedType, priority }: SiteCardProps) {
+export default async function SiteCard({ site, bestPrice, bestFullPrice, bestOfferId, discountPercent, review, variant, isCamSite, forcedType, priority }: SiteCardProps) {
   const isCam = isCamSite ?? site.siteType === 'camsite';
   const isDark = variant === 'dark';
   const [t, activeSale] = await Promise.all([
@@ -131,7 +131,7 @@ export default async function SiteCard({ site, bestPrice, bestFullPrice, currenc
                   </span>
                 )}
                 <span className={`text-base font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  ${bestPrice.toFixed(2)}
+                  {bestPrice === 0 ? t('free') : `$${bestPrice.toFixed(2)}`}
                 </span>
               </>
             ) : (

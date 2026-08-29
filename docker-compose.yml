@@ -49,6 +49,12 @@ services:
       # GA_MP_DEBUG=1 routes hits to Google's validation endpoint instead. See docs/analytics-server-side.md
       GA_API_SECRET: ${GA_API_SECRET:-}
       GA_MP_DEBUG: ${GA_MP_DEBUG:-}
+      # Live-cam affiliate feed credentials (server-only — affiliate codes, never NEXT_PUBLIC_).
+      CHATURBATE_WM: ${CHATURBATE_WM:-y98oG}
+      BONGACAMS_CAMPAIGN: ${BONGACAMS_CAMPAIGN:-}
+      # Shared secret for the cam feed roster sync -> Strapi POST /api/cam-models/sync.
+      # Must match CAM_SYNC_SECRET in backend/.env.
+      CAM_SYNC_SECRET: ${CAM_SYNC_SECRET:-local-dev-cam-sync-secret}
     depends_on:
       backend:
         condition: service_healthy

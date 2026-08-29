@@ -91,21 +91,40 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const verifiedDate = now >= today1pm ? today1pm : new Date(today1pm.getTime() - 86400000);
   const verifiedIso = verifiedDate.toISOString();
 
-  const discountedOffers = (site.offers ?? []).filter(
-    (o) => o.isActive && o.full_price != null && o.full_price > o.price
-  );
+  const activeOffers = (site.offers ?? []).filter((o) => o.isActive);
+  const creditsOffers = activeOffers.filter((o) => o.offerKind === 'credits');
+  const discountedOffers = activeOffers.filter((o) => o.full_price != null && o.full_price > o.price);
+
+  // Credit deals (cam sites) lead with FREE credits, not a discount percentage — a token
+  // bonus is the hook, and "X% off" reads wrong against a $0 pack.
   let metaTitle: string;
-  if (discountedOffers.length > 0) {
+  let metaDescription: string | undefined = site.short_description ?? undefined;
+  if (creditsOffers.length > 0) {
+    const hasFree = creditsOffers.some((o) => o.price === 0);
+    // A discount worth advertising ALONGSIDE the free bonus = a PAID pack that's marked down
+    // (the free pack is trivially "discounted"; that's already the free hook).
+    const hasPaidDiscount = creditsOffers.some((o) => o.price > 0 && o.full_price != null && o.full_price > o.price);
+    if (hasFree && hasPaidDiscount) {
+      metaTitle = t('discount.metaTitleCreditsFreeDiscount', { name: site.name, month, year });
+      metaDescription = t('discount.metaDescriptionCreditsFreeDiscount', { name: site.name });
+    } else if (hasFree) {
+      metaTitle = t('discount.metaTitleCredits', { name: site.name, month, year });
+      metaDescription = t('discount.metaDescriptionCredits', { name: site.name });
+    } else {
+      const cheapest = creditsOffers.reduce((a, b) => (a.price < b.price ? a : b));
+      metaTitle = t('discount.metaTitleCreditsPaid', { name: site.name, price: cheapest.price.toFixed(2), month, year });
+    }
+  } else if (discountedOffers.length > 0) {
     const cheapest = discountedOffers.reduce((a, b) => (a.price < b.price ? a : b));
     const percentage = Math.round((1 - cheapest.price / cheapest.full_price!) * 100);
-    metaTitle = String(t('discount.metaTitle' as never, { percentage, name: site.name, price: cheapest.price, month, year } as never));
+    metaTitle = String(t('discount.metaTitle' as never, { percentage, name: site.name, price: cheapest.price.toFixed(2), month, year } as never));
   } else {
     metaTitle = t('discount.metaTitleFallback', { name: site.name });
   }
 
   return {
     title: metaTitle,
-    description: site.short_description ?? undefined,
+    description: metaDescription,
     other: { 'article:modified_time': verifiedIso, 'last-modified': verifiedIso },
     alternates: localizedAlternates(sitePath, locale),
   };

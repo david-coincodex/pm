@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cam_favorites",
+  "info": {
+    "singularName": "cam-favorite",
+    "pluralName": "cam-favorites",
+    "displayName": "Cam Favorite",
+    "description": "A user's favorited live-cam model. ENV-LOCAL user data: excluded from the public read grant (src/index.ts) and from every content sync (push-changed-content.mjs). Model info is denormalized so favorites render without any model registry."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "provider": {
+      "type": "string",
+      "required": true
+    },
+    "username": {
+      "type": "string",
+      "required": true
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "thumbUrl": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "string"
+    },
+    "notify": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

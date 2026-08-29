@@ -1,14 +1,25 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
+/**
+ * NOT COMPLETE ON ITS OWN: the App Router does not scroll on query-only (?page=) navigation,
+ * so every consumer MUST also render <PaginationScrollAnchor page={page} /> immediately above
+ * the list this bar pages. Every listing (home, blog, reviews, bundles, cams) pairs them.
+ */
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   /** Base path including trailing slash, e.g. "/" or "/de/" */
   basePath?: string;
+  /**
+   * Override how a page number becomes a URL. The cam filter route passes a camFilterUrl
+   * builder (query-string pagination on filtered states); everything else keeps the
+   * default ?page= form.
+   */
+  hrefFor?: (page: number) => string;
 }
 
-function pageHref(page: number, basePath: string): string {
+function defaultPageHref(page: number, basePath: string): string {
   return page === 1 ? basePath : `${basePath}?page=${page}`;
 }
 
@@ -53,8 +64,9 @@ function paginationRange(currentPage: number, totalPages: number, siblingCount =
   return [1, DOTS, ...range(leftSibling, rightSibling), DOTS, totalPages];
 }
 
-export default async function Pagination({ currentPage, totalPages, basePath = '/' }: PaginationProps) {
+export default async function Pagination({ currentPage, totalPages, basePath = '/', hrefFor }: PaginationProps) {
   const t = await getTranslations('pagination');
+  const pageHref = (page: number) => (hrefFor ? hrefFor(page) : defaultPageHref(page, basePath));
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
@@ -81,7 +93,7 @@ export default async function Pagination({ currentPage, totalPages, basePath = '
           {page}
         </span>
       ) : (
-        <Link key={page} href={pageHref(page, basePath)} className={inactiveStyle}>
+        <Link key={page} href={pageHref(page)} className={inactiveStyle}>
           {page}
         </Link>
       ),
@@ -93,7 +105,7 @@ export default async function Pagination({ currentPage, totalPages, basePath = '
       aria-label={t('label')}
     >
       {hasPrev ? (
-        <Link href={pageHref(currentPage - 1, basePath)} className={inactiveStyle} aria-label={t('prevPage')}>
+        <Link href={pageHref(currentPage - 1)} className={inactiveStyle} aria-label={t('prevPage')}>
           <span aria-hidden="true">←</span><span className="hidden sm:inline">&nbsp;{t('prev')}</span>
         </Link>
       ) : (
@@ -105,7 +117,7 @@ export default async function Pagination({ currentPage, totalPages, basePath = '
       <div className="hidden items-center gap-1.5 sm:flex">{renderPages(desktopPages)}</div>
 
       {hasNext ? (
-        <Link href={pageHref(currentPage + 1, basePath)} className={inactiveStyle} aria-label={t('nextPage')}>
+        <Link href={pageHref(currentPage + 1)} className={inactiveStyle} aria-label={t('nextPage')}>
           <span className="hidden sm:inline">{t('next')}&nbsp;</span><span aria-hidden="true">→</span>
         </Link>
       ) : (

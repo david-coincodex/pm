@@ -27,6 +27,9 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
     return pct ? `${pct}%` : null;
   };
 
+  /** $0 is a signup bonus, not a price — say FREE. */
+  const priceLabel = (price: number) => (price === 0 ? t('free') : `$${price.toFixed(2)}`);
+
   // Make the whole row clickable by triggering its own offer link (keeps locale, new tab, rel).
   const handleRowClick = (e: MouseEvent<HTMLTableRowElement>) => {
     if ((e.target as HTMLElement).closest('a')) return; // let direct link clicks through
@@ -57,7 +60,7 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
                       {offer.offerType && offer.offerType !== 'credits' ? t(offer.offerType) : ''}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                      ${offer.price.toFixed(2)}
+                      {priceLabel(offer.price)}
                     </td>
                     <td className="px-4 py-3 text-right text-slate-400 line-through">
                       {offer.full_price ? `$${offer.full_price.toFixed(2)}` : '—'}
@@ -120,19 +123,33 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
             <table className="w-full text-sm">
               <thead>
                 <tr className="whitespace-nowrap border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
+                  <th className="px-4 py-3">{t('offerType')}</th>
                   <th className="px-4 py-3 text-right">{t('price')}</th>
-                  <th className="px-4 py-3">{t('credits')}</th>
+                  <th className="px-4 py-3 text-right">{t('regularPrice')}</th>
+                  <th className="px-4 py-3">{t('discount')}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {creditsOffers.map((offer) => (
                   <tr key={offer.id} onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                      ${offer.price.toFixed(2)}
-                    </td>
+                    {/* Same columns as the subscription table minus downloads (not a thing
+                        for credit packs); the type IS the pack size. */}
                     <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
                       {offer.credits} {t('credits')}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                      {priceLabel(offer.price)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-400 line-through">
+                      {offer.full_price ? `$${offer.full_price.toFixed(2)}` : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {discountLabel(offer) && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          {discountLabel(offer)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <OfferLink
@@ -159,7 +176,7 @@ export default function OffersTable({ offers, siteName, siteSlug }: OffersTableP
               </tbody>
               <tfoot>
                 <tr className="border-t border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/50">
-                  <td colSpan={3} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
+                  <td colSpan={5} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
                     {tOffer('disclaimer')}
                   </td>
                 </tr>
