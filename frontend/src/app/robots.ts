@@ -16,7 +16,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/offer/', '/api/'],
+      // /out/ and /account/ join it: the cam-affiliate redirect (same server-counted
+      // pattern as /offer/, /out/ additionally sends X-Robots-Tag: noindex) and the
+      // logged-in account pages have nothing to index.
+      // /live-sex/filter/ is the multi-select browse space: every view there duplicates a
+      // canonical listing, and the combinations are unbounded — no reason to spend crawl budget.
+      disallow: ['/offer/', '/api/', '/out/', '/account/', '/live-sex/filter/'],
     },
     sitemap: `${siteSettings.baseUrl}/sitemap.xml`,
   };

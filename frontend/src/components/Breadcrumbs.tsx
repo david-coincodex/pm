@@ -12,9 +12,14 @@ interface BreadcrumbsProps {
   variant?: 'light' | 'dark';
   /** Active locale — passed explicitly so this stays statically renderable (no headers() read). */
   locale: string;
+  /**
+   * Match the page's column width. 'boxed' (default) is the site-wide max-w-7xl Container;
+   * 'full' spans the viewport with edge padding — for full-width surfaces like /live-sex/.
+   */
+  width?: 'boxed' | 'full';
 }
 
-export default async function Breadcrumbs({ crumbs, variant = 'light', locale }: BreadcrumbsProps) {
+export default async function Breadcrumbs({ crumbs, variant = 'light', locale, width = 'boxed' }: BreadcrumbsProps) {
   const t = await getTranslations({ locale, namespace: 'breadcrumbs' });
   const isDark = variant === 'dark';
 
@@ -32,13 +37,10 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale }:
     })),
   };
 
-  return (
-    <nav aria-label={t('label')} className="relative z-20 flex h-10 items-center">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <Container padded={false}>
+  // NOT a component defined in render (that remounts the subtree every render) — build the
+  // list once and wrap the finished element.
+  const list = (
+    <>
         <ol className="flex items-center gap-1.5 text-sm">
           {all.map((crumb, i) => {
             const isLast = i === all.length - 1;
@@ -84,7 +86,20 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale }:
             );
           })}
         </ol>
-      </Container>
+    </>
+  );
+
+  return (
+    <nav aria-label={t('label')} className="relative z-20 flex h-10 items-center">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {width === 'full' ? (
+        <div className="w-full px-4 sm:px-6 lg:px-8">{list}</div>
+      ) : (
+        <Container padded={false}>{list}</Container>
+      )}
     </nav>
   );
 }

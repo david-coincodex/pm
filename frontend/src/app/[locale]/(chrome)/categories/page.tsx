@@ -31,7 +31,7 @@ export default async function CategoriesPage({ params }: Props) {
   ]);
 
   return (
-    <main>
+    <div>
       <Breadcrumbs locale={locale} crumbs={[{ label: tBc('categories'), href: routes.categories() }]} />
       <section>
         <Container>
@@ -86,6 +86,6 @@ export default async function CategoriesPage({ params }: Props) {
           </ul>
         </Container>
       </section>
-    </main>
+    </div>
   );
 }

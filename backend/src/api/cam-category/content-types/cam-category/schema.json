@@ -1,0 +1,80 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cam_categories",
+  "info": {
+    "singularName": "cam-category",
+    "pluralName": "cam-categories",
+    "displayName": "Cam Category",
+    "description": "Live-cam browse categories: genders, tag categories and cam sites as one type. `kind` decides how a category matches live models (genderKey / matchTags synonyms / providerKey).",
+    "mainField": "name"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["gender", "tag", "provider", "language"],
+      "required": true
+    },
+    "genderKey": {
+      "type": "enumeration",
+      "enum": ["f", "m", "c", "t"]
+    },
+    "providerKey": {
+      "type": "enumeration",
+      "enum": ["cb", "bc"]
+    },
+    "languageKey": {
+      "type": "enumeration",
+      "enum": ["english", "spanish", "russian", "french", "german", "italian", "portuguese", "romanian", "ukrainian", "polish", "turkish", "arabic"]
+    },
+    "site": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::site.site"
+    },
+    "matchTags": {
+      "type": "json"
+    },
+    "intro": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": { "preset": "defaultHtml" }
+    },
+    "content": {
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": { "preset": "defaultHtml" }
+    },
+    "cover_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "faqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.faq"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

@@ -6,7 +6,8 @@ export const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? 'http://localhos
 
 // Internal URL — used by Next.js Server Components when running inside Docker
 // (e.g. http://backend:1339). Falls back to the public URL outside Docker.
-const STRAPI_FETCH_URL = process.env.STRAPI_INTERNAL_URL ?? STRAPI_URL;
+// Exported so auth/BFF code (lib/auth.ts) resolves the SAME instance as content fetches.
+export const STRAPI_FETCH_URL = process.env.STRAPI_INTERNAL_URL ?? STRAPI_URL;
 
 /**
  * Browser-facing base for uploaded media (images + video).
@@ -46,7 +47,7 @@ export function resolveMediaSrc(src: string): string {
 // Cloudflare-Access-gated Strapi (e.g. cms-staging.pornmode.com). No-op in
 // production and normal local dev, where these env vars are unset. Server-side
 // only — never expose the secret to the browser.
-function cfAccessHeaders(): Record<string, string> {
+export function cfAccessHeaders(): Record<string, string> {
   const id = process.env.CF_ACCESS_CLIENT_ID;
   const secret = process.env.CF_ACCESS_CLIENT_SECRET;
   if (!id || !secret) return {};

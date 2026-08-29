@@ -48,13 +48,18 @@ export default {
     // fetches Strapi anonymously (no token), so on a fresh DB the Public role has no permissions
     // and every request returns 403 → SSR crashes with "Forbidden". Idempotent + non-destructive:
     // only missing permissions are created, so manual changes / already-configured DBs are untouched.
+    // Env-local user data: NEVER publicly readable. Everything else api:: is public content.
+    const PUBLIC_READ_EXCLUDED = new Set(['api::cam-favorite.cam-favorite']);
+
     try {
       const publicRole = await strapi
         .query('plugin::users-permissions.role')
         .findOne({ where: { type: 'public' }, populate: { permissions: true } });
       if (publicRole) {
         const existing = new Set((publicRole.permissions ?? []).map((p: any) => p.action));
-        const apiUids = Object.keys(strapi.contentTypes).filter((uid: string) => uid.startsWith('api::'));
+        const apiUids = Object.keys(strapi.contentTypes).filter(
+          (uid: string) => uid.startsWith('api::') && !PUBLIC_READ_EXCLUDED.has(uid),
+        );
         let created = 0;
         for (const uid of apiUids) {
           for (const verb of ['find', 'findOne']) {
@@ -71,6 +76,28 @@ export default {
       }
     } catch (error) {
       strapi.log.warn(`[bootstrap] Could not grant public permissions: ${(error as Error).message}`);
+    }
+
+    // Authenticated users manage their own cam favorites (ownership itself is enforced by the
+    // cam-favorite controller from ctx.state.user — these grants only open the routes).
+    try {
+      const authRole = await strapi
+        .query('plugin::users-permissions.role')
+        .findOne({ where: { type: 'authenticated' }, populate: { permissions: true } });
+      if (authRole) {
+        const existing = new Set((authRole.permissions ?? []).map((p: any) => p.action));
+        let created = 0;
+        for (const verb of ['find', 'create', 'delete']) {
+          const action = `api::cam-favorite.cam-favorite.${verb}`;
+          if (!existing.has(action)) {
+            await strapi.query('plugin::users-permissions.permission').create({ data: { action, role: authRole.id } });
+            created++;
+          }
+        }
+        if (created) strapi.log.info(`[bootstrap] Granted ${created} authenticated cam-favorite permission(s).`);
+      }
+    } catch (error) {
+      strapi.log.warn(`[bootstrap] Could not grant authenticated permissions: ${(error as Error).message}`);
     }
 
     // `overallScore` and `displayTitle` are auto-computed (see review lifecycles).

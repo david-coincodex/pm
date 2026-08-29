@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useState, useEffect, useRef } from 'react';
 import { strapiMediaUrl, type StrapiMedia } from '@/lib/strapi';
+import Lightbox from '@/components/Lightbox';
 import { strapiImgSources } from '@/lib/strapiImage';
 import { requestPlay, release, autoplayAllowed } from '@/lib/clipPlayback';
 
@@ -132,7 +131,6 @@ function VideoCell({ src }: { src: string }) {
 }
 
 export default function ImageGallery({ images: galleryImages, coverImage, className = '', priorityFirst = false }: ImageGalleryProps) {
-  const t = useTranslations('gallery');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Fall back to the cover image when the gallery has no images.
@@ -144,25 +142,6 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
   // (measured: 384x0). The lightbox still pages through the full set.
   const displayed = images.slice(0, 3);
   const hasMore = images.length > 3;
-
-  const close = useCallback(() => setLightboxIndex(null), []);
-  const prev = useCallback(() =>
-    setLightboxIndex((i) => (i !== null ? (i - 1 + images.length) % images.length : null)),
-    [images.length]);
-  const next = useCallback(() =>
-    setLightboxIndex((i) => (i !== null ? (i + 1) % images.length : null)),
-    [images.length]);
-
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') prev();
-      else if (e.key === 'ArrowRight') next();
-      else if (e.key === 'Escape') close();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [lightboxIndex, prev, next, close]);
 
   if (images.length === 0) {
     return (
@@ -181,7 +160,6 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
     );
   }
 
-  const current = lightboxIndex !== null ? images[lightboxIndex] : null;
 
   return (
     <>
@@ -221,114 +199,18 @@ export default function ImageGallery({ images: galleryImages, coverImage, classN
         ))}
       </div>
 
-      {/* Lightbox */}
-      {lightboxIndex !== null && current && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-          onClick={close}
-        >
-          {/* Close */}
-          <button
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-            onClick={close}
-            aria-label={t('close')}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Prev — desktop only; mobile navigation lives in the bottom bar so the side
-              arrows never eat into the (now full-width) image. */}
-          {images.length > 1 && (
-            <button
-              className="absolute left-4 hidden rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 md:block"
-              onClick={(e) => { e.stopPropagation(); prev(); }}
-              aria-label={t('prev')}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
-
-          {/* Media + controls */}
-          <div
-            className="flex w-full flex-col items-center gap-3 md:w-auto md:gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {isVideo(current) ? (
-              // Controls in the lightbox — the grid autoplays silently, but opening a clip is
-              // explicit intent, so give the visitor scrubbing and sound.
-              <video
-                src={strapiMediaUrl(current)}
-                controls
-                autoPlay
-                muted
-                playsInline
-                className="max-h-[80vh] w-full md:w-auto md:max-w-[90vw] md:rounded-xl"
-              />
-            ) : (
-              // Mobile: the full viewport width — the image is the point of the lightbox.
-              // Desktop keeps the contained, rounded presentation.
-              <div className="relative h-[70vh] w-full md:h-auto md:w-auto md:max-h-[90vh] md:max-w-[90vw] md:min-w-[50vw] md:min-h-[50vh]">
-                <Image
-                  src={strapiMediaUrl(current)}
-                  alt={current.alternativeText ?? ''}
-                  fill
-                  className="object-contain md:rounded-xl"
-                  sizes="(max-width: 768px) 100vw, 90vw"
-                />
-              </div>
-            )}
-
-            {/* Mobile: prev / counter / next in one bottom bar */}
-            <div className="flex items-center gap-8 md:hidden">
-              {images.length > 1 && (
-                <button
-                  className="rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
-                  onClick={(e) => { e.stopPropagation(); prev(); }}
-                  aria-label={t('prev')}
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              )}
-              <p className="text-center text-sm text-white/60">
-                {t('imageOf', { current: lightboxIndex + 1, total: images.length })}
-              </p>
-              {images.length > 1 && (
-                <button
-                  className="rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
-                  onClick={(e) => { e.stopPropagation(); next(); }}
-                  aria-label={t('next')}
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <p className="hidden text-center text-sm text-white/60 md:block">
-              {t('imageOf', { current: lightboxIndex + 1, total: images.length })}
-            </p>
-          </div>
-
-          {/* Next — desktop only (see prev) */}
-          {images.length > 1 && (
-            <button
-              className="absolute right-4 hidden rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 md:block"
-              onClick={(e) => { e.stopPropagation(); next(); }}
-              aria-label={t('next')}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
-        </div>
-      )}
+      {/* Lightbox — the shared component; sources resolved here, where Strapi shapes live. */}
+      <Lightbox
+        items={images.map((img) => ({
+          id: img.id,
+          src: strapiMediaUrl(img),
+          alt: img.alternativeText ?? '',
+          video: isVideo(img),
+        }))}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
     </>
   );
 }
