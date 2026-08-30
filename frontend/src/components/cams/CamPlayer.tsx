@@ -130,8 +130,24 @@ export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, s
         </a>
       )}
 
+      {/* Monetize clicks on the LIVE embed: a transparent overlay to the /out/ affiliate
+          redirect (counted server-side, template-built) — the same money path as the CTA and
+          the offline facade. Only over the PLAYING surfaces; the offline branch is already an
+          /out/ link. BongaCams' control bar sits ABOVE this (z-20) so mute/fullscreen keep
+          working and only a click on the picture leaves; the Chaturbate iframe is fully covered,
+          so its muted autoplay is a preview and any click goes to the provider through /out/. */}
+      {(isIframeProvider || canStream) && (
+        <a
+          href={outUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          aria-label={t('watchOnProvider', { name: displayName })}
+          className="absolute inset-0 z-10"
+        />
+      )}
+
       {showOwnBar && (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pb-3 pt-8">
+        <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pb-3 pt-8">
           <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-white">
             <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
             {t('live')}
