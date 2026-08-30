@@ -231,17 +231,22 @@ export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
         ) : embedUrl ? (
           /* Chaturbate's own player, same embed as the model page — no chat, muted start. The
              holder is pointer-events-none, so clicks fall through to the card's navigation link
-             and the visitor can't unmute a preview. */
-          <iframe
-            src={embedUrl}
-            title=""
-            aria-hidden="true"
-            tabIndex={-1}
-            scrolling="no"
-            allow="autoplay"
-            className="h-full w-full border-0"
-            onLoad={onReady}
-          />
+             and the visitor can't unmute a preview.
+             The 16:9 stream is LETTERBOXED (full-width, centered on black) inside the 4:3 card
+             instead of filling it: an iframe can't be object-fit, so filling would make the CB
+             player crop the frame — the "zoomed in" look. Bars show the whole scene instead. */
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <iframe
+              src={embedUrl}
+              title=""
+              aria-hidden="true"
+              tabIndex={-1}
+              scrolling="no"
+              allow="autoplay"
+              className="aspect-video w-full border-0"
+              onLoad={onReady}
+            />
+          </div>
         ) : null
       )}
     </div>
