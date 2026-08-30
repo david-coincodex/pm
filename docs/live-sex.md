@@ -179,10 +179,16 @@ Order matters — backend first:
 
 **What transfers between environments and what never does:**
 
-- `cam-models` rows and their photos are **environment-local machine data** — they are in
-  `EXCLUDED_COLLECTIONS` in `scripts/push-changed-content.mjs` (like `cam-favorites`) and are
-  regenerated from the feeds in each environment. Do **not** try to copy them; each
-  environment discovers its own roster within minutes and backfills media within a day.
+- `cam-models` rows and their photos are **environment-local machine data** and are
+  regenerated from the feeds in each environment. Two independent guards in
+  `scripts/push-changed-content.mjs` keep them out of the push: the **rows** are in
+  `EXCLUDED_COLLECTIONS` (like `cam-favorites`), and the **photos** are dropped by the
+  `isCamModelMedia` filter — cam media is named `${provider}:${username}-${ts}`, and that
+  `provider:` colon prefix is filtered from both sides of the media diff (the global file diff
+  is otherwise independent of which collections push, so without this filter every local dev
+  capture — ~11 k files, ~170 MB — would upload and orphan itself, since the cam-model rows
+  they attach to don't sync). Do **not** try to copy them; each environment discovers its own
+  roster within minutes and backfills media within a day.
 - What DOES ride the normal content push: **cam-categories** (genders/tags/sites/languages,
   their intro/FAQ copy, the `site` relation that powers the model-page offer card) and the
   Strapi **sites/offers** they link to.

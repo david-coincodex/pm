@@ -2,19 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type Hls from 'hls.js';
-import { useCbStream } from '@/lib/cams/useCbStream';
 import { getMobileCols, getServerMobileCols, subscribeCols } from '@/lib/cams/gridCols';
 
 interface Props {
-  /** Raw HLS live stream (BongaCams) — played muted in our <video>. */
+  /** Raw HLS live stream (BongaCams) — played muted in our <video>: its feed hands out a plain
+   * public m3u8. */
   streamUrl?: string;
-  /** Chaturbate username — its HLS is resolved on hover (useCbStream) and played in a muted
-   * <video>. GUARANTEED silent: the native `muted` attribute is absolute and never reads the
-   * sound store, so a card can't inherit an unmuted model-page preference (a cross-origin
-   * embed iframe WOULD, via the provider's localStorage — hence not using it here). One
-   * resolve per hover is fine: only one preview plays at a time (hover intent / mobile
-   * single-active), and the resolver no longer caches the single-use token. */
-  cbUsername?: string;
+  /** Chaturbate's embed_video_only iframe URL (same one the model page uses). CB's stream isn't
+   * resolvable server-side (see memory cb-stream-token-ip-bound), so its preview reuses the
+   * provider's own player — no chat, muted via disable_sound=1 in the URL, and the holder is
+   * pointer-events-none so it can't be interacted with (stays a silent, click-through preview).
+   * If both are set, streamUrl wins; in practice a model has exactly one. */
+  embedUrl?: string;
 }
 
 /** Hover must be intent, not a drive-by on the way to another card. */
@@ -138,18 +137,17 @@ function PreviewVideo({ src, onFatal, onReady }: { src: string; onFatal: () => v
  * arbitrated by the focus manager above. Skipped entirely for visitors with
  * prefers-reduced-motion or Data Saver on.
  *
- * Sources: BongaCams cards play their feed's raw HLS; Chaturbate cards play the HLS resolved
- * on hover — both in a muted <video>, so previews are ALWAYS silent (the native muted attr
- * ignores the sound store) and never mount a provider iframe. Only the model page offers sound.
+ * Sources: BongaCams cards play their feed's raw HLS in a muted <video>; Chaturbate cards mount
+ * the provider's embed_video_only iframe (same player as the model page) — it can't be muted
+ * programmatically, but disable_sound=1 starts it silent and the pointer-events-none holder
+ * keeps it non-interactive. Only one preview is ever active at a time (hover intent / mobile
+ * single-active), so at most one iframe is live.
  *
  * Renders null server-side; the static thumbnail stays underneath as backdrop and fallback.
  */
-export default function CamCardPreview({ streamUrl, cbUsername }: Props) {
+export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
   const holderRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
-  // Resolve the CB room's HLS only while the preview is active — the muted video replaces the
-  // static thumbnail (shown underneath) as soon as it arrives; no MJPEG/"pics" stage.
-  const cbHls = useCbStream(cbUsername, active && Boolean(cbUsername));
   // Mobile center-focus autoplay is opt-in: only when the visitor browses 1-per-row (one big
   // card fills the screen). At 2-per-row, auto-playing a stream is noise — hover/tap only.
   const mobileCols = useSyncExternalStore(subscribeCols, getMobileCols, getServerMobileCols);
@@ -171,7 +169,7 @@ export default function CamCardPreview({ streamUrl, cbUsername }: Props) {
 
   useEffect(() => {
     const holder = holderRef.current;
-    if (!holder || (!streamUrl && !cbUsername)) return;
+    if (!holder || (!streamUrl && !embedUrl)) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if ((navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return;
     // The stretched link paints above this layer, so hover must be observed on the card root.
@@ -217,7 +215,7 @@ export default function CamCardPreview({ streamUrl, cbUsername }: Props) {
       armEvents.forEach((e) => window.removeEventListener(e, arm));
       cleanupFocus?.();
     };
-  }, [streamUrl, cbUsername, activate, mobileCols]);
+  }, [streamUrl, embedUrl, activate, mobileCols]);
 
   return (
     <div ref={holderRef} className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -230,11 +228,20 @@ export default function CamCardPreview({ streamUrl, cbUsername }: Props) {
       {active && !failed && (
         streamUrl ? (
           <PreviewVideo src={streamUrl} onFatal={onFatal} onReady={onReady} />
-        ) : cbUsername && cbHls !== 'pending' && typeof cbHls === 'string' ? (
-          /* Chaturbate: the resolved HLS in a muted <video> — guaranteed silent, fluid, no
-             chat, no provider iframe. Only once RESOLVED ('pending' is a sentinel); the card's
-             static thumbnail shows underneath while it resolves. */
-          <PreviewVideo src={cbHls} onFatal={onFatal} onReady={onReady} />
+        ) : embedUrl ? (
+          /* Chaturbate's own player, same embed as the model page — no chat, muted start. The
+             holder is pointer-events-none, so clicks fall through to the card's navigation link
+             and the visitor can't unmute a preview. */
+          <iframe
+            src={embedUrl}
+            title=""
+            aria-hidden="true"
+            tabIndex={-1}
+            scrolling="no"
+            allow="autoplay"
+            className="h-full w-full border-0"
+            onLoad={onReady}
+          />
         ) : null
       )}
     </div>

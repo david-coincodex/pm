@@ -211,6 +211,19 @@ const PUSH_ORDER = [
 const EXCLUDED_COLLECTIONS = new Set(['cam-favorites', 'cam-models']);
 
 /**
+ * Media owned by an excluded collection must not sync either. cam-model photos (API profile
+ * pics + snapshot captures) are uploaded by the backend capture service as `${key}-${ts}` where
+ * key is `${provider}:${username}` (provider ∈ cb|bc) — see
+ * backend/src/api/cam-model/services/cam-model.ts. That `provider:` colon prefix is the
+ * deterministic signal (no editorial filename carries a colon). These images regenerate on each
+ * environment from its own live feeds via the ingest/snapshot crons, so shipping the local dev
+ * captures would be ~170MB of orphaned junk (the cam-model rows they attach to are excluded).
+ * Filtered from BOTH sides of the file diff: local ones never upload, staging's own captures
+ * never register as "staging-only" noise.
+ */
+const isCamModelMedia = (file) => /^(cb|bc):/.test(file.name ?? '');
+
+/**
  * Natural key per collection — the cross-instance identity (documentIds differ, see header).
  * Queries also fetch a human label so the diff report can say what an entry IS, not just
  * its key.
@@ -753,7 +766,11 @@ async function main() {
       );
     }
 
-    const [localFiles, stagingFiles] = await Promise.all([fetchAllFiles(local), fetchAllFiles(staging)]);
+    const [localFilesAll, stagingFilesAll] = await Promise.all([fetchAllFiles(local), fetchAllFiles(staging)]);
+    const localFiles = localFilesAll.filter((f) => !isCamModelMedia(f));
+    const stagingFiles = stagingFilesAll.filter((f) => !isCamModelMedia(f));
+    const skippedCam = localFilesAll.length - localFiles.length;
+    if (skippedCam) console.log(`  ${skippedCam} cam-model media file(s) skipped (excluded collection — regenerated per-env by the crons)`);
     const { newFiles, fileIdMap, fileUrlMap, stagingOnlyFiles } = diffFiles(localFiles, stagingFiles);
     const newMb = (newFiles.reduce((n, f) => n + (f.size ?? 0), 0) / 1024).toFixed(1);
     console.log(`\n  media: ${localFiles.length} local, ${stagingFiles.length} staging — ` +

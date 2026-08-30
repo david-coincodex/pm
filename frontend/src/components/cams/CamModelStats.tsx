@@ -18,7 +18,9 @@ export default function CamModelStats({ model, nowMs }: { model: CamModel; nowMs
   const liveForMs = model.onlineSince ? nowMs - Date.parse(model.onlineSince) : null;
 
   return (
-    <div className="flex flex-col gap-2">
+    // Two columns on mobile (stats sit inline under the player); one stacked column in the
+    // desktop sidebar (270px rail). Pills are w-full, so each fills its grid cell.
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
       <Pill
         className="w-full"
         icon={

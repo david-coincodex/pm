@@ -5,13 +5,10 @@ import { getMuted, getServerMuted, setMuted, subscribeMuted } from '@/lib/cams/s
 import { useTranslations } from 'next-intl';
 import type Hls from 'hls.js';
 import CamThumbFallback from './CamThumbFallback';
-import { useCbStream } from '@/lib/cams/useCbStream';
 
 interface Props {
   embedUrl: string;
   thumbUrl: string;
-  /** Feed username — drives the HLS resolver for iframe providers (Chaturbate). */
-  username: string;
   displayName: string;
   /** False for providers that refuse framing (BongaCams sends X-Frame-Options: SAMEORIGIN). */
   canEmbed: boolean;
@@ -22,22 +19,25 @@ interface Props {
 }
 
 /**
- * THE cam view on model pages — every piece of playback logic lives here, and both providers
- * get the identical chrome: the video surface with OUR control bar (live dot · mute · full-
- * screen) pinned underneath, always visible. No provider buttons floating over the picture.
+ * THE cam view on model pages. The two providers take different playback surfaces because
+ * their streams have different constraints:
  *
- * Playback surface, best available wins:
- *   iframe — Chaturbate's bare-stream player, full frame (the black letterbox blends into our
- *            black stage; its slim bottom bar sits beneath our control-bar gradient).
- *   HLS    — BongaCams' raw feed in a chromeless <video>.
- *   link   — offline or streamless: thumb + play affordance via the counted redirect.
+ *   HLS    — BongaCams' feed hands out a PLAIN public m3u8 (no token), so it plays in OUR
+ *            chromeless <video> with our own control bar (live dot · mute · fullscreen).
+ *   iframe — Chaturbate's stream is only resolvable/playable from the VISITOR'S own IP: the
+ *            tokenized playlist is bound to whoever resolved it, and the datacenter VPS is in
+ *            fact BLOCKED from resolving it at all (Cloudflare datacenter challenge — verified
+ *            on staging: rooms that resolve from a residential IP return null from the VPS).
+ *            So we hand Chaturbate its own embed_video_only player in an iframe: the browser
+ *            resolves + plays it, it carries NO chat, and it autoplays muted (disable_sound=1
+ *            in embedUrl). The player owns its audio and fullscreen — a cross-origin iframe is
+ *            unreachable from our sound store, so we do NOT overlay our bar on it.
+ *   link   — BongaCams offline/streamless: thumb + play affordance via the counted redirect.
  *
- * BOTH providers play through OUR <video>: BongaCams' stream comes from its feed,
- * Chaturbate's from the same HLS playlist its own player uses (resolved through
- * /api/cams/cb-stream — undocumented, so playback is best-effort). Mute/unmute is a native
- * property flip on our element for both. When the Chaturbate playlist can't be resolved (or
- * its CDN is blocked), we fall through to the STATIC link-out facade below — never an embed
- * iframe, never MJPEG. Fullscreen requests it on the wrapper, so the control bar rides along.
+ * (History: Chaturbate briefly played through our <video> via a server-side HLS resolve. That
+ * works in dev only because the container and browser share one NAT IP; it fails in production.
+ * See memory cb-stream-token-ip-bound. Matching lemoncams' custom muted player would need a
+ * paid residential-proxy resolve path — deferred.)
  */
 const subscribeFullscreen = (onChange: () => void) => {
   document.addEventListener('fullscreenchange', onChange);
@@ -45,7 +45,7 @@ const subscribeFullscreen = (onChange: () => void) => {
 };
 const subscribeNever = () => () => {};
 
-export default function CamPlayer({ embedUrl, thumbUrl, username, displayName, canEmbed, streamUrl, outUrl }: Props) {
+export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, streamUrl, outUrl }: Props) {
   const t = useTranslations('liveSex');
   const wrapperRef = useRef<HTMLDivElement>(null);
   // Shared sound store (header button + this player + the bar toggle all drive it): defaults
@@ -66,25 +66,15 @@ export default function CamPlayer({ embedUrl, thumbUrl, username, displayName, c
     () => false,
   );
 
+  // Chaturbate (canEmbed) → its own iframe player; BongaCams → our <video>. See the header note.
   const isIframeProvider = canEmbed && embedUrl.length > 0;
-  // Chaturbate plays through OUR video, exactly like BongaCams: the HLS playlist their own
-  // player uses, resolved via /api/cams/cb-stream. Native mute/unmute; no embed iframe, no
-  // MJPEG. If the playlist can't be resolved OR its CDN is blocked (ad/privacy blockers eat
-  // *.live.mmcdn.com), we fall through to the STATIC link-out facade below — never a
-  // thrashing image. (The old MJPEG/embed fallbacks hit the same blocked CDN family and
-  // just flickered.)
-  const cbHls = useCbStream(isIframeProvider ? username : undefined, isIframeProvider);
-  const [cbHlsFailed, setCbHlsFailed] = useState(false);
-  const cbOwnStream = isIframeProvider && !cbHlsFailed && cbHls !== 'pending' && typeof cbHls === 'string' ? cbHls : null;
-  const cbResolving = isIframeProvider && !cbHlsFailed && cbHls === 'pending';
-
-  const effectiveStream = cbOwnStream ?? (!isIframeProvider && !streamFailed ? streamUrl : undefined);
+  const effectiveStream = !isIframeProvider && !streamFailed ? streamUrl : undefined;
   const canStream = Boolean(effectiveStream);
-  const playing = canStream || cbResolving;
-  const showOwnBar = playing;
+  // Our control bar only rides over OUR <video> (BongaCams). The Chaturbate iframe carries its
+  // own controls; overlaying ours would just mask them with a mute button that can't reach it.
+  const showOwnBar = canStream;
 
   const onStreamFatal = useCallback(() => setStreamFailed(true), []);
-  const onCbHlsFatal = useCallback(() => setCbHlsFailed(true), []);
 
   const toggleFullscreen = () => {
     const el = wrapperRef.current;
@@ -95,13 +85,20 @@ export default function CamPlayer({ embedUrl, thumbUrl, username, displayName, c
 
   return (
     <div ref={wrapperRef} className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
-      {cbResolving ? (
-        /* Resolving (a round trip to /api/cams/cb-stream): the room's static thumbnail stands
-           in; the fluid HLS video takes over the instant the playlist arrives. */
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={thumbUrl} alt={displayName} data-cam-thumb="" className="absolute inset-0 h-full w-full object-contain data-[broken]:opacity-0" />
+      {isIframeProvider ? (
+        /* Chaturbate's bare-stream player: no chat, no room UI, autoplays muted (disable_sound=1
+           lives in embedUrl). The visitor's browser resolves and plays it, so it works cross-IP
+           where our server-side resolve cannot. Its own slim bar owns mute/fullscreen. */
+        <iframe
+          src={embedUrl}
+          title={displayName}
+          className="absolute inset-0 h-full w-full"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          allowFullScreen
+          scrolling="no"
+        />
       ) : canStream ? (
-        <HlsSurface src={effectiveStream!} poster={thumbUrl || undefined} muted={muted} onFatal={cbOwnStream ? onCbHlsFatal : onStreamFatal} />
+        <HlsSurface src={effectiveStream!} poster={thumbUrl || undefined} muted={muted} onFatal={onStreamFatal} />
       ) : (
         <a
           href={outUrl}
