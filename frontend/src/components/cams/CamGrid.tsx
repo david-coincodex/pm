@@ -32,9 +32,13 @@ const MOBILE_CLASSES: Record<number, string> = {
   2: 'grid-cols-2 sm:grid-cols-2',
 };
 
-export function CamGrid({ children }: { children: ReactNode }) {
+export function CamGrid({ children, desktopClass }: { children: ReactNode; desktopClass?: string }) {
   const cols = useSyncExternalStore(subscribeCols, getCols, getServerCols);
   const mobile = useSyncExternalStore(subscribeCols, getMobileCols, getServerMobileCols);
-  // Mobile classes govern below lg; COLS_CLASSES (all lg:-prefixed) govern lg+.
-  return <div className={`grid ${MOBILE_CLASSES[mobile]} gap-3 ${COLS_CLASSES[cols]}`}>{children}</div>;
+  // Mobile classes govern below lg; the lg+ track is either the visitor's density choice
+  // (COLS_CLASSES) or a fixed override (desktopClass) for embedded lists like "similar models",
+  // which live in a narrow content column and must not follow the full-width 5–6 ladder. Either
+  // way the MOBILE preference still drives the below-lg count, so the 1-column autoplay in
+  // CamCardPreview and the actual layout always agree.
+  return <div className={`grid ${MOBILE_CLASSES[mobile]} gap-3 ${desktopClass ?? COLS_CLASSES[cols]}`}>{children}</div>;
 }

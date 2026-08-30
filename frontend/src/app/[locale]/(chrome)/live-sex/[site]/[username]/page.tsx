@@ -18,6 +18,7 @@ import CamSoundButton from '@/components/cams/CamSoundButton';
 import CamCtaLink from '@/components/cams/CamCtaLink';
 import CamFavoriteButton from '@/components/cams/CamFavoriteButton';
 import CamModelCard from '@/components/cams/CamModelCard';
+import { CamGrid } from '@/components/cams/CamGrid';
 import CamThumbFallback from '@/components/cams/CamThumbFallback';
 import CamSiteOffer from '@/components/cams/CamSiteOffer';
 import CamModelStats from '@/components/cams/CamModelStats';
@@ -114,8 +115,6 @@ export default async function CamModelPage({ params }: Props) {
   // moment the room closes — expected), then our newest captured snapshot, then the placeholder.
   const offlineCover = provider === 'cb' ? adapter.thumbUrl(username) : (known?.thumbUrl ?? null);
   const offlineFallback = knownPhotos.length ? knownPhotos[knownPhotos.length - 1].src : null;
-  const profileImageUrl =
-    model?.profileImageUrl ?? (known && known.provider === 'bc' ? known.profileImageUrl : null);
   const providerCategory = categories.find((c) => c.kind === 'provider' && c.providerKey === provider) ?? null;
   const providerSite = providerCategory?.site ?? null;
   const modelCategories = model ? categoriesForModel(model, categories) : [];
@@ -180,21 +179,10 @@ export default async function CamModelPage({ params }: Props) {
           <SectionTitle
             as="h1"
             title={t('modelTitle', { name: displayName })}
-            leading={
-              profileImageUrl && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={profileImageUrl}
-                  alt=""
-                  width={44}
-                  height={44}
-                  data-cam-thumb=""
-                  className="h-11 w-11 rounded-full border border-slate-200 object-cover data-[broken]:hidden dark:border-slate-700"
-                />
-              )
-            }
             badge={
-              <>
+              /* Live/offline tag and the country flag declutter the H1 on mobile — hidden below
+                 lg, shown beside the title from lg up. */
+              <span className="hidden items-center gap-2 lg:flex">
                 {online ? (
                   <CamLiveBadge>{t('live')}</CamLiveBadge>
                 ) : (
@@ -203,7 +191,7 @@ export default async function CamModelPage({ params }: Props) {
                   </span>
                 )}
                 {country && <CountryFlag country={country} className="h-6 w-6" locale={locale} />}
-              </>
+              </span>
             }
             actionsBelowOnMobile
             actions={<span className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
@@ -219,7 +207,9 @@ export default async function CamModelPage({ params }: Props) {
                 </svg>
                 {online ? t('chatWith', { name: displayName }) : t('visitProfile', { name: displayName, provider: adapter.name })}
               </CamCtaLink>
-              {online && <CamSoundButton />}
+              {/* Our sound button only drives OUR <video> (BongaCams). Chaturbate plays in its
+                  own iframe, which owns its audio — a button here couldn't reach it. */}
+              {online && !adapter.canEmbed && <CamSoundButton />}
               <CamFavoriteButton
                 provider={provider}
                 username={username}
@@ -250,7 +240,6 @@ export default async function CamModelPage({ params }: Props) {
             <CamPlayer
               embedUrl={model.embedUrl}
               thumbUrl={model.thumbUrl}
-              username={username}
               displayName={displayName}
               canEmbed={adapter.canEmbed}
               streamUrl={model.streamUrl}
@@ -307,11 +296,14 @@ export default async function CamModelPage({ params }: Props) {
           {similar.length > 0 && (
             <section className="mt-12">
               <SectionTitle title={t('similarModels')} />
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {/* Mobile column count follows the visitor's per-row preference (like the browse
+                  grid), so live previews autoplay the centered card only in 1-column layout;
+                  desktop stays at 4 in this narrow content column. */}
+              <CamGrid desktopClass="lg:grid-cols-4">
                 {similar.map((m) => (
                   <CamModelCard key={m.id} model={m} />
                 ))}
-              </div>
+              </CamGrid>
             </section>
           )}
           </div>
