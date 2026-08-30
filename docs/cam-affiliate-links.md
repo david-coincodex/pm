@@ -62,13 +62,18 @@ provider URL:
 
 | Surface | File |
 |---|---|
-| "Chat with me" / "View X on {provider}" header button | model page → `CamCtaLink` |
+| "Chat" / "View X on {provider}" header button | model page → `CamCtaLink` |
 | Player link-out facade (offline / stream-less models) | `CamPlayer` |
+| **Live embed click-through** (a transparent overlay over the PLAYING stream) | `CamPlayer` |
 | Anything future | **must** use `routes.camOut` — grep gate below |
 
-The player's embed/HLS surfaces are not links (Chaturbate's iframe carries the campaign in
-its own embed URL; clicks inside it are the provider's tracking). The `affiliateUrl` field on
-`CamModel` is also template-built, so no code path can leak an untagged link.
+The live embed is monetized too: a transparent `/out/` overlay covers the playing surface so a
+click on the picture counts and redirects, exactly like the facade. For BongaCams the control
+bar sits ABOVE the overlay (z-20) so mute/fullscreen still work and only a picture click leaves;
+the Chaturbate iframe is fully covered (its muted autoplay is a preview — any click goes through
+/out/). NOT internal-nav surfaces: cards, breadcrumb, "Next", the favorites strip and the models
+sitemap all link `routes.camModel` (our page), never `/out/`. The `affiliateUrl` field on
+`CamModel` is template-built, so no code path can leak an untagged link either.
 
 **Grep gate** (run after touching cam components; must return nothing):
 
