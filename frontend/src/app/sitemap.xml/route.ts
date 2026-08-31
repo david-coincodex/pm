@@ -19,10 +19,12 @@ async function modelChunkPaths(): Promise<string[]> {
     // Page 1 — the same cached response the first chunk renders from; `total` sizes the list.
     const { total } = await listKnownModelKeys(1);
     const chunks = Math.max(1, Math.ceil(total / MODELS_SITEMAP_CHUNK));
-    return Array.from({ length: chunks }, (_, i) => `/models-sitemap.xml?page=${i + 1}`);
+    // Path-based filenames (next.config rewrite maps them to the ?page= handler) — the sitemap
+    // convention, and Yoast parity for this domain's crawl history.
+    return Array.from({ length: chunks }, (_, i) => `/models-sitemap-${i + 1}.xml`);
   } catch {
-    // Registry unreachable: advertise the bare legacy URL rather than dropping the section.
-    return ['/models-sitemap.xml'];
+    // Registry unreachable: advertise chunk 1 rather than dropping the section.
+    return ['/models-sitemap-1.xml'];
   }
 }
 
