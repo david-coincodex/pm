@@ -90,6 +90,45 @@ through `scripts/lib/cf-access-proxy.mjs`.
 
 ## Production
 
-There's no production target yet. When added, branch `staging → production` and
-duplicate this workflow with production image tags, domains, and a separate
-environment — do not point the staging workflow at production.
+Production is `pornmode.com` (frontend) + `cms.pornmode.com` (Strapi). It deploys off the
+**`production`** branch. **This repo has no production workflow** — `.github/workflows/` only
+has `deploy-staging.yml`. The production branch is rolled out by **external infra** (watches the
+branch / Watchtower); confirm the exact mechanism with the infra setup before relying on timing.
+
+### Launch / release flow
+
+1. **Ship code:** open a PR `staging → production` and merge it (production is protected — never
+   push it directly). Example: `gh pr create --base production --head staging …` then
+   `gh pr merge <n> --merge`. This carries whatever is on staging — check first with
+   `git log origin/production..origin/staging --oneline`.
+2. **Wait for the backend to redeploy.** There's no in-repo run to watch, so poll the CMS for the
+   new schema — it must exist before the content sync:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' \
+     "https://cms.pornmode.com/api/cam-categories?pagination%5BpageSize%5D=1" \
+     -H "Authorization: Bearer $PRODUCTION_STRAPI_TOKEN"     # 404 = not yet, 200 = ready
+   ```
+   The `cam-model`/`cam-category` tables and the 3 maintenance crons auto-create on backend boot
+   (no migration files).
+3. **Sync content to production** — deploys ship code, never content:
+   ```bash
+   node scripts/push-changed-content.mjs --to production        # dry run
+   node scripts/push-changed-content.mjs --to production --apply # confirmation word: PUSH PRODUCTION
+   ```
+   Gated by **STAGING PARITY**: it refuses unless local ≡ staging for every collection, so prod
+   only ever receives staging-approved content. Needs `PRODUCTION_STRAPI_TOKEN` +
+   `CF_ACCESS_CLIENT_ID/SECRET` in `scripts/.env`. This carries the cam-categories + BongaCams
+   site/offers/review; `isCamModelMedia` keeps the ~11k cam captures out (they regenerate per-env).
+4. **Registry rebuilds itself.** `cam-models` + `cam-favorites` are in `EXCLUDED_COLLECTIONS` and
+   never transfer — production discovers its own roster from the feeds within minutes, backfills
+   media over a day. Model pages fail OPEN on a CMS blip (render, never mass-404).
+
+### Prod env prerequisites (on the prod host / its compose)
+
+`CAM_SYNC_SECRET` (both services, or the registry stays empty — no model pages, empty
+models-sitemap), `CHATURBATE_WM` + `BONGACAMS_CAMPAIGN` (defaults baked in
+`docker-compose.prod.yml`), the standard Strapi secrets + DB. **Frontend image caveat:** the
+browser bundle bakes `NEXT_PUBLIC_STRAPI_URL` at BUILD — production images MUST be built with
+`https://cms.pornmode.com`, NOT the `cms-staging` value the in-repo `deploy-staging.yml` uses.
+Verify a prod frontend build points at the prod CMS, or every client call 404s against gated
+staging.
