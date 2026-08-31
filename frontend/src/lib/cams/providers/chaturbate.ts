@@ -94,9 +94,17 @@ export const chaturbate: CamProviderAdapter = {
   async fetchOnline() {
     // Offsets are fixed, so all pages fetch in parallel — a snapshot refresh costs one
     // provider round trip instead of four sequential ones. A short page yields empty tails.
-    const pages = await Promise.all(
+    // allSettled, not all: one flaky page (a VPS-side timeout/429) must cost ~500 rooms, not
+    // the whole provider — dropping every Chaturbate model empties its category pages, which
+    // then get cached by ISR. Only a TOTAL failure (every page) rejects and marks it degraded.
+    const settled = await Promise.allSettled(
       Array.from({ length: MAX_PAGES }, (_, page) => fetchPage(page * PAGE_LIMIT)),
     );
+    const pages = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+    if (pages.length === 0) {
+      throw (settled.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined)?.reason
+        ?? new Error('chaturbate: all pages failed');
+    }
     const models: CamModel[] = [];
     const seen = new Set<string>();
     for (const rooms of pages) {
