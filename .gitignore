@@ -7,7 +7,10 @@ node_modules/
 dist/
 build/
 .next/
-out/
+# `next export` output — anchored to the repo root so it can't swallow app routes like
+# frontend/src/app/out/ (the /out affiliate redirect), which an unanchored `out/` did — that
+# route was silently never committed and 404'd in every deployed build.
+/out/
 
 # env
 .env
