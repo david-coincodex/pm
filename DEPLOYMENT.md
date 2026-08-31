@@ -20,9 +20,12 @@ images, pushes them to GHCR, and rolls them out on the `promode-staging` host.
 - Strapi CORS allows the frontend origin via `FRONTEND_URL` (`config/middlewares.ts`).
 - **Media** is stored relative (`/uploads/...`) and resolved at render. Staging sets the
   `NEXT_PUBLIC_MEDIA_BASE` build arg to `https://staging.pornmode.com`, served by the
-  `promode-uploads` Traefik router (priority 100) so media is same-origin with the site. Omit the
-  variable to serve media straight from the CMS host instead — correct for production, where the
-  CMS is not behind Cloudflare Access. Verify with `node scripts/normalize-media-urls.mjs --check`.
+  `promode-uploads` Traefik router (priority 100) so media is same-origin with the site.
+  Verify with `node scripts/normalize-media-urls.mjs --check`.
+- **Always pass `NEXT_PUBLIC_MEDIA_BASE` explicitly**, on every environment. `lib/strapi.ts`
+  falls back to `NEXT_PUBLIC_STRAPI_URL` when it is unset, but `frontend/Dockerfile` defaults
+  the ARG to `http://localhost:1339`, so the value is never actually undefined and the fallback
+  never fires. Omitting the arg bakes `localhost:1339` into every image URL in the bundle.
 
 ## Flow
 
@@ -90,45 +93,33 @@ through `scripts/lib/cf-access-proxy.mjs`.
 
 ## Production
 
-Production is `pornmode.com` (frontend) + `cms.pornmode.com` (Strapi). It deploys off the
-**`production`** branch. **This repo has no production workflow** — `.github/workflows/` only
-has `deploy-staging.yml`. The production branch is rolled out by **external infra** (watches the
-branch / Watchtower); confirm the exact mechanism with the infra setup before relying on timing.
+Push to the **`production`** branch (or run **Deploy — Production** manually *from that
+branch*) → `.github/workflows/deploy-production.yml`. Same shape as staging, with these
+differences:
 
-### Launch / release flow
+| What | Staging | Production |
+|---|---|---|
+| Host | `vars.DEPLOY_HOST` — `167.233.101.88` | `vars.DEPLOY_HOST_PROD` — `167.233.77.129` |
+| Environment | `staging` | `production` |
+| Compose file | `docker-compose.prod.yml` | `docker-compose.production.yml` |
+| Site / CMS | `staging.pornmode.com` / `cms-staging.pornmode.com` | `pornmode.com` / `cms.pornmode.com` |
+| Image tags | `:latest`, `:<sha>` | `:prod`, `:prod-<sha>` |
+| Media | re-served from the site host (`promode-uploads` router) | straight from `cms.pornmode.com` |
 
-1. **Ship code:** open a PR `staging → production` and merge it (production is protected — never
-   push it directly). Example: `gh pr create --base production --head staging …` then
-   `gh pr merge <n> --merge`. This carries whatever is on staging — check first with
-   `git log origin/production..origin/staging --oneline`.
-2. **Wait for the backend to redeploy.** There's no in-repo run to watch, so poll the CMS for the
-   new schema — it must exist before the content sync:
-   ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' \
-     "https://cms.pornmode.com/api/cam-categories?pagination%5BpageSize%5D=1" \
-     -H "Authorization: Bearer $PRODUCTION_STRAPI_TOKEN"     # 404 = not yet, 200 = ready
-   ```
-   The `cam-model`/`cam-category` tables and the 3 maintenance crons auto-create on backend boot
-   (no migration files).
-3. **Sync content to production** — deploys ship code, never content:
-   ```bash
-   node scripts/push-changed-content.mjs --to production        # dry run
-   node scripts/push-changed-content.mjs --to production --apply # confirmation word: PUSH PRODUCTION
-   ```
-   Gated by **STAGING PARITY**: it refuses unless local ≡ staging for every collection, so prod
-   only ever receives staging-approved content. Needs `PRODUCTION_STRAPI_TOKEN` +
-   `CF_ACCESS_CLIENT_ID/SECRET` in `scripts/.env`. This carries the cam-categories + BongaCams
-   site/offers/review; `isCamModelMedia` keeps the ~11k cam captures out (they regenerate per-env).
-4. **Registry rebuilds itself.** `cam-models` + `cam-favorites` are in `EXCLUDED_COLLECTIONS` and
-   never transfer — production discovers its own roster from the feeds within minutes, backfills
-   media over a day. Model pages fail OPEN on a CMS blip (render, never mass-404).
-
-### Prod env prerequisites (on the prod host / its compose)
-
-`CAM_SYNC_SECRET` (both services, or the registry stays empty — no model pages, empty
-models-sitemap), `CHATURBATE_WM` + `BONGACAMS_CAMPAIGN` (defaults baked in
-`docker-compose.prod.yml`), the standard Strapi secrets + DB. **Frontend image caveat:** the
-browser bundle bakes `NEXT_PUBLIC_STRAPI_URL` at BUILD — production images MUST be built with
-`https://cms.pornmode.com`, NOT the `cms-staging` value the in-repo `deploy-staging.yml` uses.
-Verify a prod frontend build points at the prod CMS, or every client call 404s against gated
-staging.
+- **Images are rebuilt, not promoted.** `NEXT_PUBLIC_STRAPI_URL` is inlined into the client
+  bundle at build time, so the staging image points at `cms-staging` for good. The `prod-`
+  tag prefix keeps the two builds of the same commit from overwriting each other in GHCR.
+- **Deploys are pinned.** The workflow writes `IMAGE_TAG=prod-<sha>` into the host's `.env`.
+  To roll back without a rebuild, edit that line to an earlier `prod-<sha>` on the host and
+  re-run `docker compose up -d`.
+- A `guard` job refuses any ref other than `refs/heads/production`, and a `deploy-production`
+  concurrency group queues overlapping deploys rather than racing them.
+- Secrets and variables resolve from the `production` environment first, falling back to the
+  repo-level ones shared with staging. Set environment-scoped overrides (at minimum
+  `SSH_PRIVATE_KEY`, `DATABASE_PASSWORD` and the Strapi key/salt set) under **Settings →
+  Environments → `production`** so the two hosts don't share credentials.
+- The production host needs the same prerequisites as staging: Docker + Compose, Traefik on
+  `:80`, the external `traefik_public` network, and a `deploy` user in the `docker` group
+  holding the public half of `SSH_PRIVATE_KEY`.
+- DNS for `pornmode.com` still points at the legacy WordPress site — deploying does not cut
+  over. Traefik on `167.233.77.129` will answer for the host once DNS is repointed.

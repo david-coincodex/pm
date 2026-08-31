@@ -58,17 +58,27 @@ the `DATABASE_*` values.
 
 ---
 
-## 3. GitHub Actions — **Settings → Environments → `staging`** (staging deploy only)
+## 3. GitHub Actions — **Settings → Environments** (both deploys)
 
-The `deploy-staging.yml` workflow writes these into the host `.env` at deploy time.
+Each deploy workflow's "Write .env file" step writes these into the host `.env`. **Staging** runs
+`deploy-staging.yml` (`environment: staging`, on push to `staging`); **production** runs
+`deploy-production.yml` (`environment: production`, on push to `production`). Production resolves
+from the `production` environment first, falling back to repo-level secrets shared with staging —
+so set at minimum `SSH_PRIVATE_KEY`, `DATABASE_PASSWORD`, the Strapi key/salt set, **and
+`CAM_SYNC_SECRET`** under **Settings → Environments → `production`** so the two hosts don't share
+credentials.
 
 **Secrets:** `SSH_PRIVATE_KEY`, `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`,
 `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY`, `DATABASE_PASSWORD`, `CAM_SYNC_SECRET`,
 `REVALIDATE_SECRET`, `GA_API_SECRET`.
-**Variables:** `DEPLOY_HOST`, `DEPLOY_USER`, `DATABASE_NAME`, `DATABASE_USERNAME`.
+**Variables:** `DEPLOY_USER`, `DATABASE_NAME`, `DATABASE_USERNAME`, plus `DEPLOY_HOST` (staging)
+/ `DEPLOY_HOST_PROD` (production).
 
-> Production is deployed by **external infra off the `production` branch** — it does NOT read
-> these GitHub secrets. Set the prod env on the prod host directly (sections 1 & 2).
+> ⚠️ If you add a NEW env var the cam feature (or anything) needs, it must be added in **three
+> places per environment**: the compose file (`docker-compose.prod.yml` / `docker-compose.production.yml`),
+> the workflow's "Write .env file" step, and the GitHub environment secret/var. Missing any one
+> silently leaves it empty on that host — this is exactly what stranded `CAM_SYNC_SECRET` on
+> production at launch.
 
 ---
 
@@ -97,7 +107,7 @@ If the live-cam section misbehaves, it's almost always one of these:
 
 | Var | Where | Symptom if wrong/unset |
 |---|---|---|
-| **`CAM_SYNC_SECRET`** | backend **and** frontend, same value | Registry never fills → no model pages, empty models-sitemap (**current prod gap**). |
+| **`CAM_SYNC_SECRET`** | backend **and** frontend, same value | Registry never fills → no model pages, empty models-sitemap. |
 | `NEXT_PUBLIC_STRAPI_URL` | frontend **build** | Wrong value ⇒ every browser call 404s against the wrong (gated) CMS. |
 | `CHATURBATE_WM` / `BONGACAMS_CAMPAIGN` | frontend runtime | Wrong ⇒ affiliate clicks credited to the wrong account / provider disabled. |
 | `GA_API_SECRET` | frontend runtime | Unset ⇒ cam/offer clicks aren't counted server-side. |
