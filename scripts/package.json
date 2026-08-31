@@ -13,6 +13,7 @@
     "import-commercials": "node import-commercials.mjs",
     "generate-ad-articles": "node generate-ad-articles.mjs",
     "generate-celebrity-articles": "node generate-celebrity-articles.mjs",
+    "generate-launch-article": "node generate-launch-article.mjs",
     "backfill-post-ids": "node backfill-post-ids.mjs",
     "build-wp-post-ids": "node build-wp-post-ids.mjs",
     "build-avn-awards": "node build-avn-awards.mjs",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useSyncExternalStore, useEffect } from 'react';
+import { useState, useSyncExternalStore, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
@@ -14,7 +14,16 @@ import { siteSettings } from '@/lib/siteSettings';
 
 const subscribeNever = () => () => {};
 
-function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
+/** Small emerald "NEW" tag next to a nav item, so a just-launched feature stands out. */
+function NewBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="ml-1.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-white align-middle">
+      {children}
+    </span>
+  );
+}
+
+function NavLink({ href, label, onClick, badge }: { href: string; label: string; onClick?: () => void; badge?: string }) {
   const pathname = usePathname();
   const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
   return (
@@ -28,6 +37,7 @@ function NavLink({ href, label, onClick }: { href: string; label: string; onClic
       }`}
     >
       {label}
+      {badge && <NewBadge>{badge}</NewBadge>}
     </Link>
   );
 }
@@ -73,7 +83,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         <nav className="flex items-center gap-6">
           <NavLink href={routes.home()} label={t('pornDeals')} />
           {siteSettings.features.bundles && <NavLink href={routes.bundles()} label={t('bundles')} />}
-          <NavLink href={routes.liveSexNav()} label={t('liveSex')} />
+          <NavLink href={routes.liveSexNav()} label={t('liveSex')} badge={t('new')} />
           <NavLink href={routes.reviews()} label={t('reviews')} />
           <NavLink href={routes.categories()} label={t('categories')} />
           <NavLink href={routes.blog()} label={t('blog')} />
@@ -176,14 +186,14 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
 
         {/* Drawer nav links */}
         <nav className="flex flex-col overflow-y-auto px-2 py-3">
-          {[
+          {([
             { href: routes.home(), label: t('pornDeals') },
             ...(siteSettings.features.bundles ? [{ href: routes.bundles(), label: t('bundles') }] : []),
-            { href: routes.liveSexNav(), label: t('liveSex') },
+            { href: routes.liveSexNav(), label: t('liveSex'), badge: t('new') },
             { href: routes.reviews(), label: t('reviews') },
             { href: routes.categories(), label: t('categories') },
             { href: routes.blog(), label: t('blog') },
-          ].map(({ href, label }) => (
+          ] as { href: string; label: string; badge?: string }[]).map(({ href, label, badge }) => (
             <Link
               key={href}
               href={href}
@@ -191,6 +201,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
               className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
             >
               {label}
+              {badge && <NewBadge>{badge}</NewBadge>}
             </Link>
           ))}
           {activeSale && (
