@@ -117,6 +117,7 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+          CAM_SYNC_SECRET: ${{ secrets.CAM_SYNC_SECRET }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -131,6 +132,9 @@ jobs:
             echo "REVALIDATE_SECRET=$REVALIDATE_SECRET"
             # Empty until the GA_API_SECRET repo secret exists; server events then no-op silently.
             echo "GA_API_SECRET=$GA_API_SECRET"
+            # Guards the cam feed roster sync -> Strapi POST /api/cam-models/sync. Empty on
+            # either service = the registry never fills (no model pages, empty models-sitemap).
+            echo "CAM_SYNC_SECRET=$CAM_SYNC_SECRET"
             # Pins compose to this exact build. To roll back, edit this line on the host
             # to an earlier prod-<sha> and re-run `docker compose up -d`.
             echo "IMAGE_TAG=prod-${{ github.sha }}"
