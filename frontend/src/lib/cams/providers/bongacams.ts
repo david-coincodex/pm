@@ -145,9 +145,16 @@ export const bongacams: CamProviderAdapter = {
   async fetchOnline() {
     if (!bongacamsEnabled) return [];
     // Offsets are fixed, so every page is fetched at once — one round trip's worth of latency.
-    const pages = await Promise.all(
+    // allSettled, not all: one flaky page must not drop every BongaCams model (which empties its
+    // category pages and gets that empty page cached). Only a TOTAL failure degrades the provider.
+    const settled = await Promise.allSettled(
       Array.from({ length: MAX_PAGES }, (_, i) => fetchPage(i * PAGE_LIMIT)),
     );
+    const pages = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+    if (pages.length === 0) {
+      throw (settled.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined)?.reason
+        ?? new Error('bongacams: all pages failed');
+    }
     const models: CamModel[] = [];
     const seen = new Set<string>();
     for (const rows of pages) {

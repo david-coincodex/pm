@@ -144,11 +144,24 @@ function refresh(): Promise<OnlineSnapshot> {
       const models: CamModel[] = [];
       const degradedProviders: CamProvider[] = [];
       results.forEach((r, i) => {
-        if (r.status === 'fulfilled') models.push(...r.value);
-        else {
-          degradedProviders.push(adapters[i].id);
-          console.error(`[cams] ${adapters[i].id} feed failed:`, r.reason instanceof Error ? r.reason.message : r.reason);
+        const id = adapters[i].id;
+        if (r.status === 'fulfilled') {
+          models.push(...r.value);
+          return;
         }
+        // This provider's feed failed this cycle. Rather than drop all its models — which
+        // empties its category/language/platform pages and lets ISR cache that empty page for a
+        // full revalidate window (the "empty on first load, fine on refresh" bug) — retain its
+        // last-known-good models from the previous snapshot. They age out the moment the feed
+        // recovers. Only when there is NOTHING to retain (e.g. cold boot) do we mark it degraded
+        // and show the "temporarily unavailable" banner.
+        const retained = box.current?.byViewers.filter((m) => m.provider === id) ?? [];
+        models.push(...retained);
+        if (retained.length === 0) degradedProviders.push(id);
+        console.error(
+          `[cams] ${id} feed failed${retained.length ? ` (serving ${retained.length} last-known)` : ''}:`,
+          r.reason instanceof Error ? r.reason.message : r.reason,
+        );
       });
       // Every provider down: never BUILD an empty snapshot — at boot that would stamp
       // "0 cams live" as fresh and seed ISR with it for a full TTL. Keep the previous
