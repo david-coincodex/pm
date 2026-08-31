@@ -739,7 +739,10 @@ async function main() {
       );
       const drift = parityDiffs.filter((d) => d.created.length + d.changed.length > 0);
       const [lf, sf] = await Promise.all([fetchAllFiles(local), fetchAllFiles(stagingRef)]);
-      const fileDrift = diffFiles(lf, sf).newFiles.length;
+      // Exclude cam-model media (same filter as the push diff): those captures are per-env
+      // machine data that NEVER sync, so they are not "drift" — without this the parity gate
+      // sees ~19k local cam files absent from staging and refuses forever.
+      const fileDrift = diffFiles(lf.filter((f) => !isCamModelMedia(f)), sf.filter((f) => !isCamModelMedia(f))).newFiles.length;
       if (drift.length || fileDrift) {
         for (const d of drift) console.log(bad(`staging parity: ${d.plural} has ${d.created.length} new / ${d.changed.length} changed not yet on staging`));
         if (fileDrift) console.log(bad(`staging parity: ${fileDrift} file(s) not yet on staging`));
