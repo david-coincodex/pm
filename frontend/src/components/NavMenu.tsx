@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
@@ -8,8 +8,11 @@ import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import MobileSearchOverlay from './MobileSearchOverlay';
 import ThemeToggle from './ThemeToggle';
+import HeartIcon from '@/components/HeartIcon';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
+
+const subscribeNever = () => () => {};
 
 function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const pathname = usePathname();
@@ -32,17 +35,22 @@ function NavLink({ href, label, onClick }: { href: string; label: string; onClic
 export default function NavMenu({ activeSale }: { activeSale?: { slug: string; navLabel: string; themeColor: string } | null }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const t = useTranslations('nav');
 
-  useEffect(() => { setMounted(true); }, []);
+  // "Am I hydrated?" via the store hook: the server snapshot says no, the client re-reads
+  // once after hydration — no effect-driven setState, no cascading render.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
 
-  // Close drawer on navigation
-  useEffect(() => {
+  // Close drawer/search on navigation. Adjusting state during render (React's documented
+  // pattern for state derived from a changing value) rather than in an effect: no second
+  // render pass, and the drawer is never briefly visible over the new page.
+  const [renderedPath, setRenderedPath] = useState(pathname);
+  if (pathname !== renderedPath) {
+    setRenderedPath(pathname);
     setDrawerOpen(false);
     setSearchOpen(false);
-  }, [pathname]);
+  }
 
   // Body scroll lock when drawer is open on mobile
   useEffect(() => {
@@ -65,7 +73,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
         <nav className="flex items-center gap-6">
           <NavLink href={routes.home()} label={t('pornDeals')} />
           {siteSettings.features.bundles && <NavLink href={routes.bundles()} label={t('bundles')} />}
-          <NavLink href={routes.category('live-sex')} label={t('liveSex')} />
+          <NavLink href={routes.liveSexNav()} label={t('liveSex')} />
           <NavLink href={routes.reviews()} label={t('reviews')} />
           <NavLink href={routes.categories()} label={t('categories')} />
           <NavLink href={routes.blog()} label={t('blog')} />
@@ -82,6 +90,15 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
 
         <div className="ml-auto flex items-center gap-3">
           <SearchBar className="w-80" />
+          {siteSettings.features.liveSex && siteSettings.features.accounts && (
+            <Link
+              href={routes.favorites()}
+              aria-label={t('myFavorites')}
+              className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              <HeartIcon className="h-5 w-5" />
+            </Link>
+          )}
           <ThemeToggle />
           <LanguageSwitcher />
         </div>
@@ -162,7 +179,7 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           {[
             { href: routes.home(), label: t('pornDeals') },
             ...(siteSettings.features.bundles ? [{ href: routes.bundles(), label: t('bundles') }] : []),
-            { href: routes.category('live-sex'), label: t('liveSex') },
+            { href: routes.liveSexNav(), label: t('liveSex') },
             { href: routes.reviews(), label: t('reviews') },
             { href: routes.categories(), label: t('categories') },
             { href: routes.blog(), label: t('blog') },
@@ -188,6 +205,18 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           )}
         </nav>
 
+        {siteSettings.features.liveSex && siteSettings.features.accounts && (
+          <div className="shrink-0 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+            <Link
+              href={routes.favorites()}
+              onClick={() => setDrawerOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <HeartIcon className="h-4 w-4" />
+              {t('myFavorites')}
+            </Link>
+          </div>
+        )}
         {/* Drawer footer: theme toggle + language switcher */}
         <div className="mt-auto flex shrink-0 items-center justify-between border-t border-slate-200 px-5 py-4 dark:border-slate-800">
           <LanguageSwitcher showLabel />

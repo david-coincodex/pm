@@ -9,6 +9,17 @@ const nextConfig: NextConfig = {
   // Required for the multi-stage production Docker image
   output: 'standalone',
   trailingSlash: true,
+  /**
+   * Upper bound on stale-while-revalidate. `revalidate` decides when a cached page becomes
+   * stale; THIS decides how long a stale page may still be handed out while it regenerates —
+   * and Next's default is 31536000 (one year). On pages built from live data that is wrong in
+   * the worst way: a listing nobody had opened for hours served hours-old HTML, with 98% of the
+   * models offline and their thumbnails 404ing, before the refresh it triggered ever landed.
+   *
+   * 60s means: past its revalidate window a page is regenerated for the request rather than
+   * served from cache. That regeneration reads the in-memory cam snapshot, so it costs ~20 ms.
+   */
+  expireTime: 60,
   images: {
     unoptimized: true,
     remotePatterns: [

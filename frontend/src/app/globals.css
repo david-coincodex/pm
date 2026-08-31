@@ -56,6 +56,23 @@
     from { opacity: 0; transform: translateX(-32px); }
     to   { opacity: 1; transform: translateX(0); }
   }
+
+  /* Indeterminate sweep for the cam-card preview loading bar (animate-cam-load). The bar is
+     w-1/3, so sweeping to 300% of its own width crosses the full card and exits cleanly. */
+  --animate-cam-load: cam-load 1.1s ease-in-out infinite;
+  @keyframes cam-load {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(300%); }
+  }
+
+  /* Attention pulse for primary CTAs (animate-attention): a gentle periodic grow that makes
+     the button read as "press me". Pair with motion-safe: so reduced-motion visitors get a
+     static button. */
+  --animate-attention: attention 2.6s ease-in-out infinite;
+  @keyframes attention {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.05); }
+  }
 }
 
 /* slate-900 / slate-100 — the dark surfaces (cards slate-800, borders slate-700) sit on

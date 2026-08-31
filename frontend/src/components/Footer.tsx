@@ -36,7 +36,7 @@ export default async function Footer() {
               {[
                 { href: routes.home(), label: t('pornDeals') },
                 ...(siteSettings.features.bundles ? [{ href: routes.bundles(), label: t('bundles') }] : []),
-                { href: routes.category('live-sex'), label: t('liveSex') },
+                { href: routes.liveSexNav(), label: t('liveSex') },
                 { href: routes.reviews(), label: t('reviews') },
                 { href: routes.categories(), label: t('categories') },
               ].map((l) => (

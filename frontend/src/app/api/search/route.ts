@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchSites } from '@/lib/strapi';
+import { searchSites, type Site } from '@/lib/strapi';
 
 export type SearchResult = {
   id: string;
@@ -23,11 +23,10 @@ export async function GET(req: NextRequest) {
     for (const site of sites) {
       // Use own offers, fall back to parent site offers for child sites
       const ownOffers = (site.offers ?? []).filter((o) => o.isActive);
-      const effectiveOffers = ownOffers.length > 0
-        ? ownOffers
-        : ((site.parent_site as any)?.offers ?? []).filter((o: any) => o.isActive);
+      const parentOffers = (site.parent_site as Site | undefined)?.offers ?? [];
+      const effectiveOffers = ownOffers.length > 0 ? ownOffers : parentOffers.filter((o) => o.isActive);
       const best = effectiveOffers.length > 0
-        ? [...effectiveOffers].sort((a: any, b: any) => a.price - b.price)[0]
+        ? [...effectiveOffers].sort((a, b) => a.price - b.price)[0]
         : undefined;
       results.push({
         id: `site-${site.id}`,

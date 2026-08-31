@@ -14,5 +14,11 @@ export const siteSettings = {
   features: {
     /** Bundles are hidden for launch: pages 404, links/sections/sitemap entries disappear. */
     bundles: false,
+    /** Live cam aggregator (/live-sex): flips the routes, the nav target, and its sitemap. */
+    liveSex: true,
+    /** User accounts + favorites, hidden for the cams-first launch: account pages and the
+     * auth/favorites BFF routes 404, hearts and the favorites views disappear. Nothing was
+     * deleted — see docs/enable-accounts.md to switch back on. */
+    accounts: false,
   },
 } as const;

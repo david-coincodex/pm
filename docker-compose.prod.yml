@@ -17,6 +17,12 @@ services:
       # GA4 Measurement Protocol secret for server-side offer-click events. Server-only on purpose
       # — as NEXT_PUBLIC_* it would ship to the browser and let anyone forge hits.
       GA_API_SECRET: ${GA_API_SECRET}
+      # Live-cam affiliate feed credentials (server-only)
+      CHATURBATE_WM: ${CHATURBATE_WM:-y98oG}
+      BONGACAMS_CAMPAIGN: ${BONGACAMS_CAMPAIGN:-660500}
+      # Shared secret for the cam feed roster sync -> Strapi POST /api/cam-models/sync
+      # (server-only; must match the backend's value)
+      CAM_SYNC_SECRET: ${CAM_SYNC_SECRET}
     # No ports here — Traefik routes external traffic via labels below
     labels:
       - traefik.enable=true
@@ -53,6 +59,8 @@ services:
       DATABASE_SSL: "false"
       # CORS origin for the public frontend (config/middlewares.ts reads FRONTEND_URL)
       FRONTEND_URL: https://staging.pornmode.com
+      # Shared secret guarding POST /api/cam-models/sync (the frontend posts the feed roster)
+      CAM_SYNC_SECRET: ${CAM_SYNC_SECRET}
     depends_on:
       db:
         condition: service_healthy

@@ -199,9 +199,29 @@ function assertNoComponentMedia() {
  * relations to bundles (offer.bundle, sale.bundles) — the reverse order 400s on a new bundle.
  */
 const PUSH_ORDER = [
-  'platforms', 'authors', 'categories', 'tags', 'sites', 'bundles', 'offers', 'commercials',
-  'reviews', 'pages', 'sales', 'featureds', 'articles',
+  'platforms', 'authors', 'categories', 'tags', 'cam-categories', 'sites', 'bundles', 'offers',
+  'commercials', 'reviews', 'pages', 'sales', 'featureds', 'articles',
 ];
+
+/**
+ * Environment-local collections: user data that must NEVER sync between instances in either
+ * direction (each environment owns its own users and their favorites). Filtered out after
+ * loadSchemas() so the missing-from-PUSH_ORDER guard still refuses genuinely unknown types.
+ */
+const EXCLUDED_COLLECTIONS = new Set(['cam-favorites', 'cam-models']);
+
+/**
+ * Media owned by an excluded collection must not sync either. cam-model photos (API profile
+ * pics + snapshot captures) are uploaded by the backend capture service as `${key}-${ts}` where
+ * key is `${provider}:${username}` (provider ∈ cb|bc) — see
+ * backend/src/api/cam-model/services/cam-model.ts. That `provider:` colon prefix is the
+ * deterministic signal (no editorial filename carries a colon). These images regenerate on each
+ * environment from its own live feeds via the ingest/snapshot crons, so shipping the local dev
+ * captures would be ~170MB of orphaned junk (the cam-model rows they attach to are excluded).
+ * Filtered from BOTH sides of the file diff: local ones never upload, staging's own captures
+ * never register as "staging-only" noise.
+ */
+const isCamModelMedia = (file) => /^(cb|bc):/.test(file.name ?? '');
 
 /**
  * Natural key per collection — the cross-instance identity (documentIds differ, see header).
@@ -218,6 +238,7 @@ const LABEL_FIELD = {
   articles: 'title', pages: 'title', sales: 'title',
   sites: 'name', bundles: 'name', categories: 'name', tags: 'name', authors: 'name',
   platforms: 'name', featureds: 'name', commercials: 'title', reviews: 'displayTitle',
+  'cam-categories': 'name',
 };
 const keyQueryFor = (plural) => {
   const base = KEY_QUERY[plural] ?? 'fields[0]=slug&fields[1]=updatedAt&fields[2]=publishedAt';
@@ -666,6 +687,7 @@ async function main() {
   assertNoComponentMedia();
 
   const schemas = loadSchemas();
+  for (const excluded of EXCLUDED_COLLECTIONS) schemas.delete(excluded);
   // A schema outside PUSH_ORDER would be silently skipped forever — refuse instead.
   const unordered = [...schemas.keys()].filter((c) => !PUSH_ORDER.includes(c));
   if (unordered.length) {
@@ -744,7 +766,11 @@ async function main() {
       );
     }
 
-    const [localFiles, stagingFiles] = await Promise.all([fetchAllFiles(local), fetchAllFiles(staging)]);
+    const [localFilesAll, stagingFilesAll] = await Promise.all([fetchAllFiles(local), fetchAllFiles(staging)]);
+    const localFiles = localFilesAll.filter((f) => !isCamModelMedia(f));
+    const stagingFiles = stagingFilesAll.filter((f) => !isCamModelMedia(f));
+    const skippedCam = localFilesAll.length - localFiles.length;
+    if (skippedCam) console.log(`  ${skippedCam} cam-model media file(s) skipped (excluded collection — regenerated per-env by the crons)`);
     const { newFiles, fileIdMap, fileUrlMap, stagingOnlyFiles } = diffFiles(localFiles, stagingFiles);
     const newMb = (newFiles.reduce((n, f) => n + (f.size ?? 0), 0) / 1024).toFixed(1);
     console.log(`\n  media: ${localFiles.length} local, ${stagingFiles.length} staging — ` +

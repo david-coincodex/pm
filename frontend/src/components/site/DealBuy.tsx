@@ -87,12 +87,13 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
     return () => obs.disconnect();
   }, []);
 
-  if (!selected) return null;
-
+  // Above the early return — hooks must run in the same order every render.
   const verifiedDate = useMemo(() => {
     const d = getVerifiedDate();
     return d.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
   }, [locale]);
+
+  if (!selected) return null;
 
   const fullPrice = selected.full_price ?? 0;
   const discount = getDiscountPercent(selected);
@@ -170,7 +171,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
           </div>
         )}
         <div className="text-5xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
-          ${selected.price.toFixed(2)}
+          {selected.price === 0 ? t('free') : `$${selected.price.toFixed(2)}`}
         </div>
         {isCredits && selected.credits && (
           <div className="mt-1 text-base font-semibold text-slate-700 dark:text-slate-200">
@@ -237,7 +238,7 @@ export default function DealBuy({ offers, dealIncludes, paymentMethods, review, 
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-              ${selected.price.toFixed(2)}
+              {selected.price === 0 ? t('free') : `$${selected.price.toFixed(2)}`}
             </span>
             {!isCredits && fullPrice > selected.price && (
               <span className="text-sm text-slate-400 line-through">${fullPrice.toFixed(2)}</span>

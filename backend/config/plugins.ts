@@ -3,6 +3,20 @@ import type { Core } from '@strapi/strapi';
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
   'color-picker': { enabled: true },
 
+  // End-user accounts (live-cam favorites). Register/login run through the frontend's BFF
+  // route handlers; the JWT never reaches browser JS. Email confirmation stays OFF until an
+  // email provider is configured (no SMTP yet — the transitive sendmail provider fails in
+  // Docker, so enabling confirmation would brick registration).
+  'users-permissions': {
+    config: {
+      jwtSecret: env('JWT_SECRET'),
+      jwt: { expiresIn: '30d' },
+      // Whitelist of extra registration fields: empty = username/email/password only,
+      // blocking mass-assignment of arbitrary user columns through /auth/local/register.
+      register: { allowedFields: [] },
+    },
+  },
+
   upload: {
     config: {
       providerOptions: {

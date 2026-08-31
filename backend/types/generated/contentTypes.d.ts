@@ -26,6 +26,11 @@ export interface AdminApiToken extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         minLength: 1;
       }>;
+    adminPermissions: Schema.Attribute.Relation<
+      'oneToMany',
+      'admin::permission'
+    >;
+    adminUserOwner: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -39,6 +44,9 @@ export interface AdminApiToken extends Struct.CollectionTypeSchema {
         minLength: 1;
       }>;
     expiresAt: Schema.Attribute.DateTime;
+    kind: Schema.Attribute.Enumeration<['content-api', 'admin']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'content-api'>;
     lastUsedAt: Schema.Attribute.DateTime;
     lifespan: Schema.Attribute.BigInteger;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -56,7 +64,6 @@ export interface AdminApiToken extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     type: Schema.Attribute.Enumeration<['read-only', 'full-access', 'custom']> &
-      Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'read-only'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -134,6 +141,7 @@ export interface AdminPermission extends Struct.CollectionTypeSchema {
         minLength: 1;
       }>;
     actionParameters: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    apiToken: Schema.Attribute.Relation<'manyToOne', 'admin::api-token'>;
     conditions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -385,6 +393,8 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
+    apiTokens: Schema.Attribute.Relation<'oneToMany', 'admin::api-token'> &
+      Schema.Attribute.Private;
     blocked: Schema.Attribute.Boolean &
       Schema.Attribute.Private &
       Schema.Attribute.DefaultTo<false>;
@@ -626,6 +636,166 @@ export interface ApiBundleBundle extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCamCategoryCamCategory extends Struct.CollectionTypeSchema {
+  collectionName: 'cam_categories';
+  info: {
+    description: 'Live-cam browse categories: genders, tag categories and cam sites as one type. `kind` decides how a category matches live models (genderKey / matchTags synonyms / providerKey).';
+    displayName: 'Cam Category';
+    mainField: 'name';
+    pluralName: 'cam-categories';
+    singularName: 'cam-category';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    content: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      >;
+    cover_image: Schema.Attribute.Media<'images'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    faqs: Schema.Attribute.Component<'shared.faq', true>;
+    featured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    genderKey: Schema.Attribute.Enumeration<['f', 'm', 'c', 't']>;
+    intro: Schema.Attribute.RichText &
+      Schema.Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'defaultHtml';
+        }
+      >;
+    kind: Schema.Attribute.Enumeration<
+      ['gender', 'tag', 'provider', 'language']
+    > &
+      Schema.Attribute.Required;
+    languageKey: Schema.Attribute.Enumeration<
+      [
+        'english',
+        'spanish',
+        'russian',
+        'french',
+        'german',
+        'italian',
+        'portuguese',
+        'romanian',
+        'ukrainian',
+        'polish',
+        'turkish',
+        'arabic',
+      ]
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cam-category.cam-category'
+    > &
+      Schema.Attribute.Private;
+    matchTags: Schema.Attribute.JSON;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    providerKey: Schema.Attribute.Enumeration<['cb', 'bc']>;
+    publishedAt: Schema.Attribute.DateTime;
+    site: Schema.Attribute.Relation<'oneToOne', 'api::site.site'>;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCamFavoriteCamFavorite extends Struct.CollectionTypeSchema {
+  collectionName: 'cam_favorites';
+  info: {
+    description: "A user's favorited live-cam model. ENV-LOCAL user data: excluded from the public read grant (src/index.ts) and from every content sync (push-changed-content.mjs). Model info is denormalized so favorites render without any model registry.";
+    displayName: 'Cam Favorite';
+    pluralName: 'cam-favorites';
+    singularName: 'cam-favorite';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    displayName: Schema.Attribute.String;
+    gender: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cam-favorite.cam-favorite'
+    > &
+      Schema.Attribute.Private;
+    notify: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    provider: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    thumbUrl: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    username: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface ApiCamModelCamModel extends Struct.CollectionTypeSchema {
+  collectionName: 'cam_models';
+  info: {
+    description: 'Live-cam model registry synced from provider feeds. Environment-local operational data: excluded from content sync (push-changed-content.mjs), publicly readable (model pages + sitemap).';
+    displayName: 'Cam Model';
+    pluralName: 'cam-models';
+    singularName: 'cam-model';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    country: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    displayName: Schema.Attribute.String;
+    firstSeenAt: Schema.Attribute.DateTime;
+    gender: Schema.Attribute.Enumeration<['f', 'm', 'c', 't']>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    languages: Schema.Attribute.JSON;
+    lastSeenAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cam-model.cam-model'
+    > &
+      Schema.Attribute.Private;
+    peakViewers: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    photos: Schema.Attribute.Media<'images', true>;
+    photosCapturedAt: Schema.Attribute.DateTime;
+    profileImageIngestedUrl: Schema.Attribute.String;
+    profileImageUrl: Schema.Attribute.String;
+    provider: Schema.Attribute.Enumeration<['cb', 'bc']> &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    tags: Schema.Attribute.JSON;
+    thumbUrl: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    username: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }
 
@@ -1783,6 +1953,9 @@ declare module '@strapi/strapi' {
       'api::article.article': ApiArticleArticle;
       'api::author.author': ApiAuthorAuthor;
       'api::bundle.bundle': ApiBundleBundle;
+      'api::cam-category.cam-category': ApiCamCategoryCamCategory;
+      'api::cam-favorite.cam-favorite': ApiCamFavoriteCamFavorite;
+      'api::cam-model.cam-model': ApiCamModelCamModel;
       'api::category.category': ApiCategoryCategory;
       'api::commercial.commercial': ApiCommercialCommercial;
       'api::featured.featured': ApiFeaturedFeatured;
