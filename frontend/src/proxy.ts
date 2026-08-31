@@ -158,7 +158,23 @@ function attachGeoCookie(request: NextRequest, response: NextResponse): NextResp
   return response;
 }
 
+/** Path-based model-sitemap chunks — /models-sitemap-N.xml — served by the ?page=N handler.
+ * Path filenames are the sitemap convention (and Yoast parity for this domain's crawl history);
+ * done in middleware, not next.config rewrites, because a .xml destination there drops the
+ * captured param (both ?page=:page and auto-append), and not in a route file because App Router
+ * can't express a `models-sitemap-[n].xml` segment. The bare /models-sitemap.xml still serves
+ * chunk 1. */
+const SITEMAP_CHUNK_RE = /^\/models-sitemap-(\d{1,4})\.xml$/;
+
 export default function proxy(request: NextRequest) {
+  const chunk = request.nextUrl.pathname.match(SITEMAP_CHUNK_RE);
+  if (chunk) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/models-sitemap.xml';
+    url.searchParams.set('page', chunk[1]);
+    return NextResponse.rewrite(url);
+  }
+
   // Server-side 301 redirects (with wildcard support) take precedence over locale routing.
   const destination = resolveRedirect(
     request.nextUrl.pathname,
@@ -190,5 +206,8 @@ export const config = {
     // Usernames may contain dots, which the static-file exclusion above would treat as files
     // (middleware skipped → trailing-slash 308 into a 404). Re-include the whole cam tree.
     '/live-sex/:path*',
+    // Path-based model-sitemap chunks (also dotted, so excluded above) — SITEMAP_CHUNK_RE
+    // rewrites them onto the ?page= handler.
+    '/models-sitemap-:n.xml',
   ],
 };
