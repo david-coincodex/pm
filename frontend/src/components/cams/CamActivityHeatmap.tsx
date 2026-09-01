@@ -1,26 +1,52 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { bucketLocalOccupancy, type SessionPair } from '@/lib/cams/activity';
 
 /**
- * "Usual online hours": 7 weekday rows × 24 hour columns over the model's last 28 days of
- * recorded sessions, in the VISITOR'S timezone — which is why this is a client component. The
- * server (and first client) render paints the all-zero grid; the real buckets land after
- * mount, when the browser's local Date is available. Grid dimensions never change, so there
- * is no hydration mismatch and no layout shift — cells just gain color.
+ * The visitor's clock as an external store, minute-granular. Hydration-safe by construction:
+ * the server snapshot is null (zero grid, no marker — no mismatch), the client snapshot is
+ * the current epoch minute, and the subscription re-renders each minute so the "now" marker
+ * crosses hour boundaries during long sessions.
+ */
+function subscribeMinute(onTick: () => void) {
+  const id = setInterval(onTick, 60_000);
+  return () => clearInterval(id);
+}
+const clientMinute = (): number | null => Math.floor(Date.now() / 60_000);
+const serverMinute = (): number | null => null;
+
+/**
+ * "Usual online hours": the model's last 28 days of recorded sessions bucketed by weekday ×
+ * hour, in the VISITOR'S timezone — which is why this is a client component. The server (and
+ * first client) render paints the all-zero grid; the real buckets land after mount, when the
+ * browser's local Date is available. Grid dimensions never change, so there is no hydration
+ * mismatch and no layout shift — cells just gain color.
  *
- * Plain CSS grid, no chart dependency: ~170 divs is nothing, and the sidebar rail is 270px.
+ * Two orientations, chosen by viewport: the desktop sidebar rail is 270px wide, so days run
+ * across the top and hours down (7 × 24 fits the narrow column); the mobile sidebar spans the
+ * full content width, where the classic days-as-rows layout (24 across) reads better. Both
+ * are rendered and toggled with visibility classes — the component can't know which sidebar
+ * copy it sits in.
+ *
+ * Plain CSS grid, no chart dependency. Exact values live in the hover tooltip (hover-only is
+ * fine: the sr-only summary carries the peak for everyone else).
  */
 export default function CamActivityHeatmap({ activity }: { activity: SessionPair[] }) {
   const t = useTranslations('liveSex');
   const locale = useLocale();
-  const [buckets, setBuckets] = useState<number[] | null>(null);
-
-  useEffect(() => {
-    setBuckets(bucketLocalOccupancy(activity, Date.now()));
-  }, [activity]);
+  const nowMinute = useSyncExternalStore(subscribeMinute, clientMinute, serverMinute);
+  const buckets = useMemo(
+    () => (nowMinute === null ? null : bucketLocalOccupancy(activity, nowMinute * 60_000)),
+    [activity, nowMinute],
+  );
+  // The visitor's current weekday-hour cell, marked in the grid (null on the server render).
+  const nowIdx = useMemo(() => {
+    if (nowMinute === null) return null;
+    const d = new Date(nowMinute * 60_000);
+    return ((d.getDay() + 6) % 7) * 24 + d.getHours();
+  }, [nowMinute]);
 
   // Monday-first to match the bucketing (2024-01-01 is a Monday; UTC pins the label dates).
   const dayNames = useMemo(() => {
@@ -30,6 +56,12 @@ export default function CamActivityHeatmap({ activity }: { activity: SessionPair
       const date = new Date(Date.UTC(2024, 0, 1 + i));
       return { short: short.format(date), long: long.format(date) };
     });
+  }, [locale]);
+
+  // Localized clock labels for the tooltip: "13:00" under de/…, "1:00 PM" under en.
+  const hourLabels = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+    return Array.from({ length: 24 }, (_, h) => fmt.format(new Date(Date.UTC(2024, 0, 1, h))));
   }, [locale]);
 
   const pct = buckets ?? ZERO_BUCKETS;
@@ -46,68 +78,156 @@ export default function CamActivityHeatmap({ activity }: { activity: SessionPair
   }, [pct]);
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2">
       {/* A <p>, not a heading: the sidebar precedes the page's H1 in DOM order (same
           reasoning as CamSiteOffer's label). */}
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {t('usualOnlineHours')}
+        <InfoTip label={t('heatmapLocalTime')} />
       </p>
-      <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
-        {/* Color is the only signal inside the grid, so keep it out of the accessibility
-            tree and narrate the peak in text instead. */}
-        <div className="grid grid-cols-[auto_repeat(24,minmax(0,1fr))] gap-px" aria-hidden="true">
-          {dayNames.map((day, d) => (
-            <div key={day.short} className="contents">
-              <div className="pr-1.5 text-right text-[9px] leading-none text-slate-400 dark:text-slate-500 self-center">
-                {day.short}
-              </div>
-              {Array.from({ length: 24 }, (_, h) => {
-                const value = pct[d * 24 + h];
-                return (
-                  <div
-                    key={h}
-                    className={`aspect-square rounded-[2px] ${BIN_CLASSES[bin(value)]}`}
-                    title={t('heatmapCell', {
-                      day: day.long,
-                      start: h,
-                      end: (h + 1) % 24,
-                      percent: Math.round(value * 100),
-                    })}
-                  />
-                );
-              })}
+      {/* Desktop rail: days on top, hours down — the vertical shape leaves room for the card
+          border; mobile stays borderless to save width. */}
+      <HeatGrid
+        vertical
+        className="hidden rounded-xl border border-slate-200 bg-white p-3 lg:block dark:border-slate-700 dark:bg-slate-800"
+        pct={pct}
+        dayNames={dayNames}
+        hourLabels={hourLabels}
+        nowIdx={nowIdx}
+      />
+      {/* Mobile / full-width sidebar: days as rows, hours across. */}
+      <HeatGrid className="lg:hidden" pct={pct} dayNames={dayNames} hourLabels={hourLabels} nowIdx={nowIdx} />
+      {peak && (
+        <p className="sr-only">{t('heatmapSummary', { day: dayNames[peak.day].long, hour: peak.hour })}</p>
+      )}
+    </section>
+  );
+}
+
+type DayName = { short: string; long: string };
+
+function HeatGrid({
+  vertical = false,
+  className,
+  pct,
+  dayNames,
+  hourLabels,
+  nowIdx,
+}: {
+  vertical?: boolean;
+  className: string;
+  pct: number[];
+  dayNames: DayName[];
+  hourLabels: string[];
+  nowIdx: number | null;
+}) {
+  const t = useTranslations('liveSex');
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ d: number; h: number; x: number; y: number } | null>(null);
+
+  // Tooltip anchoring: cell centers, measured against the relative wrapper (the cells'
+  // offsetParent), horizontally clamped so edge columns don't overflow the sidebar.
+  const onEnter = (e: React.MouseEvent<HTMLDivElement>, d: number, h: number) => {
+    const cell = e.currentTarget;
+    const width = boxRef.current?.clientWidth ?? 270;
+    const x = Math.min(Math.max(cell.offsetLeft + cell.offsetWidth / 2, 70), width - 70);
+    setTip({ d, h, x, y: cell.offsetTop });
+  };
+
+  const cell = (d: number, h: number, shapeClass: string) => (
+    <div
+      key={`${d}-${h}`}
+      onMouseEnter={(e) => onEnter(e, d, h)}
+      className={`${shapeClass} cursor-default rounded-xs ${BIN_CLASSES[bin(pct[d * 24 + h])]}${
+        // "You are here": neutral ink ring — high contrast on every ramp step in both modes,
+        // without borrowing a hue the cells (emerald) or statuses already own.
+        nowIdx === d * 24 + h ? ' relative z-[1] ring-2 ring-slate-900 dark:ring-white' : ''
+      }`}
+    />
+  );
+
+  const axisText = 'text-xs leading-none text-slate-400 dark:text-slate-500';
+
+  return (
+    <div ref={boxRef} className={`relative ${className}`} onMouseLeave={() => setTip(null)}>
+      {vertical ? (
+        <div className="grid grid-cols-[auto_repeat(7,minmax(0,1fr))] gap-0.5" aria-hidden="true">
+          <div />
+          {dayNames.map((day) => (
+            <div key={day.short} className={`pb-1 text-center font-medium ${axisText}`}>
+              {day.short}
             </div>
+          ))}
+          {Array.from({ length: 24 }, (_, h) => (
+            <Fragment key={h}>
+              <div className={`self-center pr-1.5 text-right ${axisText}`}>{h % 6 === 0 ? h : ''}</div>
+              {dayNames.map((_, d) => cell(d, h, 'h-3 w-full'))}
+            </Fragment>
+          ))}
+          {/* Closing boundary label: the 23-row starts at 23:00; 24 marks midnight's end. */}
+          <div className={`pr-1.5 pt-1 text-right ${axisText}`}>24</div>
+          <div className="col-span-7" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-[auto_repeat(24,minmax(0,1fr))] gap-0.5" aria-hidden="true">
+          {dayNames.map((day, d) => (
+            <Fragment key={day.short}>
+              <div className={`self-center pr-1.5 text-right font-medium ${axisText}`}>{day.short}</div>
+              {Array.from({ length: 24 }, (_, h) => cell(d, h, 'aspect-square w-full'))}
+            </Fragment>
           ))}
           <div />
-          {/* Hour axis: sparse labels, each spanning its 6-column block. */}
           {[0, 6, 12, 18].map((h) => (
-            <div key={h} className="col-span-6 pt-0.5 text-[9px] leading-none text-slate-400 dark:text-slate-500">
+            <div key={h} className={`relative col-span-6 pt-1 ${axisText}`}>
               {h}
+              {/* Closing boundary label at the grid's right edge. */}
+              {h === 18 && <span className="absolute right-0">24</span>}
             </div>
           ))}
         </div>
-        {peak && (
-          <p className="sr-only">{t('heatmapSummary', { day: dayNames[peak.day].long, hour: peak.hour })}</p>
-        )}
-        <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
-          <span>{t('heatmapLocalTime')}</span>
-          <span className="flex items-center gap-1" aria-hidden="true">
-            {t('heatmapLess')}
-            {BIN_CLASSES.map((cls) => (
-              <span key={cls} className={`h-2 w-2 rounded-[2px] ${cls}`} />
-            ))}
-            {t('heatmapMore')}
+      )}
+      {tip && (
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-xs text-white shadow-lg dark:bg-slate-700"
+          style={{ left: tip.x, top: tip.y - 6 }}
+        >
+          <span className="font-semibold">
+            {dayNames[tip.d].long}, {hourLabels[tip.h]}
+          </span>
+          <span className="block text-white/70">
+            {t('heatmapFrequency', { percent: Math.round(pct[tip.d * 24 + tip.h] * 100) })}
           </span>
         </div>
-      </div>
-    </section>
+      )}
+    </div>
+  );
+}
+
+/** The "(?)" after the title: methodology note lives here instead of a caption line. */
+function InfoTip({ label }: { label: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        aria-label={label}
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold text-slate-400 dark:border-slate-600 dark:text-slate-500"
+      >
+        ?
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-0 top-full z-10 mt-1.5 hidden whitespace-nowrap rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-xs font-normal normal-case tracking-normal text-white shadow-lg group-focus-within:block group-hover:block dark:bg-slate-700"
+      >
+        {label}
+      </span>
+    </span>
   );
 }
 
 const ZERO_BUCKETS = new Array<number>(7 * 24).fill(0);
 
 /* Absolute occupancy bins; static class strings so Tailwind's scanner sees them. Lightness is
-   monotonic in both modes (dark flips the anchor so zero recedes into the card surface). */
+   monotonic in both modes (dark flips the anchor so zero recedes into the page surface). */
 const BIN_CLASSES = [
   'bg-slate-100 dark:bg-slate-700/60',
   'bg-emerald-200 dark:bg-emerald-900',

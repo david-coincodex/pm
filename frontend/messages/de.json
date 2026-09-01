@@ -468,11 +468,9 @@
     "allSites": "Alle Seiten",
     "allLanguages": "Alle Sprachen",
     "usualOnlineHours": "Übliche Online-Zeiten",
-    "heatmapCell": "{day} {start}:00–{end}:00 Uhr — {percent}% der Zeit online",
     "heatmapSummary": "Meist online {day} gegen {hour}:00 Uhr",
     "heatmapLocalTime": "Letzte 4 Wochen, deine lokale Zeit",
-    "heatmapLess": "Seltener",
-    "heatmapMore": "Öfter"
+    "heatmapFrequency": "Online {percent} % der Zeit"
   },
   "account": {
     "login": "Anmelden",
