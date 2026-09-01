@@ -1,4 +1,5 @@
 import type { Core } from '@strapi/strapi';
+import { runBackfillTick } from '../api/cam-model/activity-backfill';
 import {
   CAM_MODEL_UID as UID,
   ONLINE_WINDOW_MS,
@@ -51,7 +52,7 @@ type CamModelService = {
 };
 
 // node-schedule fires on the clock, not on completion — a slow run must not overlap itself.
-const running = { cleanup: false, profiles: false, snapshots: false };
+const running = { cleanup: false, profiles: false, snapshots: false, backfill: false };
 
 async function inChunks<T>(items: T[], size: number, fn: (item: T) => Promise<void>) {
   for (let i = 0; i < items.length; i += size) {
@@ -230,5 +231,22 @@ export async function captureSnapshots({ strapi }: { strapi: Core.Strapi }) {
     }
   } finally {
     running.snapshots = false;
+  }
+}
+
+/**
+ * One-shot activity-history import (see activity-backfill.ts): pages the registry forward
+ * each tick until exhausted, then flips a core-store flag and never works again. Kept in the
+ * cron table permanently — a done-state tick is one store read.
+ */
+export async function backfillActivity({ strapi }: { strapi: Core.Strapi }) {
+  if (running.backfill) return;
+  running.backfill = true;
+  try {
+    await runBackfillTick(strapi);
+  } catch (err) {
+    strapi.log.error(`[cam-backfill] tick failed: ${String(err)}`);
+  } finally {
+    running.backfill = false;
   }
 }

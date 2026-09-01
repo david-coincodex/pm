@@ -1,5 +1,5 @@
 import type { Core } from '@strapi/strapi';
-import { cleanupExpired, ingestProfilePhotos, captureSnapshots } from '../src/cron/cam-model-tasks';
+import { cleanupExpired, ingestProfilePhotos, captureSnapshots, backfillActivity } from '../src/cron/cam-model-tasks';
 
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server => ({
   host: env('HOST', '0.0.0.0'),
@@ -16,6 +16,8 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server =>
       'cam-model-profiles': { task: ingestProfilePhotos, options: { rule: '12 * * * *' } },
       // Capture live snapshots (first-timers + longest-uncaptured refresh share).
       'cam-model-snapshots': { task: captureSnapshots, options: { rule: '32 * * * *' } },
+      // One-shot heatmap-history import from lemoncams; marks itself done in the core store.
+      'cam-model-activity-backfill': { task: backfillActivity, options: { rule: '*/10 * * * *' } },
     },
   },
 });
