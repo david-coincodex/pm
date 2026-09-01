@@ -39,11 +39,20 @@ The persistent record of *every model the feeds have ever carried*. It exists so
 
 **Write path** — `frontend/src/lib/cams/modelSync.ts` rides the snapshot refresh,
 throttled to one POST per 5 minutes, single-flight,
-skipped during builds. The backend (`controllers/cam-model.ts # sync`) diffs the roster
-against existing rows (`$in` chunks of 500) and only writes rows that
-are **new**, **an hour stale** (`lastSeenAt` precision is deliberately ~1 h), **beat their
-peak-viewers record**, or **changed identity** (name/gender/country/profile URL). Steady
-state is a few hundred single-row writes per sync; a byte-identical replay writes nothing.
+skipped during builds. The backend (`controllers/cam-model.ts # sync`) writes in two tiers:
+
+- `lastSeenAt` is **bulk-touched for the whole online roster every sync** (chunked raw Knex
+  `UPDATE`s — uniform value, so per-row writes buy nothing). It is exact to the sync cadence;
+  the sitemap `lastmod`, the "Last online X ago" hint and the activity tail patch rely on that.
+  The bulk touch deliberately skips `updated_at`.
+- Full rows are diffed against existing rows (`$in` chunks of 500) and only written when
+  **new**, **an hour stale** (`updatedAt`-gated, `ROW_REFRESH_SLACK_MS`), **beat their
+  peak-viewers record**, **changed identity** (name/gender/country/profile URL), or **started
+  a new session** (`onlineSince` moved beyond `SESSION_TOLERANCE_MS` vs the stored
+  `wentOnlineAt`). Full writes also fold the sighting into the `activity` session-history
+  json (`session-history.ts`) that feeds the model page's usual-online-hours heatmap
+  (`frontend/src/lib/cams/activity.ts` + `CamActivityHeatmap`). Steady state is a few hundred
+  single-row writes per sync; a byte-identical replay writes nothing beyond the bulk touch.
 
 Writes go through `strapi.db.query`, **not** the documents service — on purpose: no bulk API
 exists, each documents-service write walks the `normalizeMediaUrls` middleware, and each

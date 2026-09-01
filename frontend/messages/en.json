@@ -466,7 +466,13 @@
     "favoritesLoginHint": "Sign in to see your favorite models here.",
     "language": "Language",
     "allSites": "All sites",
-    "allLanguages": "All Languages"
+    "allLanguages": "All Languages",
+    "usualOnlineHours": "Usual online hours",
+    "heatmapCell": "{day} {start}:00–{end}:00 — online {percent}% of the time",
+    "heatmapSummary": "Most often online around {day} at {hour}:00",
+    "heatmapLocalTime": "Last 4 weeks, your local time",
+    "heatmapLess": "Less",
+    "heatmapMore": "More"
   },
   "account": {
     "login": "Log in",
