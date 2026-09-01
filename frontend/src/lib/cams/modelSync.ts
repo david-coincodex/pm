@@ -49,6 +49,9 @@ export function syncModels(snapshot: OnlineSnapshot): void {
     viewers: m.viewers,
     profileImageUrl: m.profileImageUrl ?? null,
     thumbUrl: m.thumbUrl ?? null,
+    // Exact session start (feed-reported seconds_online) — the registry persists it as
+    // wentOnlineAt and builds the activity history from it. Null when the feed omits it.
+    onlineSince: m.onlineSince ?? null,
   }));
 
   void fetch(`${STRAPI_FETCH_URL}/api/cam-models/sync`, {

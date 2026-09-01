@@ -39,11 +39,20 @@ The persistent record of *every model the feeds have ever carried*. It exists so
 
 **Write path** — `frontend/src/lib/cams/modelSync.ts` rides the snapshot refresh,
 throttled to one POST per 5 minutes, single-flight,
-skipped during builds. The backend (`controllers/cam-model.ts # sync`) diffs the roster
-against existing rows (`$in` chunks of 500) and only writes rows that
-are **new**, **an hour stale** (`lastSeenAt` precision is deliberately ~1 h), **beat their
-peak-viewers record**, or **changed identity** (name/gender/country/profile URL). Steady
-state is a few hundred single-row writes per sync; a byte-identical replay writes nothing.
+skipped during builds. The backend (`controllers/cam-model.ts # sync`) writes in two tiers:
+
+- `lastSeenAt` is **bulk-touched for the whole online roster every sync** (chunked raw Knex
+  `UPDATE`s — uniform value, so per-row writes buy nothing). It is exact to the sync cadence;
+  the sitemap `lastmod`, the "Last online X ago" hint and the activity tail patch rely on that.
+  The bulk touch deliberately skips `updated_at`.
+- Full rows are diffed against existing rows (`$in` chunks of 500) and only written when
+  **new**, **an hour stale** (`updatedAt`-gated, `ROW_REFRESH_SLACK_MS`), **beat their
+  peak-viewers record**, **changed identity** (name/gender/country/profile URL), or **started
+  a new session** (`onlineSince` moved beyond `SESSION_TOLERANCE_MS` vs the stored
+  `wentOnlineAt`). Full writes also fold the sighting into the `activity` session-history
+  json (`session-history.ts`) that feeds the model page's usual-online-hours heatmap
+  (`frontend/src/lib/cams/activity.ts` + `CamActivityHeatmap`). Steady state is a few hundred
+  single-row writes per sync; a byte-identical replay writes nothing beyond the bulk touch.
 
 Writes go through `strapi.db.query`, **not** the documents service — on purpose: no bulk API
 exists, each documents-service write walks the `normalizeMediaUrls` middleware, and each
@@ -83,6 +92,7 @@ All backend crons are Strapi built-ins — `config/server.ts` → `cron.tasks`, 
 |---|---|---|
 | `cam-model-profiles` | hourly (`12 * * * *`) | Ingest ≤300 pending BongaCams profile photos, but only for models seen in the last 48 h — the floor bounds the backlog to the active population (and keeps ingestion away from rows cleanup is about to delete). Dead URLs are marked attempted so they can't clog the queue. |
 | `cam-model-snapshots` | hourly (`32 * * * *`) | Capture live snapshots for ≤150 recently-online models: ≤100 first-timers plus a **reserved refresh share** for the longest-uncaptured (without it, daily churn means no model ever collects a second photo). Rotates to 4 photos/model. |
+| `cam-model-activity-backfill` | every 10 min (`*/10 * * * *`) | **One-shot** import of usual-online-hours history from lemoncams' public cam-log (150 rows/tick, id-cursor + done flag in the core store — a finished backfill costs one store read per tick forever after). Idempotent set-union merge into `activity`; skips organically-rich rows; failure circuit breaker. See `api/cam-model/activity-backfill.ts`. |
 | `cam-model-cleanup` | daily (`0 4 * * *`) | Delete models with `lastSeenAt` older than **60 days** (`CAM_MODEL_RETENTION_DAYS` overrides, for testing). Photos are removed through the upload service FIRST — Strapi never cascades media, a bare row delete would orphan files — then the row. Failed rows are excluded from re-queries so one poisoned row can't wedge the loop; a run aborts after 500 failures. |
 
 Sizing note: the registry grows by **~33k newly-seen models per day** (measured — churn, not

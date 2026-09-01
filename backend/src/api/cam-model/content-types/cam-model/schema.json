@@ -55,6 +55,12 @@
     "lastSeenAt": {
       "type": "datetime"
     },
+    "wentOnlineAt": {
+      "type": "datetime"
+    },
+    "activity": {
+      "type": "json"
+    },
     "peakViewers": {
       "type": "integer",
       "default": 0

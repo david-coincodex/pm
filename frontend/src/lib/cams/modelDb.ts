@@ -22,6 +22,14 @@ export type KnownCamModel = {
   tags: string[] | null;
   firstSeenAt: string | null;
   lastSeenAt: string | null;
+  /** Exact session start reported by the feed on the last new-session write. */
+  wentOnlineAt: string | null;
+  /**
+   * Online-session history pairs (structurally SessionPair[] from lib/cams/activity.ts, kept
+   * raw here since the wire value is untrusted until parseActivity). Optional: findKnownModels
+   * excludes it via fields[] — only the model page needs the blob.
+   */
+  activity?: [number, number][] | null;
   peakViewers: number | null;
   profileImageUrl: string | null;
   /** Last live cover URL from the feed (BongaCams thumbs are hashed CDN paths — unrebuildable). */
@@ -65,8 +73,13 @@ export async function findKnownModels(keys: string[]): Promise<Map<string, Known
     chunks.map(async (chunk) => {
       try {
         const params = chunk.map((k, i) => `filters[key][$in][${i}]=${encodeURIComponent(k)}`).join('&');
+        // fields[] excludes the activity blob (up to ~2.5KB/row): only the model page's
+        // heatmap reads it, and 500 favorites would otherwise ship ~1MB of unused JSON.
+        const fields = ['key', 'provider', 'username', 'displayName', 'gender', 'country', 'thumbUrl', 'lastSeenAt']
+          .map((f, i) => `fields[${i}]=${f}`)
+          .join('&');
         const res = await strapiGet<KnownCamModel[]>(
-          `/cam-models?${params}&pagination[pageSize]=100`,
+          `/cam-models?${params}&${fields}&pagination[pageSize]=100`,
           { next: { revalidate: 300 } },
         );
         for (const m of res.data) out.set(m.key, m);

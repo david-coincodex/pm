@@ -10,6 +10,9 @@ import { urlsetXml, XML_HEADERS } from '@/lib/sitemapXml';
  * Same filename production's crawl history already knows (the legacy models-sitemap.xml,
  * which shipped empty). lastmod is the model's lastSeenAt: it moves whenever they stream,
  * which is exactly the signal that the page's content (live state, snapshots) moved too.
+ * Floored to the hour: the sync bulk-touches lastSeenAt every ~5 minutes for the whole online
+ * roster, and a lastmod that always equals fetch time teaches Google to distrust lastmod
+ * site-wide. Hourly matches the page's own article:modified_time.
  * The 60-day cleanup cron drops expired models here and 404s their pages in the same stroke.
  *
  * Chunked at 20k URLs per file (the protocol caps a file at 50k; smaller chunks keep each
@@ -41,9 +44,12 @@ export async function GET(req: NextRequest) {
   // registry is far too large to materialize whole (see listKnownModelKeys).
   const { keys } = await listKnownModelKeys(page);
   if (keys.length === 0 && page > 1) return new Response('Not found', { status: 404 });
-  const urls = keys.map((m) => ({
-    ...staticEntry(routes.camModel(m.provider, m.username)),
-    lastModified: m.lastSeenAt ?? m.updatedAt,
-  }));
+  const urls = keys.map((m) => {
+    const ms = Date.parse(m.lastSeenAt ?? m.updatedAt ?? '');
+    return {
+      ...staticEntry(routes.camModel(m.provider, m.username)),
+      lastModified: Number.isFinite(ms) ? new Date(ms - (ms % 3_600_000)).toISOString() : undefined,
+    };
+  });
   return new Response(urlsetXml(urls), { headers: XML_HEADERS });
 }
