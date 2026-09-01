@@ -189,9 +189,14 @@ export default async function CamModelPage({ params }: Props) {
       <div className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8 lg:pb-14">
         <div className="lg:grid lg:grid-cols-[270px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[270px_minmax(0,1fr)_320px]">
           {/* Left rail: offer, stats, tags and the disclaimer — the facts column beside the
-              player. Same 270px track as the browse pages, so navigation doesn't shift. */}
+              player. Same 270px track as the browse pages, so navigation doesn't shift.
+              z-30: sticky creates a stacking context, and without a z-index it paints in DOM
+              order — i.e. UNDER the player column that follows — swallowing the heatmap
+              tooltips the moment they extend past the rail's edge. Must clear the player's
+              own overlays (z-20 control bar / z-10 click shield, promoted to the root
+              context) while staying under the z-50 header. */}
           <aside className="hidden lg:block">
-            <div className="lg:sticky lg:top-24">{sidebar}</div>
+            <div className="lg:sticky lg:top-24 lg:z-30">{sidebar}</div>
           </aside>
           <div className="min-w-0">
           {/* The sitewide heading component: name-only H1 (badge/flag/avatar stay out of the

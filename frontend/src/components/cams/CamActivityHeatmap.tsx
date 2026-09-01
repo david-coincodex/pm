@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { bucketLocalOccupancy, type SessionPair } from '@/lib/cams/activity';
+import Tooltip, { TooltipBubble } from '@/components/ui/Tooltip';
 
 /**
  * The visitor's clock as an external store, minute-granular. Hydration-safe by construction:
@@ -83,7 +84,17 @@ export default function CamActivityHeatmap({ activity }: { activity: SessionPair
           reasoning as CamSiteOffer's label). */}
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {t('usualOnlineHours')}
-        <InfoTip label={t('heatmapLocalTime')} />
+        {/* Methodology note lives in the (?) tooltip instead of a caption line. align=start:
+            the title hugs the rail's left edge, a centered bubble would clip the viewport. */}
+        <Tooltip content={t('heatmapLocalTime')} align="start">
+          <span
+            tabIndex={0}
+            aria-label={t('heatmapLocalTime')}
+            className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold text-slate-400 dark:border-slate-600 dark:text-slate-500"
+          >
+            ?
+          </span>
+        </Tooltip>
       </p>
       {/* Desktop rail: days on top, hours down — the vertical shape leaves room for the card
           border; mobile stays borderless to save width. */}
@@ -125,10 +136,20 @@ function HeatGrid({
   const boxRef = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ d: number; h: number; x: number; y: number } | null>(null);
 
+  // Touch has no hover, so mouseleave never fires there — a tap outside the grid dismisses.
+  const open = tip !== null;
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (e: PointerEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setTip(null);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [open]);
+
   // Tooltip anchoring: cell centers, measured against the relative wrapper (the cells'
   // offsetParent), horizontally clamped so edge columns don't overflow the sidebar.
-  const onEnter = (e: React.MouseEvent<HTMLDivElement>, d: number, h: number) => {
-    const cell = e.currentTarget;
+  const show = (cell: HTMLDivElement, d: number, h: number) => {
     const width = boxRef.current?.clientWidth ?? 270;
     const x = Math.min(Math.max(cell.offsetLeft + cell.offsetWidth / 2, 70), width - 70);
     setTip({ d, h, x, y: cell.offsetTop });
@@ -137,7 +158,10 @@ function HeatGrid({
   const cell = (d: number, h: number, shapeClass: string) => (
     <div
       key={`${d}-${h}`}
-      onMouseEnter={(e) => onEnter(e, d, h)}
+      onMouseEnter={(e) => show(e.currentTarget, d, h)}
+      // Mobile: no hover — the tap itself opens the tooltip (some browsers emulate mouseenter
+      // on tap, but not all, and never reliably; the click handler is the guarantee).
+      onClick={(e) => show(e.currentTarget, d, h)}
       className={`${shapeClass} cursor-default rounded-xs ${BIN_CLASSES[bin(pct[d * 24 + h])]}${
         // "You are here": neutral ink ring — high contrast on every ramp step in both modes,
         // without borrowing a hue the cells (emerald) or statuses already own.
@@ -187,40 +211,16 @@ function HeatGrid({
         </div>
       )}
       {tip && (
-        <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-xs text-white shadow-lg dark:bg-slate-700"
-          style={{ left: tip.x, top: tip.y - 6 }}
-        >
+        <TooltipBubble className="absolute -translate-x-1/2 -translate-y-full" style={{ left: tip.x, top: tip.y - 6 }}>
           <span className="font-semibold">
             {dayNames[tip.d].long}, {hourLabels[tip.h]}
           </span>
           <span className="block text-white/70">
             {t('heatmapFrequency', { percent: Math.round(pct[tip.d * 24 + tip.h] * 100) })}
           </span>
-        </div>
+        </TooltipBubble>
       )}
     </div>
-  );
-}
-
-/** The "(?)" after the title: methodology note lives here instead of a caption line. */
-function InfoTip({ label }: { label: string }) {
-  return (
-    <span className="group relative inline-flex">
-      <span
-        tabIndex={0}
-        aria-label={label}
-        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold text-slate-400 dark:border-slate-600 dark:text-slate-500"
-      >
-        ?
-      </span>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-10 mt-1.5 hidden whitespace-nowrap rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-xs font-normal normal-case tracking-normal text-white shadow-lg group-focus-within:block group-hover:block dark:bg-slate-700"
-      >
-        {label}
-      </span>
-    </span>
   );
 }
 
