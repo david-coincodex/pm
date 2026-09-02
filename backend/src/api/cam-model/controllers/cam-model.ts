@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import { createHash } from 'node:crypto';
 import { CAM_MODEL_UID as UID, ROW_REFRESH_SLACK_MS, SESSION_TOLERANCE_MS } from '../constants';
 import { reviseActivity } from '../session-history';
+import { PROVIDER_ID_SET } from '../providers';
 import { pingHeartbeat } from '../../../cron/heartbeat';
 
 /** Batch size for $in lookups — a politeness bound, not a driver limit (modern better-sqlite3
@@ -14,12 +15,14 @@ const MAX_ROSTER = 20_000;
 /** Hard cap per keys() page — the sitemap's chunk size; anything above just wastes memory. */
 const KEYS_PAGE_LIMIT = 20_000;
 
-const PROVIDERS = new Set(['cb', 'bc']);
+/** Valid provider ids come from the kernel (providers.json) — a new provider is accepted by
+ * the sync as soon as it appears there, with no edit in this controller. */
+const PROVIDERS = PROVIDER_ID_SET;
 const GENDERS = new Set(['f', 'm', 'c', 't']);
 
 interface IncomingModel {
   key: string;
-  provider: 'cb' | 'bc';
+  provider: string;
   username: string;
   displayName: string;
   gender: string | null;
@@ -54,7 +57,7 @@ function sanitize(raw: unknown): IncomingModel | null {
     Array.isArray(v) ? v.slice(0, 20).map((x) => String(x).slice(0, 50)) : [];
   return {
     key: `${provider}:${username}`,
-    provider: provider as 'cb' | 'bc',
+    provider,
     username,
     displayName: (String(m.displayName ?? '').slice(0, 100) || username),
     gender: GENDERS.has(gender) ? gender : null,

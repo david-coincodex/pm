@@ -1,4 +1,5 @@
 import type { Core } from '@strapi/strapi';
+import { LEMONCAMS_SLUGS } from './providers';
 import { CAM_MODEL_UID as UID, ACTIVITY_WINDOW_DAYS, ACTIVITY_MAX_SESSIONS } from './constants';
 import { normalizeActivity, type SessionPair } from './session-history';
 
@@ -22,7 +23,8 @@ import { normalizeActivity, type SessionPair } from './session-history';
 
 const API = 'https://api-v2-prod.lemoncams.com/main';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126.0 Safari/537.36';
-const PROVIDER_SLUGS: Record<string, string> = { cb: 'chaturbate', bc: 'bongacams' };
+/** From the provider kernel (providers.json). */
+const PROVIDER_SLUGS = LEMONCAMS_SLUGS;
 
 const STORE_KEY = 'activityBackfill';
 /** Rows advanced per tick; at DELAY_MS spacing a tick stays well inside its cron window. */
