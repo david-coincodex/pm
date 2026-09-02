@@ -28,6 +28,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withRetry } from './lib/http.mjs';
+import { hasFlag } from './lib/jobs.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
@@ -35,7 +36,7 @@ _require('dotenv').config({ path: join(__dirname, '.env'), quiet: true });
 
 const API = 'https://healthchecks.io/api/v3';
 const API_KEY = process.env.HEALTHCHECKS_API_KEY;
-const APPLY = process.argv.includes('--apply');
+const APPLY = hasFlag('apply');
 
 if (!API_KEY) {
   console.error('HEALTHCHECKS_API_KEY missing from scripts/.env (needs a read-write project API key).');
@@ -43,7 +44,10 @@ if (!API_KEY) {
 }
 
 const PREFIXES = ['staging', 'prod'];
+// The manifest's `crons` group is shared with config/server.ts (which registers the rules);
+// `pings` are simple-period checks pinged from request paths. Slug formula documented in _doc.
 const MANIFEST = JSON.parse(readFileSync(join(__dirname, '..', 'backend', 'src', 'cron', 'checks.json'), 'utf-8'));
+const ENTRIES = { ...MANIFEST.crons, ...MANIFEST.pings };
 
 async function hc(path, init = {}) {
   return withRetry(
@@ -65,7 +69,7 @@ for (const c of (await hc('/checks/')).checks ?? []) existing.set(c.slug, c);
 
 let written = 0;
 for (const prefix of PREFIXES) {
-  for (const [name, check] of Object.entries(MANIFEST)) {
+  for (const [name, check] of Object.entries(ENTRIES)) {
     const slug = `${prefix}-${name}`;
     const current = existing.get(slug);
     const shape = check.schedule ? `cron "${check.schedule}" UTC` : `every ${check.timeout / 60}m`;

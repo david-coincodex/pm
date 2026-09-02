@@ -181,6 +181,12 @@ export async function ingestProfilePhotos({ strapi }: { strapi: Core.Strapi }): 
     });
   });
   if (ingested > 0) strapi.log.info(`[cam-model] profiles: ingested ${ingested} (${pending.length} attempted)`);
+  // Partial failures are routine (dead URLs) — but a run where EVERY attempt failed means the
+  // pipeline is down (CDN change, blocked IP, broken upload provider), and since the markers
+  // are stamped regardless, the queue drains as if healthy. Report it; don't let it be green.
+  if (pending.length > 0 && ingested === 0) {
+    return { ok: false, detail: `all ${pending.length} profile ingest attempts failed` };
+  }
 }
 
 /**
@@ -226,6 +232,12 @@ export async function captureSnapshots({ strapi }: { strapi: Core.Strapi }): Pro
   });
   if (captured > 0) {
     strapi.log.info(`[cam-model] snapshots: ${captured} captured (${fresh.length} first-time, ${stale.length} refresh)`);
+  }
+  // Same rule as profiles: an all-attempts-failed run is a dead pipeline masked by the
+  // stamped-anyway markers — /fail, not green.
+  const attempted = fresh.length + stale.length;
+  if (attempted > 0 && captured === 0) {
+    return { ok: false, detail: `all ${attempted} snapshot captures failed` };
   }
 }
 

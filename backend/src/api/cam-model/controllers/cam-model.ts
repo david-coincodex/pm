@@ -115,14 +115,16 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
   async sync(ctx) {
     if (!secretMatches(ctx.request.headers['x-cam-sync-secret'])) return ctx.unauthorized();
 
-    const body = ctx.request.body as { models?: unknown[]; degradedProviders?: unknown } | undefined;
+    const body = ctx.request.body as { models?: unknown[]; failedProviders?: unknown } | undefined;
     if (!Array.isArray(body?.models)) return ctx.badRequest('models array is required');
     if (body.models.length > MAX_ROSTER) return ctx.badRequest('roster too large');
-    // Which provider feeds failed on the frontend's last refresh (the snapshot then RETAINS
-    // the previous roster — see registry.ts). Without this signal a total feed outage keeps
-    // syncing stale rosters and the heartbeat would stay green through the incident.
-    const degraded = Array.isArray(body.degradedProviders)
-      ? body.degradedProviders.filter((p): p is string => typeof p === 'string').slice(0, 8)
+    // Which provider feeds FAILED on the frontend's last refresh (the snapshot RETAINS the
+    // previous roster, so the models array looks normal — see registry.ts failedProviders).
+    // Without this signal a feed outage keeps syncing stale rosters and the heartbeat would
+    // stay green through the incident. Same whitelist as the roster rows: junk strings from a
+    // buggy caller must not reach the Healthchecks event log.
+    const failedFeeds = Array.isArray(body.failedProviders)
+      ? body.failedProviders.filter((p): p is string => typeof p === 'string' && PROVIDERS.has(p))
       : [];
 
     // Sanitize + dedupe by key (feeds occasionally repeat a model across pages).
@@ -277,6 +279,7 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
     // as epoch-ms NUMBERS (an ISO string here once corrupted the column with mixed types —
     // SQLite orders every TEXT above every number, silently breaking the retention/capture
     // range queries); Postgres parses the ISO string into timestamp fine.
+    let bulkTouchError: string | null = null;
     try {
       const meta = strapi.db.metadata.get(UID);
       const column = meta.attributes.lastSeenAt as { columnName?: string };
@@ -290,22 +293,25 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
       }
     } catch (err) {
       // Freshness degrades to the throttled writes (the stale gate's lastSeenAt clause);
-      // never fail the sync over it.
+      // never fail the sync over it — but DO report it: sitemap lastmod and the offline
+      // hints go stale registry-wide while this fails, so the run completed degraded.
+      bulkTouchError = err instanceof Error ? err.message : String(err);
       strapi.log.error(`[cam-model] lastSeenAt bulk touch failed: ${String(err)}`);
     }
 
     // The single most valuable heartbeat: one healthy sync proves the frontend poller, both
-    // provider feeds, the shared secret, and this endpoint in one signal. Fire-and-forget
-    // (never awaited) — this request is latency-sensitive against the caller's 30s timeout.
-    // Degraded feeds ping /fail (the frontend keeps syncing its RETAINED roster during a feed
-    // outage, so without this the check would stay green through a frozen-feed incident);
-    // everything else that breaks the chain silences the check, which is what Healthchecks
-    // alerts on.
-    if (degraded.length > 0) {
-      pingHeartbeat(strapi.log, 'cam-roster-sync', false, `provider feeds degraded: ${degraded.join(', ')}`);
-    } else {
-      pingHeartbeat(strapi.log, 'cam-roster-sync', true);
-    }
+    // provider feeds, the shared secret, this endpoint AND its write path in one signal.
+    // Fire-and-forget (never awaited) — this request is latency-sensitive against the
+    // caller's 30s timeout. A degraded run pings /fail with the reason: failed provider
+    // feeds (the frontend keeps syncing its RETAINED roster through a feed outage, so
+    // without the signal the check would stay green through a frozen-feed incident) or a
+    // broken bulk touch. Everything else that breaks the chain silences the check, which is
+    // what Healthchecks alerts on.
+    const problems = [
+      ...(failedFeeds.length ? [`provider feeds failing: ${failedFeeds.join(', ')}`] : []),
+      ...(bulkTouchError ? [`lastSeenAt bulk touch failed: ${bulkTouchError}`] : []),
+    ];
+    pingHeartbeat(strapi.log, 'cam-roster-sync', problems.length === 0, problems.join('; ') || undefined);
 
     return { created, updated, skipped: roster.size - created - updated };
   },
