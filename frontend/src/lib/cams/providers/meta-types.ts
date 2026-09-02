@@ -40,6 +40,17 @@ export type ProviderMeta = {
     /** The feed's thumb is a LIVE frame worth capturing periodically → snapshot cron includes it. */
     liveSnapshots: boolean;
   };
+  video: {
+    /**
+     * The provider's playback surface brings its own controls (a provider iframe with its own
+     * bar, an SDK player with a built-in sound button), so OUR sound UI must stay hidden —
+     * ours could only mask theirs with a button that cannot reach a cross-origin player.
+     * Lives here rather than in the video plugin because SERVER components need it too (the
+     * model page decides whether to render CamSoundButton), and providers/video.ts is
+     * client-only by necessity.
+     */
+    ownsControls: boolean;
+  };
   external: {
     /** This provider's slug on lemoncams, for the one-shot activity-history backfill. */
     lemoncamsSlug: string;

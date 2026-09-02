@@ -13,6 +13,6 @@
  * No imports on purpose: everything else in the kernel imports THIS, so it must sit at the
  * bottom of the dependency graph.
  */
-export const CAM_PROVIDER_IDS = ['cb', 'bc'] as const;
+export const CAM_PROVIDER_IDS = ['cb', 'bc', 'il'] as const;
 
 export type CamProvider = (typeof CAM_PROVIDER_IDS)[number];

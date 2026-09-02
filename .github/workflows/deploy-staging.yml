@@ -92,6 +92,7 @@ jobs:
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
           CAM_SYNC_SECRET: ${{ secrets.CAM_SYNC_SECRET }}
           HEALTHCHECKS_PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          IMLIVE_API_KEY: ${{ secrets.IMLIVE_API_KEY }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -110,6 +111,8 @@ jobs:
             echo "CAM_SYNC_SECRET=$CAM_SYNC_SECRET"
             # Empty until the HEALTHCHECKS_PING_KEY secret exists; heartbeat pings are then skipped (crons still run).
             echo "HEALTHCHECKS_PING_KEY=$HEALTHCHECKS_PING_KEY"
+            # Empty until the IMLIVE_API_KEY secret exists; ImLive is then simply not listed.
+            echo "IMLIVE_API_KEY=$IMLIVE_API_KEY"
           } > .env.deploy
 
       - name: Rsync compose file and .env to server

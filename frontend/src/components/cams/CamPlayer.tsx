@@ -4,6 +4,7 @@ import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { getMuted, getServerMuted, setMuted, subscribeMuted } from '@/lib/cams/soundPref';
 import { useTranslations } from 'next-intl';
 import { VIDEO_PLUGINS } from '@/lib/cams/providers/video';
+import { PROVIDER_META } from '@/lib/cams/providers/meta';
 import type { CamModel } from '@/lib/cams/types';
 import CamThumbFallback from './CamThumbFallback';
 
@@ -41,6 +42,7 @@ const subscribeNever = () => () => {};
 export default function CamPlayer({ model, displayName, outUrl }: Props) {
   const { thumbUrl } = model;
   const plugin = VIDEO_PLUGINS[model.provider];
+  const ownsControls = PROVIDER_META[model.provider].video.ownsControls;
   const t = useTranslations('liveSex');
   const wrapperRef = useRef<HTMLDivElement>(null);
   // Shared sound store (header button + this player + the bar toggle all drive it): defaults
@@ -65,7 +67,7 @@ export default function CamPlayer({ model, displayName, outUrl }: Props) {
   // provider-shaped booleans remain to forget about when a provider is added.
   const playing = plugin.canPlay(model) && !streamFailed;
   // Our bar only rides over surfaces that don't carry their own (see VideoPlugin.ownsControls).
-  const showOwnBar = playing && !plugin.ownsControls;
+  const showOwnBar = playing && !ownsControls;
 
   const onStreamFatal = useCallback(() => setStreamFailed(true), []);
 

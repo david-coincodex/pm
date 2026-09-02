@@ -47,6 +47,20 @@ export interface CamModel {
   /** Lowercase ISO-2, when the feed's country resolves (see lib/cams/countries.ts). */
   country?: string;
   onlineSince?: string;
+  /**
+   * ImLive's per-room SDK connection data (their player needs the room's servers, not a URL).
+   * EPHEMERAL: a model who reconnects gets a new working server, so this lives ONLY in the
+   * in-memory snapshot — never synced to the registry, never read for an offline model.
+   */
+  imliveRoom?: {
+    hostId: string;
+    roomId: string;
+    workingServer: string;
+    cdnServer: string;
+    comServer: string;
+    webrtcData: string;
+    mainImage: string;
+  };
   /** e.g. 'public' | 'private' | 'group' (provider-specific). */
   showType?: string;
 }

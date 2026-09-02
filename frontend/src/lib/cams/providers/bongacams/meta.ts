@@ -18,5 +18,9 @@ export const bongacamsMeta: ProviderMeta = {
     hasProfilePortrait: true,
     liveSnapshots: true,
   },
+  video: {
+    // Plays in OUR <video>, so the host keeps its control bar.
+    ownsControls: false,
+  },
   external: { lemoncamsSlug: 'bongacams' },
 };

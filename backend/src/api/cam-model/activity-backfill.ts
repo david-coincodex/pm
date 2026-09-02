@@ -26,7 +26,10 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 C
 /** From the provider kernel (providers.json). */
 const PROVIDER_SLUGS = LEMONCAMS_SLUGS;
 
-const STORE_KEY = 'activityBackfill';
+/** VERSIONED: bump when a provider is added, so the one-shot scan runs once more per
+ * environment and imports the newcomer's history. Merges are idempotent and pair-rich rows are
+ * skipped, so the re-scan is mostly cursor movement. */
+const STORE_KEY = 'activityBackfill-v2';
 /** Rows advanced per tick; at DELAY_MS spacing a tick stays well inside its cron window. */
 const BATCH = 250;
 const DELAY_MS = 300;

@@ -53,12 +53,11 @@ export default function CamModelCard({
             />
           )}
           {/* Live preview replaces the old hover-zoom: desktop plays on hover, mobile plays
-              the most-centered card. Sits above the thumb, below badges/heart/link. BongaCams
-              plays its public m3u8 in our <video>; Chaturbate mounts its own embed iframe (same
-              player as the model page — its stream isn't resolvable server-side). */}
-          {live && (model.streamUrl || model.embedUrl) && (
-            <CamCardPreview model={model} />
-          )}
+              the most-centered card. Sits above the thumb, below badges/heart/link. WHAT plays
+              is the provider's business (its video plugin), and WHETHER anything can play is
+              CamCardPreview's own gate — asking here about specific fields like streamUrl or
+              embedUrl silently excluded providers that play through neither (an SDK player). */}
+          {live && <CamCardPreview model={model} />}
           {/* No LIVE tag: everything listed IS live, or it wouldn't be here. Icon + compact
               count ("14.1K") top-left; the heart owns the top-right corner. */}
           {live && (

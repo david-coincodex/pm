@@ -45,12 +45,6 @@ export type VideoPlugin = {
   /** Card hover/autoplay surface, or null when the provider has no previewable video. */
   Preview: DynamicSurface<PreviewProps> | null;
   /**
-   * The surface brings its own controls (a provider iframe with its own bar, an SDK player
-   * with a built-in sound button), so the host must NOT overlay its control bar — ours could
-   * only mask theirs with a mute button that cannot reach a cross-origin player.
-   */
-  ownsControls: boolean;
-  /**
    * Can THIS model play right now? False → the host renders the affiliate facade instead.
    * Keep it a pure check on already-fetched fields; never fetch here.
    */

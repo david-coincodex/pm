@@ -24,20 +24,47 @@
     },
     "kind": {
       "type": "enumeration",
-      "enum": ["gender", "tag", "provider", "language"],
+      "enum": [
+        "gender",
+        "tag",
+        "provider",
+        "language"
+      ],
       "required": true
     },
     "genderKey": {
       "type": "enumeration",
-      "enum": ["f", "m", "c", "t"]
+      "enum": [
+        "f",
+        "m",
+        "c",
+        "t"
+      ]
     },
     "providerKey": {
       "type": "enumeration",
-      "enum": ["cb", "bc"]
+      "enum": [
+        "cb",
+        "bc",
+        "il"
+      ]
     },
     "languageKey": {
       "type": "enumeration",
-      "enum": ["english", "spanish", "russian", "french", "german", "italian", "portuguese", "romanian", "ukrainian", "polish", "turkish", "arabic"]
+      "enum": [
+        "english",
+        "spanish",
+        "russian",
+        "french",
+        "german",
+        "italian",
+        "portuguese",
+        "romanian",
+        "ukrainian",
+        "polish",
+        "turkish",
+        "arabic"
+      ]
     },
     "site": {
       "type": "relation",
@@ -50,18 +77,24 @@
     "intro": {
       "type": "customField",
       "customField": "plugin::ckeditor5.CKEditor",
-      "options": { "preset": "defaultHtml" }
+      "options": {
+        "preset": "defaultHtml"
+      }
     },
     "content": {
       "type": "customField",
       "customField": "plugin::ckeditor5.CKEditor",
-      "options": { "preset": "defaultHtml" }
+      "options": {
+        "preset": "defaultHtml"
+      }
     },
     "cover_image": {
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "faqs": {
       "type": "component",

@@ -2,6 +2,7 @@ import type { CamProvider } from './ids';
 import type { ProviderMeta } from './meta-types';
 import { chaturbateMeta } from './chaturbate/meta';
 import { bongacamsMeta } from './bongacams/meta';
+import { imliveMeta } from './imlive/meta';
 
 /**
  * Every provider's metadata, keyed by id. Client-safe (see meta-types.ts).
@@ -16,6 +17,7 @@ import { bongacamsMeta } from './bongacams/meta';
 export const PROVIDER_META: Record<CamProvider, ProviderMeta> = {
   cb: chaturbateMeta,
   bc: bongacamsMeta,
+  il: imliveMeta,
 };
 
 export const ALL_PROVIDER_META: ProviderMeta[] = Object.values(PROVIDER_META);

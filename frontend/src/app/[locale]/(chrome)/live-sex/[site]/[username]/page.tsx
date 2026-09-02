@@ -236,7 +236,9 @@ export default async function CamModelPage({ params }: Props) {
               </CamCtaLink>
               {/* Our sound button only drives OUR <video> (BongaCams). Chaturbate plays in its
                   own iframe, which owns its audio — a button here couldn't reach it. */}
-              {online && !adapter.canEmbed && <CamSoundButton />}
+              {/* Only when OUR surface owns the audio: a provider iframe or SDK player has
+                  its own sound control that our store cannot reach. */}
+              {online && !meta.video.ownsControls && <CamSoundButton />}
               <CamFavoriteButton
                 provider={provider}
                 username={username}

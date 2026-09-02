@@ -18,5 +18,9 @@ export const chaturbateMeta: ProviderMeta = {
     hasProfilePortrait: false,
     liveSnapshots: true,
   },
+  video: {
+    // The provider iframe carries its own bar and owns its audio (cross-origin).
+    ownsControls: true,
+  },
   external: { lemoncamsSlug: 'chaturbate' },
 };

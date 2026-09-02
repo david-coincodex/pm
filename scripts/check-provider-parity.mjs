@@ -86,8 +86,13 @@ for (const id of frontendIds.filter((i) => backend[i] && frontendMeta.has(i))) {
   const f = frontendMeta.get(id);
   const b = backend[id];
   if (f.slug !== b.slug) fail(`${id}: slug "${f.slug}" (frontend) vs "${b.slug}" (backend)`);
-  if (!sameSet(f.thumbHosts, b.photoHosts)) {
-    fail(`${id}: hosts [${f.thumbHosts}] (frontend thumbHosts) vs [${b.photoHosts}] (backend photoHosts)`);
+  // Superset, not equality: the frontend list is "hosts we preconnect because we emit URLs
+  // there", the backend list is "hosts the ingest may download from". A provider whose feed
+  // sometimes names an alternate CDN belongs in the backend list only — preconnecting a host
+  // we may never use is waste. What must hold: everything we emit is downloadable.
+  const missing = f.thumbHosts.filter((h) => !b.photoHosts.includes(h));
+  if (missing.length) {
+    fail(`${id}: frontend emits [${missing}] but backend photoHosts [${b.photoHosts}] would reject them`);
   }
   if (f.hasProfilePortrait !== b.hasProfilePortrait) fail(`${id}: hasProfilePortrait disagrees`);
   if (f.liveSnapshots !== b.liveSnapshots) fail(`${id}: liveSnapshots disagrees`);
