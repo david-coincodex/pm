@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import { createHash } from 'node:crypto';
 import { CAM_MODEL_UID as UID, ROW_REFRESH_SLACK_MS, SESSION_TOLERANCE_MS } from '../constants';
 import { reviseActivity } from '../session-history';
+import { pingHeartbeat } from '../../../cron/heartbeat';
 
 /** Batch size for $in lookups — a politeness bound, not a driver limit (modern better-sqlite3
  * binds up to 32,766 variables; Postgres far more). */
@@ -114,9 +115,15 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
   async sync(ctx) {
     if (!secretMatches(ctx.request.headers['x-cam-sync-secret'])) return ctx.unauthorized();
 
-    const body = ctx.request.body as { models?: unknown[] } | undefined;
+    const body = ctx.request.body as { models?: unknown[]; degradedProviders?: unknown } | undefined;
     if (!Array.isArray(body?.models)) return ctx.badRequest('models array is required');
     if (body.models.length > MAX_ROSTER) return ctx.badRequest('roster too large');
+    // Which provider feeds failed on the frontend's last refresh (the snapshot then RETAINS
+    // the previous roster — see registry.ts). Without this signal a total feed outage keeps
+    // syncing stale rosters and the heartbeat would stay green through the incident.
+    const degraded = Array.isArray(body.degradedProviders)
+      ? body.degradedProviders.filter((p): p is string => typeof p === 'string').slice(0, 8)
+      : [];
 
     // Sanitize + dedupe by key (feeds occasionally repeat a model across pages).
     const roster = new Map<string, IncomingModel>();
@@ -285,6 +292,19 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
       // Freshness degrades to the throttled writes (the stale gate's lastSeenAt clause);
       // never fail the sync over it.
       strapi.log.error(`[cam-model] lastSeenAt bulk touch failed: ${String(err)}`);
+    }
+
+    // The single most valuable heartbeat: one healthy sync proves the frontend poller, both
+    // provider feeds, the shared secret, and this endpoint in one signal. Fire-and-forget
+    // (never awaited) — this request is latency-sensitive against the caller's 30s timeout.
+    // Degraded feeds ping /fail (the frontend keeps syncing its RETAINED roster during a feed
+    // outage, so without this the check would stay green through a frozen-feed incident);
+    // everything else that breaks the chain silences the check, which is what Healthchecks
+    // alerts on.
+    if (degraded.length > 0) {
+      pingHeartbeat(strapi.log, 'cam-roster-sync', false, `provider feeds degraded: ${degraded.join(', ')}`);
+    } else {
+      pingHeartbeat(strapi.log, 'cam-roster-sync', true);
     }
 
     return { created, updated, skipped: roster.size - created - updated };

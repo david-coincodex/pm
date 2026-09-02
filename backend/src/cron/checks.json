@@ -1,0 +1,27 @@
+{
+  "cam-model-cleanup": {
+    "schedule": "0 4 * * *",
+    "grace": 21600,
+    "desc": "Daily registry retention (cam-model-tasks.ts cleanupExpired). /fail carries the failed-deletion count or abort reason."
+  },
+  "cam-model-profiles": {
+    "schedule": "12 * * * *",
+    "grace": 7200,
+    "desc": "Hourly BongaCams profile photo ingest (ingestProfilePhotos)."
+  },
+  "cam-model-snapshots": {
+    "schedule": "32 * * * *",
+    "grace": 7200,
+    "desc": "Hourly live snapshot capture (captureSnapshots)."
+  },
+  "cam-model-activity-backfill": {
+    "schedule": "*/10 * * * *",
+    "grace": 1800,
+    "desc": "One-shot lemoncams history import; done-state ticks still ping. Delete this check when the cron is retired (#65)."
+  },
+  "cam-roster-sync": {
+    "timeout": 600,
+    "grace": 600,
+    "desc": "Roster sync heartbeat (POST /api/cam-models/sync, ~every 5 min; 10m period + 10m grace = deliberate margin). /fail = provider feeds degraded; silence = the sync chain is broken."
+  }
+}
