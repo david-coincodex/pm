@@ -466,7 +466,11 @@
     "favoritesLoginHint": "Melde dich an, um deine Lieblingsmodels hier zu sehen.",
     "language": "Sprache",
     "allSites": "Alle Seiten",
-    "allLanguages": "Alle Sprachen"
+    "allLanguages": "Alle Sprachen",
+    "usualOnlineHours": "Übliche Online-Zeiten",
+    "heatmapSummary": "Meist online {day} gegen {hour}:00 Uhr",
+    "heatmapLocalTime": "Letzte 4 Wochen, deine lokale Zeit",
+    "heatmapFrequency": "Online {percent} % der Zeit"
   },
   "account": {
     "login": "Anmelden",

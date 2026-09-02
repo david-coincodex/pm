@@ -764,6 +764,7 @@ export interface ApiCamModelCamModel extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    activity: Schema.Attribute.JSON;
     country: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -796,6 +797,7 @@ export interface ApiCamModelCamModel extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     username: Schema.Attribute.String & Schema.Attribute.Required;
+    wentOnlineAt: Schema.Attribute.DateTime;
   };
 }
 

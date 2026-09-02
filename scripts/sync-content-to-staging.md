@@ -23,12 +23,12 @@ has staging drifted?".
 
 Verified against the transfer's own manifest from that snapshot run — not assumed from the docs:
 
-| Copied (`--only content,files`) | Never copied (`config` scope excluded) |
+| Copied (`--only content,files`) | Never copied |
 |---|---|
-| all 13 collection types + 11 components | admin users, admin roles |
-| media files (`plugin::upload.file` + folders) | API tokens, transfer tokens |
-| `plugin::i18n.locale` | webhooks, core-store settings |
-| **users-permissions users, roles, permissions** | |
+| all editorial collection types + components | admin users, admin roles (`config` scope) |
+| media files (`plugin::upload.file` + folders) | API tokens, transfer tokens (`config` scope) |
+| `plugin::i18n.locale` | webhooks, core-store settings (`config` scope) |
+| **users-permissions users, roles, permissions** | **`cam-models`, `cam-favorites`** (env-local — see below) |
 | `documentId`, numeric `id`, `publishedAt` preserved; draft **and** published versions | |
 
 Two consequences of that last copied row, measured on real data:
@@ -39,6 +39,35 @@ Two consequences of that last copied row, measured on real data:
 - **End-user accounts travel too — and get replaced.** Staging currently has 1 users-permissions
   user that local (0 users) does not. A sync deletes it. If a staging end-user account ever
   matters, export it first.
+
+## Cam data is never synced
+
+`cam-models` (the registry: activity histories, `wentOnlineAt`, `firstSeenAt`, 100k+ rows) and
+`cam-favorites` are **environment-local operational data**: every host regenerates the registry
+from the provider feeds via the 5-minute roster sync and the crons, and favorites belong to that
+host's own users. Syncing them would overwrite the destination's history with the source's — and
+before this exclusion existed, a full `--apply` would have done exactly that.
+
+Mechanically, both transfer legs (snapshot pull and push) run through
+`scripts/strapi-transfer-nocam.cjs`, a wrapper that boots the stock `strapi transfer` CLI after
+patching its ignored-content-type helpers in the require cache. That covers three surfaces at
+once: the entity stream, the link stream, and — critically — the **destination's pre-restore
+deletion** (the restore config is computed on the source side and sent over the wire, so the
+patch protects staging without touching staging). The wrapper self-checks before every apply and
+refuses to run an unfiltered transfer if a Strapi upgrade moves the internals it patches.
+
+**Known caveat — cam photos.** Cam-model *rows* survive a full sync, but their media-library
+photos are `plugin::upload.file` entries, which the media leg still replaces wholesale: after a
+full sync the destination's cam photo files are gone and the surviving rows point at nothing.
+The snapshot cron re-captures live models over time on its own. To force a full rebuild, clear
+the capture markers on the destination DB and let the crons re-drain:
+
+```sql
+UPDATE cam_models SET photos_captured_at = NULL, profile_image_ingested_url = NULL;
+```
+
+(Without the `profile_image_ingested_url` reset, BongaCams profile portraits — ingested exactly
+once per model — would never come back.)
 
 `documentId` preservation matters: rich-text widgets embed it, and `/blog/<postId>/` URLs are
 already indexed. Media URLs are stored root-relative and resolved at render, so nothing host-specific

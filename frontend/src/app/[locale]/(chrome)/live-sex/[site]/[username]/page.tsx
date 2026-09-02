@@ -8,6 +8,7 @@ import { strapiMediaUrl } from '@/lib/strapi';
 import { getOnlineModels, findOnlineModel, adapterById } from '@/lib/cams/registry';
 import { findKnownModel } from '@/lib/cams/modelDb';
 import { getCamCategories, categoriesForModel } from '@/lib/cams/categories';
+import { parseActivity, activitySummary, MIN_HEATMAP_HOURS } from '@/lib/cams/activity';
 import { pickNextModel } from '@/lib/cams/query';
 import { camCategoryPath } from '@/lib/cams/filters';
 import { providerFromSlug, CAM_PROVIDER_NAMES, type CamProvider } from '@/lib/cams/types';
@@ -24,6 +25,7 @@ import CamSiteOffer from '@/components/cams/CamSiteOffer';
 import CamModelStats from '@/components/cams/CamModelStats';
 import CamCategoryChips from '@/components/cams/CamCategoryChips';
 import CamModelPhotos from '@/components/cams/CamModelPhotos';
+import CamActivityHeatmap from '@/components/cams/CamActivityHeatmap';
 import CamLiveBadge from '@/components/cams/CamLiveBadge';
 import CountryFlag from '@/components/ui/CountryFlag';
 import SectionTitle from '@/components/SectionTitle';
@@ -61,6 +63,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     resolveModel(provider, name),
   ]);
   const displayName = model?.displayName ?? known?.displayName ?? name;
+  // lastSeenAt is bulk-touched every sync while the model streams, so floored to the hour it
+  // is an honest, churn-free modified time. Emitted via openGraph so it renders as
+  // <meta property="article:modified_time"> — OG consumers only read property= attributes,
+  // and Next's `other:` field renders name= tags that nothing parses. Guarded parse: a
+  // malformed datetime must drop the tag, not 500 the page from inside generateMetadata.
+  const lastSeenMs = known?.lastSeenAt ? Date.parse(known.lastSeenAt) : NaN;
+  const modifiedIso = Number.isFinite(lastSeenMs)
+    ? new Date(lastSeenMs - (lastSeenMs % (60 * 60 * 1000))).toISOString()
+    : null;
   return {
     // Same string as the H1 — one identity for the page.
     title: t('modelTitle', { name: displayName }),
@@ -69,6 +80,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Only the fail-open render (registry unreachable, model offline) stays out of the index.
     robots: model || known ? { index: true, follow: true } : { index: false, follow: true },
     alternates: localizedAlternates(routes.camModel(provider, name), locale),
+    ...(modifiedIso ? { openGraph: { type: 'article', modifiedTime: modifiedIso } } : {}),
   };
 }
 
@@ -128,11 +140,19 @@ export default async function CamModelPage({ params }: Props) {
     similar.push(m);
   }
 
+  // Gate the heatmap server-side (windowed total hours is timezone-independent), so a
+  // data-poor model never mounts a widget that would render empty or all-grey. The snapshot's
+  // fetch time is "now" — render must stay pure, and it's within 45s of wall clock.
+  const activityPairs = parseActivity(known?.activity, known?.lastSeenAt);
+  const showHeatmap =
+    activitySummary(activityPairs, snapshot.fetchedAtMs).totalHours >= MIN_HEATMAP_HOURS;
+
   const sidebar = (
     <div className="space-y-5">
       <CamSiteOffer site={providerSite} />
       {online && model && <CamModelStats model={model} nowMs={snapshot.fetchedAtMs} />}
       <CamCategoryChips categories={modelCategories} />
+      {showHeatmap && <CamActivityHeatmap activity={activityPairs} />}
       <p className="text-xs text-slate-400 dark:text-slate-500">
         {t('modelPageNote', { name: displayName, provider: adapter.name })}
       </p>
@@ -169,9 +189,14 @@ export default async function CamModelPage({ params }: Props) {
       <div className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8 lg:pb-14">
         <div className="lg:grid lg:grid-cols-[270px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[270px_minmax(0,1fr)_320px]">
           {/* Left rail: offer, stats, tags and the disclaimer — the facts column beside the
-              player. Same 270px track as the browse pages, so navigation doesn't shift. */}
+              player. Same 270px track as the browse pages, so navigation doesn't shift.
+              z-30: sticky creates a stacking context, and without a z-index it paints in DOM
+              order — i.e. UNDER the player column that follows — swallowing the heatmap
+              tooltips the moment they extend past the rail's edge. Must clear the player's
+              own overlays (z-20 control bar / z-10 click shield, promoted to the root
+              context) while staying under the z-50 header. */}
           <aside className="hidden lg:block">
-            <div className="lg:sticky lg:top-24">{sidebar}</div>
+            <div className="lg:sticky lg:top-24 lg:z-30">{sidebar}</div>
           </aside>
           <div className="min-w-0">
           {/* The sitewide heading component: name-only H1 (badge/flag/avatar stay out of the

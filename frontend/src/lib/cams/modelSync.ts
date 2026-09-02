@@ -49,12 +49,21 @@ export function syncModels(snapshot: OnlineSnapshot): void {
     viewers: m.viewers,
     profileImageUrl: m.profileImageUrl ?? null,
     thumbUrl: m.thumbUrl ?? null,
+    // Exact session start (feed-reported seconds_online) — the registry persists it as
+    // wentOnlineAt and builds the activity history from it. Null when the feed omits it.
+    onlineSince: m.onlineSince ?? null,
   }));
 
   void fetch(`${STRAPI_FETCH_URL}/api/cam-models/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-cam-sync-secret': secret },
-    body: JSON.stringify({ models }),
+    // failedProviders: which feeds FAILED this refresh, retained or not (NOT degradedProviders,
+    // which is the UI-banner field and stays empty while retention hides a warm outage). The
+    // backend's roster-sync heartbeat pings /fail on it — without the signal a feed outage
+    // would keep syncing retained rosters and the monitor would stay green. The heartbeat
+    // check's period lives in backend/src/cron/checks.json and assumes SYNC_INTERVAL_MS ≈ 5
+    // min — retune both together.
+    body: JSON.stringify({ models, failedProviders: snapshot.failedProviders }),
     cache: 'no-store',
     // Same discipline as the feed fetches: a stalled connection must not hold the
     // single-flight lock for undici's multi-minute defaults. Generous — it's ~1MB + ~250 writes.
