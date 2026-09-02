@@ -124,11 +124,11 @@ export const chaturbate: CamProviderAdapter = {
   },
 
   outboundUrl(username) {
-    // SAVED TEMPLATE (docs/cam-affiliate-links.md). tour=YrCp on purpose: verified live, it
-    // resolves to /gotoroom/ WITH fallback=toproom — a room that just went offline still
-    // monetizes by landing on the top room. (The feed's own chat_room_url_revshare uses
-    // tour=LQps, identical but WITHOUT the fallback — deliberately not used.)
-    return `https://chaturbate.com/in/?tour=YrCp&campaign=${encodeURIComponent(WM)}&track=default&room=${encodeURIComponent(username)}`;
+    // SAVED TEMPLATE (docs/cam-affiliate-links.md). tour=YrCr per the 2026-09 campaign update
+    // (#69; previously YrCp — both resolve to /gotoroom/ WITH fallback=toproom, so a room that
+    // just went offline still monetizes by landing on the top room. The feed's own
+    // chat_room_url_revshare uses tour=LQps, identical but WITHOUT the fallback — not used.)
+    return `https://chaturbate.com/in/?tour=YrCr&campaign=${encodeURIComponent(WM)}&track=default&room=${encodeURIComponent(username)}`;
   },
 
   thumbUrl(username) {

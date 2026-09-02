@@ -32,14 +32,14 @@ future provider).
 ### Chaturbate (`cb`)
 
 ```
-https://chaturbate.com/in/?tour=YrCp&campaign={CHATURBATE_WM}&track=default&room={username}
+https://chaturbate.com/in/?tour=YrCr&campaign={CHATURBATE_WM}&track=default&room={username}
 ```
 
 - `{username}` = the feed username exactly as we store it (also our URL segment).
-- `tour=YrCp` **on purpose**: verified live, it resolves to `/gotoroom/` **with
-  `fallback=toproom`** — a room that went offline between page render and click still lands
-  on the top room, monetized. The feed's own `chat_room_url_revshare` uses `tour=LQps`
-  (no fallback); we deliberately don't use it.
+- `tour=YrCr` per the 2026-09 campaign update (#69; previously `YrCp`). Both resolve to
+  `/gotoroom/` **with `fallback=toproom`** — a room that went offline between page render and
+  click still lands on the top room, monetized. The feed's own `chat_room_url_revshare` uses
+  `tour=LQps` (no fallback); we deliberately don't use it.
 - Env: `CHATURBATE_WM` (server-only).
 
 ### BongaCams (`bc`)
@@ -94,14 +94,14 @@ grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com' frontend/src/components 
      the exact model requested. Provider bot-walls may 403 the last hop for curl — the
      attribution hop before it is what must be correct.
    - Check what happens for an OFFLINE username (dead end vs fallback) — prefer templates
-     with a monetized fallback (see Chaturbate's `tour=YrCp`).
+     with a monetized fallback (see Chaturbate's `tour=YrCr`).
    - Then verify through our route: `curl -so /dev/null -w '%{redirect_url}' \
      http://localhost:3002/out/model/<site>/<username>/` must equal the template output.
 4. Run the grep gate above.
 
-## Current verified state (2026-08-29, live probes)
+## Current verified state (2026-09-02, live probes)
 
-- `/out/model/chaturbate/vesia/` → `302 https://chaturbate.com/in/?tour=YrCp&campaign=y98oG&track=default&room=vesia` ✓
+- `/out/model/chaturbate/vesia/` → `302 https://chaturbate.com/in/?tour=YrCr&campaign=y98oG&track=default&room=vesia` ✓
 - `/out/model/bongacams/CarmellaAngel/` → `302 https://bngprm.com/promo.php?type=direct_link&v=2&c=660500&models[]=CarmellaAngel` ✓
 - Offline registry-only model → same template ✓ · garbage username → 404, no event ✓
 - Zero raw provider hrefs outside the adapters ✓
