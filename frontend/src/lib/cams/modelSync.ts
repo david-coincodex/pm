@@ -57,7 +57,10 @@ export function syncModels(snapshot: OnlineSnapshot): void {
   void fetch(`${STRAPI_FETCH_URL}/api/cam-models/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-cam-sync-secret': secret },
-    body: JSON.stringify({ models }),
+    // degradedProviders: which feeds failed this refresh (the snapshot retains their previous
+    // models). The backend's roster-sync heartbeat pings /fail on it — without the signal a
+    // total feed outage would keep syncing retained rosters and the monitor would stay green.
+    body: JSON.stringify({ models, degradedProviders: snapshot.degradedProviders }),
     cache: 'no-store',
     // Same discipline as the feed fetches: a stalled connection must not hold the
     // single-flight lock for undici's multi-minute defaults. Generous — it's ~1MB + ~250 writes.
