@@ -43,6 +43,15 @@ const PROPS = [
   'age',
   'genderid',
   'languages',
+  // Attributes that become category tags (see attributeTags): ImLive publishes these as
+  // structured ids, so the tags are the model's own declared profile — not guesses.
+  'ethnicityid',
+  'haircolorid',
+  'buildid',
+  'bustandcup',
+  'asssize',
+  'kinkies',
+  'toyonline',
   // SDK connection data for the live player.
   'totalphotos',
   'webrtcdata',
@@ -50,7 +59,7 @@ const PROPS = [
   'boshserver',
 ].join(',');
 /** Translated companions of the id props — returned as `l_<prop>`. */
-const LNG_PROPS = 'genderid,languages';
+const LNG_PROPS = 'genderid,languages,ethnicityid,haircolorid,buildid,bustandcup,asssize,kinkies';
 
 const API =
   `https://gstsvc.webcamwiz.com/imlapi_get_hostlist/v/2015-01-01/format/json/` +
@@ -99,6 +108,78 @@ const ROOM_TAGS: Record<string, string[]> = {
   '13': ['bdsm', 'fetish'],
 };
 
+/**
+ * ImLive's structured profile attributes → our canonical tag vocabulary (the strings the
+ * cam-category `matchTags` lists use, so a mapped model appears on /live-sex/asian/,
+ * /live-sex/teen/ and friends). Values below are the ACTUAL translated labels returned by the
+ * API, sampled across 150 hosts — anything unseen simply produces no tag rather than a guess.
+ *
+ * Not mapped on purpose: Caucasian/Other/Mediterranean/Arab ethnicities and Healthy/Muscular
+ * builds have no category to land in, and inventing one would put models where visitors did
+ * not ask for them.
+ */
+const ETHNICITY_TAGS: Record<string, string[]> = {
+  asian: ['asian'],
+  hispanic: ['latina'],
+  'afro-american/black': ['ebony'],
+};
+const HAIR_TAGS: Record<string, string[]> = {
+  blonde: ['blonde'],
+  red: ['redhead'],
+  auburn: ['redhead'],
+  brown: ['brunette'],
+  black: ['brunette'],
+};
+const BUILD_TAGS: Record<string, string[]> = {
+  petite: ['petite'],
+  slender: ['petite'],
+  curvy: ['curvy'],
+  bbw: ['bbw'],
+};
+/** Cup size → breast-size categories; C is deliberately neither. */
+const BUST_TAGS: Record<string, string[]> = {
+  a: ['small tits'],
+  b: ['small tits'],
+  d: ['big tits'],
+  'dd (e)': ['big tits'],
+  huge: ['big tits'],
+};
+const ASS_TAGS: Record<string, string[]> = {
+  big: ['big ass'],
+  huge: ['big ass'],
+};
+/** The kink checkboxes ImLive actually offers (Shaved/Tattoos/Piercings/Hairy/Branded). */
+const KINK_TAGS: Record<string, string[]> = {
+  hairy: ['hairy'],
+  shaved: ['shaved'],
+  tattoos: ['tattoos'],
+  piercings: ['piercings'],
+  branded: ['branded'],
+};
+
+function attributeTags(p: NonNullable<ImliveRow['PropList']>): string[] {
+  const out = new Set<string>();
+  const add = (map: Record<string, string[]>, label: string | undefined) => {
+    for (const tag of map[(label ?? '').trim().toLowerCase()] ?? []) out.add(tag);
+  };
+  add(ETHNICITY_TAGS, p.l_ethnicityid);
+  add(HAIR_TAGS, p.l_haircolorid);
+  add(BUILD_TAGS, p.l_buildid);
+  add(BUST_TAGS, p.l_bustandcup);
+  add(ASS_TAGS, p.l_asssize);
+  for (const kink of (p.l_kinkies ?? '').split(',')) add(KINK_TAGS, kink);
+  // A connected toy is what our interactive-toys category means.
+  if (p.toyonline === '1') out.add('interactive');
+  // Age is "age feel like" per the docs — self-declared, and the sample contained a 114 — so
+  // only a plausible range is trusted, and only at the two ends where a category exists.
+  const age = Number(p.age ?? 0);
+  if (age >= 18 && age <= 80) {
+    if (age <= 19) out.add('teen');
+    else if (age >= 35) out.add('milf');
+  }
+  return [...out];
+}
+
 /** Translated gender label first (e.g. "Female"), room type as the fallback. */
 function mapGender(label: string | undefined, roomId: string): CamGender {
   const v = (label ?? '').toLowerCase();
@@ -124,6 +205,13 @@ type ImliveRow = {
     l_genderid?: string;
     languages?: string;
     l_languages?: string;
+    l_ethnicityid?: string;
+    l_haircolorid?: string;
+    l_buildid?: string;
+    l_bustandcup?: string;
+    l_asssize?: string;
+    l_kinkies?: string;
+    toyonline?: string;
     totalphotos?: string;
     webrtcdata?: string;
     cdnserver?: string;
@@ -152,8 +240,9 @@ function normalize(row: ImliveRow): CamModel | null {
     // No iframe path: the room plays through ImLive's own SDK (see ./Player.tsx).
     embedUrl: '',
     viewers: Math.max(0, Math.floor(Number(row.GCount ?? 0) || 0)),
-    // Every listed room is free live chat; the room type adds what it honestly implies.
-    tags: ['free chat', ...(ROOM_TAGS[roomId] ?? [])],
+    // Every listed room is free live chat; the room type adds what it honestly implies; and the
+    // model's own declared attributes become category tags (attributeTags).
+    tags: [...new Set(['free chat', ...(ROOM_TAGS[roomId] ?? []), ...attributeTags(p)])],
     languages: normalizeLanguages([p.l_languages ?? '']),
     // Connection data for the SDK player — ephemeral, never synced (see the header note).
     imliveRoom:
