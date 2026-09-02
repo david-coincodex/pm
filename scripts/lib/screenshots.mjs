@@ -19,7 +19,9 @@ const SCALE = 2; // crisp @2x — Strapi generates the smaller responsive resize
  * @param {object} opts
  * @param {string} opts.frontend  base URL, e.g. http://localhost:3002
  * @param {string} opts.outDir    directory to write PNGs into (must exist)
- * @param {Array<{name:string, path:string, waitFor?:string, settleMs?:number}>} opts.shots
+ * @param {Array<{name:string, path:string, waitFor?:string, scrollTo?:string, settleMs?:number}>} opts.shots
+ *   `scrollTo` scrolls a selector into view before shooting — for below-the-fold subjects
+ *   (the capture is always viewport-sized, never fullPage).
  * @returns {Promise<Map<string,{file:string,width:number,height:number}>>}  keyed by shot.name
  */
 export async function captureShots({ frontend, outDir, shots }) {
@@ -34,6 +36,18 @@ export async function captureShots({ frontend, outDir, shots }) {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 45_000 }).catch(() => {});
       if (shot.waitFor) {
         await page.waitForSelector(shot.waitFor, { timeout: 20_000 }).catch(() => {});
+      }
+      // Dev-mode only: Next's devtools badge floats over the page corner and would ship
+      // inside the marketing shot. No effect on production frontends (no such element).
+      await page.addStyleTag({ content: 'nextjs-portal{display:none!important}' }).catch(() => {});
+      if (shot.scrollTo) {
+        // block:'center', not scrollIntoViewIfNeeded — the latter stops at "partially
+        // visible", which for a below-the-fold subject means decapitated at the viewport edge.
+        await page
+          .locator(shot.scrollTo)
+          .first()
+          .evaluate((el) => el.scrollIntoView({ block: 'center' }))
+          .catch(() => {});
       }
       // Let thumbnails paint / the player poster or iframe spin up.
       await page.waitForTimeout(shot.settleMs ?? 3_000);
