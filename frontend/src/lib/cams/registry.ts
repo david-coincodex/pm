@@ -59,6 +59,14 @@ export type OnlineSnapshot = {
   /** `${provider}:${username}` → model, so a model page is a lookup and not a scan. */
   byId: Map<string, CamModel>;
   degradedProviders: CamProvider[];
+  /**
+   * Providers whose feed fetch FAILED this refresh, retained-or-not — the monitoring signal
+   * (modelSync forwards it; the roster-sync heartbeat pings /fail on it). Distinct from
+   * degradedProviders on purpose: that one means "nothing to show" and drives the UI banner,
+   * so it stays empty during a warm outage where retention hides the blip from visitors —
+   * exactly when the monitor still must know the feed is dead.
+   */
+  failedProviders: CamProvider[];
   fetchedAt: string;
   fetchedAtMs: number;
   /** Changes with every refresh — derived-result caches key off it. */
@@ -70,6 +78,7 @@ const EMPTY: OnlineSnapshot = {
   byNewest: [],
   byId: new Map(),
   degradedProviders: adapters.map((a) => a.id),
+  failedProviders: adapters.map((a) => a.id),
   fetchedAt: new Date(0).toISOString(),
   fetchedAtMs: 0,
   version: 'empty',
@@ -121,7 +130,7 @@ function startPolling(): void {
   box.pollTimer = timer;
 }
 
-function build(models: CamModel[], degradedProviders: CamProvider[]): OnlineSnapshot {
+function build(models: CamModel[], degradedProviders: CamProvider[], failedProviders: CamProvider[]): OnlineSnapshot {
   const byViewers = [...models].sort((a, b) => b.viewers - a.viewers);
   const byNewest = [...models].sort((a, b) => (b.onlineSince ?? '').localeCompare(a.onlineSince ?? ''));
   const fetchedAtMs = Date.now();
@@ -130,6 +139,7 @@ function build(models: CamModel[], degradedProviders: CamProvider[]): OnlineSnap
     byNewest,
     byId: new Map(models.map((m) => [m.id, m])),
     degradedProviders,
+    failedProviders,
     fetchedAt: new Date(fetchedAtMs).toISOString(),
     fetchedAtMs,
     version: `${fetchedAtMs}-${models.length}`,
@@ -143,6 +153,8 @@ function refresh(): Promise<OnlineSnapshot> {
       const results = await Promise.allSettled(adapters.map((a) => a.fetchOnline()));
       const models: CamModel[] = [];
       const degradedProviders: CamProvider[] = [];
+      // Monitoring signal: EVERY provider whose fetch rejected this cycle, retained or not.
+      const failedProviders: CamProvider[] = [];
       results.forEach((r, i) => {
         const id = adapters[i].id;
         if (r.status === 'fulfilled') {
@@ -157,6 +169,7 @@ function refresh(): Promise<OnlineSnapshot> {
         // and show the "temporarily unavailable" banner.
         const retained = box.current?.byViewers.filter((m) => m.provider === id) ?? [];
         models.push(...retained);
+        failedProviders.push(id);
         if (retained.length === 0) degradedProviders.push(id);
         console.error(
           `[cams] ${id} feed failed${retained.length ? ` (serving ${retained.length} last-known)` : ''}:`,
@@ -172,7 +185,7 @@ function refresh(): Promise<OnlineSnapshot> {
         return box.current ?? EMPTY;
       }
       box.lastFailureMs = 0;
-      box.current = build(models, degradedProviders);
+      box.current = build(models, degradedProviders, failedProviders);
       // One line per refresh so freshness is VISIBLE in logs — this system silently served
       // hours-old data once; never again without a trace.
       console.log(

@@ -1,27 +1,32 @@
 {
-  "cam-model-cleanup": {
-    "schedule": "0 4 * * *",
-    "grace": 21600,
-    "desc": "Daily registry retention (cam-model-tasks.ts cleanupExpired). /fail carries the failed-deletion count or abort reason."
+  "_doc": "Single source of truth for heartbeat monitoring (docs/monitoring.md). `crons` entries are BOTH the cron rules config/server.ts registers AND the Healthchecks checks scripts/provision-healthchecks.mjs provisions; `pings` entries are simple-period checks pinged from request paths, provisioned only. Check slugs are `${HEALTHCHECKS_SLUG_PREFIX}-${name}` — the ONE formula shared by heartbeat.ts and the provision script; change it in both or every ping 404s. Re-run the provision script with --apply after any change here.",
+  "crons": {
+    "cam-model-cleanup": {
+      "schedule": "0 4 * * *",
+      "grace": 21600,
+      "desc": "Daily registry retention (cam-model-tasks.ts cleanupExpired). /fail carries the failed-deletion count or abort reason."
+    },
+    "cam-model-profiles": {
+      "schedule": "12 * * * *",
+      "grace": 7200,
+      "desc": "Hourly BongaCams profile photo ingest (ingestProfilePhotos). /fail = every attempt in a run failed (dead CDN / blocked IP)."
+    },
+    "cam-model-snapshots": {
+      "schedule": "32 * * * *",
+      "grace": 7200,
+      "desc": "Hourly live snapshot capture (captureSnapshots). /fail = every attempt in a run failed (dead thumb host / upload provider)."
+    },
+    "cam-model-activity-backfill": {
+      "schedule": "*/10 * * * *",
+      "grace": 1800,
+      "desc": "One-shot lemoncams history import; done-state ticks still ping. Delete this check when the cron is retired (#65)."
+    }
   },
-  "cam-model-profiles": {
-    "schedule": "12 * * * *",
-    "grace": 7200,
-    "desc": "Hourly BongaCams profile photo ingest (ingestProfilePhotos)."
-  },
-  "cam-model-snapshots": {
-    "schedule": "32 * * * *",
-    "grace": 7200,
-    "desc": "Hourly live snapshot capture (captureSnapshots)."
-  },
-  "cam-model-activity-backfill": {
-    "schedule": "*/10 * * * *",
-    "grace": 1800,
-    "desc": "One-shot lemoncams history import; done-state ticks still ping. Delete this check when the cron is retired (#65)."
-  },
-  "cam-roster-sync": {
-    "timeout": 600,
-    "grace": 600,
-    "desc": "Roster sync heartbeat (POST /api/cam-models/sync, ~every 5 min; 10m period + 10m grace = deliberate margin). /fail = provider feeds degraded; silence = the sync chain is broken."
+  "pings": {
+    "cam-roster-sync": {
+      "timeout": 600,
+      "grace": 600,
+      "desc": "Roster sync heartbeat (POST /api/cam-models/sync; cadence = frontend SYNC_INTERVAL_MS ~5 min — retune both together; 10m period + 10m grace = deliberate margin). /fail = provider feeds failing or the lastSeenAt bulk touch broke; silence = the sync chain is broken."
+    }
   }
 }

@@ -17,13 +17,17 @@ One Healthchecks project serves every environment; slugs are `<env>-<name>` with
 `staging` and `prod` (`HEALTHCHECKS_SLUG_PREFIX`, hardcoded per compose file). Ping sender:
 `backend/src/cron/heartbeat.ts`.
 
-| Check | Schedule (UTC) | Grace | What silence means |
-|---|---|---|---|
-| `<env>-cam-model-cleanup` | cron `0 4 * * *` | 6h | Retention stopped — registry grows ~33k rows/day unbounded. A `/fail` with "aborted after N failures" means poisoned rows are wedging deletion. |
-| `<env>-cam-model-profiles` | cron `12 * * * *` | 2h | BongaCams portrait ingestion stalled (new models get no profile photo). |
-| `<env>-cam-model-snapshots` | cron `32 * * * *` | 2h | Live snapshot capture stalled (model pages stop collecting photos). |
-| `<env>-cam-model-activity-backfill` | cron `*/10 * * * *` | 30m | The backfill tick isn't running. Done-state ticks still ping, so silence always means "scheduler problem", never "backfill finished". A `/fail` usually carries lemoncams fetch errors. **Delete these checks when the one-shot cron is retired (#65).** |
-| `<env>-cam-roster-sync` | pings every ~5 min; check period 10 min (simple) | 10m | The single most valuable check: one healthy ping proves the frontend snapshot poller, both provider feeds, the sync secret, and the backend endpoint at once. The 10 min period + 10 min grace is deliberate margin over the ~5 min cadence — don't "tighten" it to match. A `/fail` names degraded provider feeds (the frontend keeps syncing its retained roster during a feed outage, so feed death is reported, not silent). Full silence = the sync chain itself is broken; check frontend logs (`[cams]`) first, then the backend sync route. |
+Schedules, grace periods and descriptions live in **`backend/src/cron/checks.json`** — the one
+manifest the cron table registers from and the provision script provisions from. This table
+only explains what an alert MEANS:
+
+| Check | What silence / `/fail` means |
+|---|---|
+| `<env>-cam-model-cleanup` | Silence: retention stopped — registry grows ~33k rows/day unbounded. `/fail`: persistent deletion failures (count in the body) or the ≥500 abort — poisoned rows are wedging deletion. |
+| `<env>-cam-model-profiles` | Silence: the hourly run isn't happening. `/fail`: every attempt in a run failed — the ingest pipeline is dead (CDN change, blocked IP) even though the queue drains. |
+| `<env>-cam-model-snapshots` | Silence: the hourly run isn't happening. `/fail`: every capture failed — dead thumb host or broken upload provider. |
+| `<env>-cam-model-activity-backfill` | Silence: the tick isn't running (always a scheduler problem — done-state ticks still ping). `/fail`: usually lemoncams fetch errors. **Delete these checks when the one-shot cron is retired (#65).** |
+| `<env>-cam-roster-sync` | The single most valuable check: one healthy ping proves the frontend snapshot poller, both provider feeds, the sync secret, the backend endpoint AND its write path at once. Pings arrive every ~5 min (frontend `SYNC_INTERVAL_MS`); the 10m period + 10m grace is deliberate margin — don't "tighten" it. `/fail` names failing provider feeds (reported even while the frontend serves its retained roster) or a broken `lastSeenAt` bulk touch. Full silence = the sync chain itself is broken; check frontend logs (`[cams]`) first, then the backend sync route. Note: the frontend warms its poller at boot (`instrumentation.ts`), so an idle-but-healthy server still pings. |
 
 Design notes:
 
@@ -89,6 +93,6 @@ alert — production is NOT monitored just because the checks exist):
 
 1. Open the check in Healthchecks — the event log shows the last pings and any `/fail` body
    (error text from the job).
-2. `ssh` to the host → `docker logs <backend-container> | grep -E '\[cam-model\]|\[cam-backfill\]|\[heartbeat\]'`.
+2. `ssh` to the host → `docker logs <backend-container> | grep -E '\[cron\]|\[cam-model\]|\[cam-backfill\]|\[heartbeat\]'`.
 3. A `[heartbeat] ... ping failed` warning in the logs with jobs otherwise healthy means the
    outage is between the host and Healthchecks, not in the job.

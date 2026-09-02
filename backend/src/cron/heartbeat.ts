@@ -26,8 +26,9 @@ import type { Core } from '@strapi/strapi';
 
 const BASE = 'https://hc-ping.com';
 
-let warnedNoKey = false;
-let loggedActive = false;
+/** One-shot announcement latch: the key is env-constant per process, so exactly one of the
+ * two boot-time lines (skipped-warn or active-info) can ever fire. */
+let announced = false;
 /** Slugs already warned about non-2xx responses — one line per slug, not one per tick. */
 const warnedHttp = new Set<string>();
 
@@ -43,14 +44,14 @@ export function pingHeartbeat(log: Logger, name: string, ok: boolean, detail?: s
   const prefix = process.env.HEALTHCHECKS_SLUG_PREFIX || 'dev';
   const slug = `${prefix}-${name}`;
   if (!key) {
-    if (!warnedNoKey && process.env.NODE_ENV !== 'production') {
-      warnedNoKey = true;
+    if (!announced && process.env.NODE_ENV !== 'production') {
+      announced = true;
       log.warn(`[heartbeat] HEALTHCHECKS_PING_KEY unset — "${slug}" pings skipped. See docs/monitoring.md`);
     }
     return;
   }
-  if (!loggedActive) {
-    loggedActive = true;
+  if (!announced) {
+    announced = true;
     log.info(`[heartbeat] active — pinging "${prefix}-*" checks`);
   }
   void fetch(`${BASE}/${key}/${slug}${ok ? '' : '/fail'}`, {
@@ -103,7 +104,7 @@ export function withHeartbeat(
       if (result) pingHeartbeat(strapi.log, name, result.ok, result.detail);
       else pingHeartbeat(strapi.log, name, true);
     } catch (err) {
-      strapi.log.error(`[cam-model] ${name} run failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+      strapi.log.error(`[cron] ${name} run failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
       pingHeartbeat(strapi.log, name, false, err instanceof Error ? err.message : String(err));
     } finally {
       running.delete(name);
