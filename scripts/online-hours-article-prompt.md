@@ -26,7 +26,7 @@ Do not invent facts, numbers, prices, or model names beyond what's above.
 Return ONE JSON object (no markdown fences) with exactly:
 
 - `"metaTitle"` — ≤ 60 chars, SEO title (mention seeing when cam models are online; include "PornMode").
-- `"title"` — the on-page H1, punchy.
+- `"title"` — the on-page H1, punchy. Do NOT prefix it with "Update:" or append a date — the publisher adds both ("Update: <your title> (Sep 2, 2026)").
 - `"description"` — 140–160 chars, an enticing meta description.
 - `"contentHtml"` — the body as HTML (rules below).
 - `"faqs"` — 3–4 `{ "question", "answer" }` objects, real questions a visitor asks (Is it my timezone? How does it know? Why doesn't a model show one yet? Phone?). Answers 1–3 sentences, casual and human.
