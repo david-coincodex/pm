@@ -6,7 +6,8 @@ import { normalizeActivity, type SessionPair } from './session-history';
  * One-shot backfill of `activity` histories from lemoncams' public cam-log API, so the
  * usual-online-hours heatmaps have up to 28 days of data right after this feature deploys
  * instead of accruing from zero. Runs as a cron tick (see config/server.ts): each tick pages
- * BATCH rows forward by id, imports what lemoncams has, and persists its cursor in the core
+ * BATCH rows forward (highest peak viewers first — see BackfillState), imports what lemoncams
+ * has, and persists its cursor in the core
  * store — when the cursor runs off the end of the candidates it marks itself done FOREVER
  * and every later tick is a no-op read. Idempotent by construction (set-union merge), so
  * re-running against already-backfilled rows changes nothing.
@@ -25,8 +26,8 @@ const PROVIDER_SLUGS: Record<string, string> = { cb: 'chaturbate', bc: 'bongacam
 
 const STORE_KEY = 'activityBackfill';
 /** Rows advanced per tick; at DELAY_MS spacing a tick stays well inside its cron window. */
-const BATCH = 150;
-const DELAY_MS = 350;
+const BATCH = 250;
+const DELAY_MS = 300;
 /** Fetch failures per tick before backing off to the next tick (site down / throttling us). */
 const MAX_FAILURES = 20;
 /** Rows that already carry this many pairs are organically rich — skip the request. */
@@ -38,7 +39,22 @@ const MIN_PEAK = 10;
 const SLOT_MIN = 10; // lemoncams' poll granularity
 const BRIDGE_MIN = 20; // one missed poll is bridged; anything larger splits the session
 
-type BackfillState = { cursor: number; done: boolean; scanned: number; imported: number; failed: number };
+/**
+ * Composite (peakViewers DESC, id ASC) cursor: the most-viewed models are the pages with
+ * traffic, so they get their heatmaps FIRST — an id-only cursor on a large registry left the
+ * top models unbackfilled for a day while it chewed through the noise tail. peakCursor null =
+ * not started. Rows whose peak moves across the cursor mid-backfill are either re-visited
+ * (harmless — merge is idempotent, rich rows are skipped) or missed (rare; the sync covers
+ * them organically).
+ */
+type BackfillState = {
+  peakCursor: number | null;
+  idCursor: number;
+  done: boolean;
+  scanned: number;
+  imported: number;
+  failed: number;
+};
 
 /** Their day/hour/slot tree → sorted disjoint [startMin, endMin] pairs (their data is UTC). */
 export function slotsToPairs(days: unknown): SessionPair[] {
@@ -89,13 +105,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function runBackfillTick(strapi: Core.Strapi): Promise<void> {
   const store = strapi.store({ type: 'plugin', name: 'cam-model' });
+  const stored = (await store.get({ key: STORE_KEY })) as Partial<BackfillState> | null;
   const state: BackfillState = {
-    cursor: 0,
+    peakCursor: null,
+    idCursor: 0,
     done: false,
     scanned: 0,
     imported: 0,
     failed: 0,
-    ...((await store.get({ key: STORE_KEY })) as Partial<BackfillState> | null),
+    // A pre-priority-cursor state (the retired id-only `cursor` field) restarts from the top:
+    // idempotent merges + the rich-row skip make a re-scan cheap, losing progress does not.
+    ...(stored && 'peakCursor' in stored ? stored : {}),
   };
   if (state.done) return;
 
@@ -105,14 +125,30 @@ export async function runBackfillTick(strapi: Core.Strapi): Promise<void> {
   const isSqlite = String(strapi.db.config.connection.client ?? '').includes('sqlite');
   const recentCutoff = Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000;
 
-  const rows: { id: number; key: string; provider: string; username: string; activity: unknown }[] = await knex(
-    meta.tableName,
-  )
-    .select('id', 'key', 'provider', 'username', 'activity')
-    .where('id', '>', state.cursor)
+  const rows: {
+    id: number;
+    key: string;
+    provider: string;
+    username: string;
+    activity: unknown;
+    peak_viewers: number;
+  }[] = await knex(meta.tableName)
+    .select('id', 'key', 'provider', 'username', 'activity', 'peak_viewers')
+    .modify((q) => {
+      if (state.peakCursor !== null) {
+        const peak = state.peakCursor;
+        const id = state.idCursor;
+        q.where((b) =>
+          b.where('peak_viewers', '<', peak).orWhere((eq) => eq.where('peak_viewers', '=', peak).andWhere('id', '>', id)),
+        );
+      }
+    })
     .andWhere('last_seen_at', '>', isSqlite ? recentCutoff : new Date(recentCutoff).toISOString())
     .andWhere('peak_viewers', '>=', MIN_PEAK)
-    .orderBy('id', 'asc')
+    .orderBy([
+      { column: 'peak_viewers', order: 'desc' },
+      { column: 'id', order: 'asc' },
+    ])
     .limit(BATCH);
 
   if (rows.length === 0) {
@@ -127,7 +163,9 @@ export async function runBackfillTick(strapi: Core.Strapi): Promise<void> {
   let failures = 0;
 
   for (const row of rows) {
-    state.cursor = row.id; // advances even past failures — a row is attempted at most once
+    // Advances even past failures — a row is attempted at most once per pass.
+    state.peakCursor = row.peak_viewers;
+    state.idCursor = row.id;
     state.scanned += 1;
     const slug = PROVIDER_SLUGS[row.provider];
     if (!slug) continue;
@@ -159,7 +197,7 @@ export async function runBackfillTick(strapi: Core.Strapi): Promise<void> {
   state.failed += failures;
   await store.set({ key: STORE_KEY, value: state });
   strapi.log.info(
-    `[cam-backfill] tick: cursor ${state.cursor}, ${state.imported} imported / ${state.scanned} scanned${
+    `[cam-backfill] tick: cursor peak=${state.peakCursor} id=${state.idCursor}, ${state.imported} imported / ${state.scanned} scanned${
       failures ? `, ${failures} failures this tick` : ''
     }`,
   );
