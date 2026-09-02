@@ -40,6 +40,25 @@ export type ProviderMeta = {
     /** The feed's thumb is a LIVE frame worth capturing periodically → snapshot cron includes it. */
     liveSnapshots: boolean;
   };
+  ranking: {
+    /**
+     * Is `viewers` a real concurrent-audience count, comparable with other providers'?
+     * TRUE for Chaturbate (num_users) and BongaCams (members_count) — both are "people in the
+     * room right now", measured medians 137 and 96, so sorting them together is honest.
+     * FALSE for a provider whose number means something else (ImLive reports guests in the
+     * FREE room: 0-7, median 0 — not an audience size). Two consequences: such a provider is
+     * ranked among the rest EDITORIALLY (see mixShare) rather than by a number we can't
+     * compare, and its cards hide the viewer badge instead of printing a misleading "0".
+     */
+    viewersComparable: boolean;
+    /**
+     * For non-comparable providers only: roughly one of its models per N cards in mixed
+     * listings. An editorial placement, deliberately NOT dressed up as a measurement — the
+     * alternative was inventing viewer numbers, and the alternative to THAT was burying the
+     * provider at rank ~800 where nobody would ever see it.
+     */
+    mixShare?: number;
+  };
   video: {
     /**
      * The provider's playback surface brings its own controls (a provider iframe with its own

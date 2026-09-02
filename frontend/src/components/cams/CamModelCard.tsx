@@ -2,6 +2,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 import { CAM_PROVIDER_NAMES, type CamModel } from '@/lib/cams/types';
+import { PROVIDER_META } from '@/lib/cams/providers/meta';
 import { compactNumber } from '@/lib/format';
 import CamModelCardFrame from './CamModelCardFrame';
 import CamThumbFallback from './CamThumbFallback';
@@ -29,6 +30,8 @@ export default function CamModelCard({
 }) {
   const t = useTranslations('liveSex');
   const locale = useLocale();
+  // Only providers whose `viewers` is a real concurrent-audience count get the badge.
+  const showViewerCount = PROVIDER_META[model.provider].ranking.viewersComparable;
 
   return (
     <CamModelCardFrame
@@ -59,9 +62,14 @@ export default function CamModelCard({
               embedUrl silently excluded providers that play through neither (an SDK player). */}
           {live && <CamCardPreview model={model} />}
           {/* No LIVE tag: everything listed IS live, or it wouldn't be here. Icon + compact
-              count ("14.1K") top-left; the heart owns the top-right corner. */}
+              count ("14.1K") top-left; the heart owns the top-right corner. The COUNT is shown
+              only for providers whose number is a real audience size (see the provider's
+              ranking metadata) — one reports guests in a free room (0-7, usually 0), and
+              printing that as a viewer count next to a "1.2K" card would misinform rather than
+              inform. The flag still shows. */}
           {live && (
             <span className="absolute left-2 top-2 flex items-center gap-1.5">
+              {showViewerCount && (
               <span
                 className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"
               >
@@ -72,6 +80,7 @@ export default function CamModelCard({
                 {compactNumber(model.viewers, locale)}
                 <span className="sr-only">{t('viewers', { count: model.viewers })}</span>
               </span>
+              )}
               {model.country && <CountryFlag country={model.country} className="h-5 w-5" locale={locale} />}
             </span>
           )}

@@ -44,6 +44,7 @@ const PROPS = [
   'genderid',
   'languages',
   // SDK connection data for the live player.
+  'totalphotos',
   'webrtcdata',
   'cdnserver',
   'boshserver',
@@ -123,6 +124,7 @@ type ImliveRow = {
     l_genderid?: string;
     languages?: string;
     l_languages?: string;
+    totalphotos?: string;
     webrtcdata?: string;
     cdnserver?: string;
     boshserver?: string;
@@ -196,12 +198,25 @@ export const imlive: CamProviderAdapter = {
 
     const seen = new Set<string>();
     const models: CamModel[] = [];
+    /** Kept beside the models rather than on CamModel: it is an ImLive-only ranking input. */
+    const photoCount = new Map<string, number>();
     for (const row of rows) {
       const model = normalize(row);
       if (!model || seen.has(model.username)) continue;
       seen.add(model.username);
+      photoCount.set(model.username, Number(row.PropList?.totalphotos ?? 0) || 0);
       models.push(model);
     }
+    // ImLive publishes no popularity metric, so order by what it DOES give us: guests in the
+    // room now, then profile tenure (totalphotos spans 1..1105 — an established model has
+    // built a gallery), then username for a stable order across refreshes. This is the order
+    // the shared ranker preserves when weaving ImLive into mixed listings.
+    models.sort(
+      (a, b) =>
+        b.viewers - a.viewers ||
+        (photoCount.get(b.username) ?? 0) - (photoCount.get(a.username) ?? 0) ||
+        a.username.localeCompare(b.username),
+    );
     return models;
   },
 

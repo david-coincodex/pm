@@ -1,6 +1,7 @@
 import 'server-only';
 import type { CamModel, CamProvider, CamProviderAdapter } from './types';
 import { ALL_ADAPTERS } from './providers/adapters';
+import { rankModels } from './ranking';
 import { syncModels } from './modelSync';
 
 /**
@@ -53,7 +54,12 @@ const RETRY_BACKOFF_MS = 15_000;
 const POLL_MS = 45_000;
 
 export type OnlineSnapshot = {
-  /** All online models, sorted by viewers desc — the canonical order for every listing. */
+  /**
+   * All online models in "most popular first" order — the canonical order for every listing.
+   * Providers with comparable viewer counts compete on the number; a provider whose count
+   * isn't comparable is woven in at its declared cadence (see lib/cams/ranking.ts). Computed
+   * once per refresh, so requests never rank.
+   */
   byViewers: CamModel[];
   /** The same set, sorted by most-recently-online first. */
   byNewest: CamModel[];
@@ -132,7 +138,7 @@ function startPolling(): void {
 }
 
 function build(models: CamModel[], degradedProviders: CamProvider[], failedProviders: CamProvider[]): OnlineSnapshot {
-  const byViewers = [...models].sort((a, b) => b.viewers - a.viewers);
+  const byViewers = rankModels(models);
   const byNewest = [...models].sort((a, b) => (b.onlineSince ?? '').localeCompare(a.onlineSince ?? ''));
   const fetchedAtMs = Date.now();
   return {

@@ -18,6 +18,10 @@ export const bongacamsMeta: ProviderMeta = {
     hasProfilePortrait: true,
     liveSnapshots: true,
   },
+  ranking: {
+    // members_count = viewers in the room right now (same kind of number as CB's).
+    viewersComparable: true,
+  },
   video: {
     // Plays in OUR <video>, so the host keeps its control bar.
     ownsControls: false,

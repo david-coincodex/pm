@@ -25,6 +25,13 @@ export const imliveMeta: ProviderMeta = {
     // exposes a live-frame URL.
     liveSnapshots: false,
   },
+  ranking: {
+    // GCount counts guests in the FREE room (0-7, median 0) — not an audience size, and
+    // the API exposes no popularity field (rating is 5 for 92% of hosts, the tip counter has
+    // two distinct values). So placement is editorial and the badge is hidden.
+    viewersComparable: false,
+    mixShare: 12,
+  },
   video: {
     // Their SDK renders its own sound button.
     ownsControls: true,

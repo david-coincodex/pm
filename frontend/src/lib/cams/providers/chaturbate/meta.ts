@@ -18,6 +18,10 @@ export const chaturbateMeta: ProviderMeta = {
     hasProfilePortrait: false,
     liveSnapshots: true,
   },
+  ranking: {
+    // num_users = viewers in the room right now.
+    viewersComparable: true,
+  },
   video: {
     // The provider iframe carries its own bar and owns its audio (cross-origin).
     ownsControls: true,
