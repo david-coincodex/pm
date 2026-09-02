@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
 import { runBackfillTick } from '../api/cam-model/activity-backfill';
+import { pingHeartbeat } from './heartbeat';
 import {
   CAM_MODEL_UID as UID,
   ONLINE_WINDOW_MS,
@@ -113,6 +114,15 @@ export async function cleanupExpired({ strapi }: { strapi: Core.Strapi }) {
           (failedIds.length ? `, ${failedIds.length} failed` : ''),
       );
     }
+    // An aborted run finished abnormally even though it didn't throw — that's a /fail.
+    if (failedIds.length >= CLEANUP_MAX_FAILURES) {
+      pingHeartbeat('cam-model-cleanup', false, `aborted after ${failedIds.length} failed deletions`);
+    } else {
+      pingHeartbeat('cam-model-cleanup', true);
+    }
+  } catch (err) {
+    strapi.log.error(`[cam-model] cleanup run failed: ${String(err)}`);
+    pingHeartbeat('cam-model-cleanup', false, String(err));
   } finally {
     running.cleanup = false;
   }
@@ -177,6 +187,10 @@ export async function ingestProfilePhotos({ strapi }: { strapi: Core.Strapi }) {
       });
     });
     if (ingested > 0) strapi.log.info(`[cam-model] profiles: ingested ${ingested} (${pending.length} attempted)`);
+    pingHeartbeat('cam-model-profiles', true);
+  } catch (err) {
+    strapi.log.error(`[cam-model] profile ingest run failed: ${String(err)}`);
+    pingHeartbeat('cam-model-profiles', false, String(err));
   } finally {
     running.profiles = false;
   }
@@ -229,6 +243,10 @@ export async function captureSnapshots({ strapi }: { strapi: Core.Strapi }) {
     if (captured > 0) {
       strapi.log.info(`[cam-model] snapshots: ${captured} captured (${fresh.length} first-time, ${stale.length} refresh)`);
     }
+    pingHeartbeat('cam-model-snapshots', true);
+  } catch (err) {
+    strapi.log.error(`[cam-model] snapshot run failed: ${String(err)}`);
+    pingHeartbeat('cam-model-snapshots', false, String(err));
   } finally {
     running.snapshots = false;
   }
@@ -244,8 +262,11 @@ export async function backfillActivity({ strapi }: { strapi: Core.Strapi }) {
   running.backfill = true;
   try {
     await runBackfillTick(strapi);
+    // Done-state ticks ping too: "the scheduler is alive" is exactly what the check watches.
+    pingHeartbeat('cam-model-activity-backfill', true);
   } catch (err) {
     strapi.log.error(`[cam-backfill] tick failed: ${String(err)}`);
+    pingHeartbeat('cam-model-activity-backfill', false, String(err));
   } finally {
     running.backfill = false;
   }

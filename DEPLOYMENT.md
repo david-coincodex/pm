@@ -52,6 +52,7 @@ Set these under **Settings → Environments → `staging`**.
 | `JWT_SECRET` | `openssl rand -base64 32` |
 | `ENCRYPTION_KEY` | `openssl rand -base64 32` (required by Strapi 5 — `config/admin.ts`) |
 | `DATABASE_PASSWORD` | Postgres password for the `db` container |
+| `HEALTHCHECKS_PING_KEY` | Healthchecks.io project ping key — cron/sync heartbeats (docs/monitoring.md); empty ⇒ pings skipped |
 
 ### Variables
 | Variable | Example |

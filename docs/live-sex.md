@@ -87,6 +87,8 @@ on the public host (content-hashed names, so the 1-year cache header is safe und
 
 All backend crons are Strapi built-ins — `config/server.ts` → `cron.tasks`, implemented in
 `backend/src/cron/cam-model-tasks.ts`. No external scheduler, nothing to install on servers.
+Every cron (and the roster sync) sends a dead-man's-switch heartbeat to Healthchecks.io on
+completion — silence or `/fail` triggers the alert. See **docs/monitoring.md**.
 
 | Job | Schedule | What it does |
 |---|---|---|
@@ -111,7 +113,8 @@ Frontend-side "crons" are just the snapshot poller (45 s) and the piggy-backed m
 - **Photos**: rotation keeps ≤4 per model (oldest removed via `upload.remove`, which deletes
   the provider file, generated formats, and the DB row together); the rest die with the model.
 - **Live snapshot**: memory only; every refresh replaces it.
-- There are no other retention mechanisms to run or monitor.
+- There are no other retention mechanisms to run — and the ones above are heartbeat-monitored
+  (docs/monitoring.md), so a stalled cleanup alerts instead of silently growing the registry.
 
 ## URLs, SEO and the proxy bridge (frontend)
 

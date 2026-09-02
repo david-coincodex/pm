@@ -36,6 +36,8 @@ the `DATABASE_*` values.
 | `NODE_ENV` | R | | `production` |
 | **`CAM_SYNC_SECRET`** | **R** | 🔒 | **Guards `POST /api/cam-models/sync`. Unset ⇒ backend rejects every sync ⇒ registry stays empty (no model pages, empty models-sitemap). MUST match the frontend's value.** |
 | `CAM_MODEL_RETENTION_DAYS` | O | | default `60` — models unseen this long are deleted (page 404s, drops from sitemap) |
+| `HEALTHCHECKS_PING_KEY` | O | 🔒 | Healthchecks.io project ping key for cron/sync heartbeats (docs/monitoring.md). Unset ⇒ pings skipped, crons still run — but no alerting. |
+| `HEALTHCHECKS_SLUG_PREFIX` | O | | `staging`/`prod` — names this env's check slugs; hardcoded in each compose file, defaults to `dev` |
 | `DATABASE_URL`, `DATABASE_SCHEMA`, `DATABASE_POOL_MIN/MAX`, `DATABASE_CONNECTION_TIMEOUT`, `DATABASE_SSL_*`, `DATABASE_FILENAME` | O | | Advanced DB knobs — leave unset for the standard Postgres setup |
 | `FLAG_NPS`, `FLAG_PROMOTE_EE` | O | | Strapi feature flags — unused here |
 
@@ -70,7 +72,7 @@ credentials.
 
 **Secrets:** `SSH_PRIVATE_KEY`, `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`,
 `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY`, `DATABASE_PASSWORD`, `CAM_SYNC_SECRET`,
-`REVALIDATE_SECRET`, `GA_API_SECRET`.
+`REVALIDATE_SECRET`, `GA_API_SECRET`, `HEALTHCHECKS_PING_KEY`.
 **Variables:** `DEPLOY_USER`, `DATABASE_NAME`, `DATABASE_USERNAME`, plus `DEPLOY_HOST` (staging)
 / `DEPLOY_HOST_PROD` (production).
 

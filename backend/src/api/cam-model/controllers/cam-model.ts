@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 import { createHash } from 'node:crypto';
 import { CAM_MODEL_UID as UID, ROW_REFRESH_SLACK_MS, SESSION_TOLERANCE_MS } from '../constants';
 import { reviseActivity } from '../session-history';
+import { pingHeartbeat } from '../../../cron/heartbeat';
 
 /** Batch size for $in lookups — a politeness bound, not a driver limit (modern better-sqlite3
  * binds up to 32,766 variables; Postgres far more). */
@@ -286,6 +287,13 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
       // never fail the sync over it.
       strapi.log.error(`[cam-model] lastSeenAt bulk touch failed: ${String(err)}`);
     }
+
+    // The single most valuable heartbeat: one successful sync proves the frontend poller,
+    // both provider feeds, the shared secret, and this endpoint in one signal. Fire-and-forget
+    // (never awaited) — this request is latency-sensitive against the caller's 30s timeout.
+    // Failures ping nothing on purpose: whatever breaks the chain silences the check, and
+    // silence is what Healthchecks alerts on.
+    pingHeartbeat('cam-roster-sync', true);
 
     return { created, updated, skipped: roster.size - created - updated };
   },
