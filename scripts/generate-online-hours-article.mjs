@@ -141,6 +141,10 @@ async function main() {
     if (gen[k] == null) throw new Error(`model output missing "${k}"`);
   }
   assertMarkers(gen.contentHtml);
+  // House style for update posts: "Update: <title> (Sep 2, 2026)" — uniform and self-dating,
+  // pairing with the wordmark+date cover. The prompt is told not to add its own prefix/date.
+  const dateShort = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  gen.title = `Update: ${gen.title.replace(/^Update:\s*/i, '')} (${dateShort})`;
   console.log(`  title: ${gen.title}`);
 
   if (DRY_RUN) {
