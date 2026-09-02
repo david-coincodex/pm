@@ -155,20 +155,29 @@ function HeatGrid({
     setTip({ d, h, x, y: cell.offsetTop });
   };
 
-  const cell = (d: number, h: number, shapeClass: string) => (
-    <div
-      key={`${d}-${h}`}
-      onMouseEnter={(e) => show(e.currentTarget, d, h)}
-      // Mobile: no hover — the tap itself opens the tooltip (some browsers emulate mouseenter
-      // on tap, but not all, and never reliably; the click handler is the guarantee).
-      onClick={(e) => show(e.currentTarget, d, h)}
-      className={`${shapeClass} cursor-default rounded-xs ${BIN_CLASSES[bin(pct[d * 24 + h])]}${
-        // "You are here": neutral ink ring — high contrast on every ramp step in both modes,
+  const cell = (d: number, h: number, shapeClass: string) => {
+    // The cell whose tooltip is open: hover on desktop, the tapped cell on mobile. Sky, not
+    // emerald (the data ramp) and not ink (the "you are here" ring below) — three distinct
+    // meanings, three distinct colors. Selection wins when a cell is both.
+    const active = tip !== null && tip.d === d && tip.h === h;
+    const marker = active
+      ? ' relative z-[2] ring-2 ring-sky-500'
+      : // "You are here": neutral ink ring — high contrast on every ramp step in both modes,
         // without borrowing a hue the cells (emerald) or statuses already own.
-        nowIdx === d * 24 + h ? ' relative z-[1] ring-2 ring-slate-900 dark:ring-white' : ''
-      }`}
-    />
-  );
+        nowIdx === d * 24 + h
+        ? ' relative z-[1] ring-2 ring-slate-900 dark:ring-white'
+        : '';
+    return (
+      <div
+        key={`${d}-${h}`}
+        onMouseEnter={(e) => show(e.currentTarget, d, h)}
+        // Mobile: no hover — the tap itself opens the tooltip (some browsers emulate mouseenter
+        // on tap, but not all, and never reliably; the click handler is the guarantee).
+        onClick={(e) => show(e.currentTarget, d, h)}
+        className={`${shapeClass} cursor-default rounded-xs ${BIN_CLASSES[bin(pct[d * 24 + h])]}${marker}`}
+      />
+    );
+  };
 
   const axisText = 'text-xs leading-none text-slate-400 dark:text-slate-500';
 
