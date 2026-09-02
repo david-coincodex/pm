@@ -121,13 +121,8 @@ async function main() {
     ],
   });
 
-  // 3. Typographic cover.
-  const cover = await buildCover({
-    outFile: join(OUT_DIR, 'cover.png'),
-    headline: 'See When She’s Online',
-    kicker: 'NEW ON PORNMODE',
-    subtitle: 'Every model’s page now shows her usual online hours · in your local time',
-  });
+  // 3. The standard cover: wordmark + publish date (identical across articles by design).
+  const cover = await buildCover({ outFile: join(OUT_DIR, 'cover.png') });
 
   // 4. Copy (OpenAI).
   console.log('Generating copy (gpt-5.5)…');
