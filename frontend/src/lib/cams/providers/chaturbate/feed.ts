@@ -1,9 +1,9 @@
 import 'server-only';
-import type { CamModel, CamProviderAdapter, CamGender } from '../types';
-import { FEED_CACHE } from './feedCache';
-import { cleanDisplayName, cleanLocation } from '../displayName';
-import { normalizeLanguages } from '../languages';
-import { normalizeCountry } from '../countries';
+import type { CamModel, CamProviderAdapter, CamGender } from '../../types';
+import { FEED_CACHE } from '../feedCache';
+import { cleanDisplayName, cleanLocation } from '../../displayName';
+import { normalizeLanguages } from '../../languages';
+import { normalizeCountry } from '../../countries';
 
 /**
  * Chaturbate affiliate API (JSON): /api/public/affiliates/onlinerooms/ — the documented
@@ -90,6 +90,8 @@ export const chaturbate: CamProviderAdapter = {
   name: 'Chaturbate',
   /** /embed/<room>/ is frameable (no X-Frame-Options) — see embedUrl below. */
   canEmbed: true,
+  // Always on: CHATURBATE_WM has a working default, so there is nothing to gate.
+  enabled: () => true,
 
   async fetchOnline() {
     // Offsets are fixed, so all pages fetch in parallel — a snapshot refresh costs one

@@ -1,19 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type Hls from 'hls.js';
 import { getMobileCols, getServerMobileCols, subscribeCols } from '@/lib/cams/gridCols';
+import { VIDEO_PLUGINS } from '@/lib/cams/providers/video';
+import type { CamModel } from '@/lib/cams/types';
 
 interface Props {
-  /** Raw HLS live stream (BongaCams) — played muted in our <video>: its feed hands out a plain
-   * public m3u8. */
-  streamUrl?: string;
-  /** Chaturbate's embed_video_only iframe URL (same one the model page uses). CB's stream isn't
-   * resolvable server-side (see memory cb-stream-token-ip-bound), so its preview reuses the
-   * provider's own player — no chat, muted via disable_sound=1 in the URL, and the holder is
-   * pointer-events-none so it can't be interacted with (stays a silent, click-through preview).
-   * If both are set, streamUrl wins; in practice a model has exactly one. */
-  embedUrl?: string;
+  model: CamModel;
 }
 
 /** Hover must be intent, not a drive-by on the way to another card. */
@@ -76,58 +69,6 @@ function registerFocusCandidate(el: Element, setActive: (v: boolean) => void): (
   };
 }
 
-/** Minimal muted HLS playback for a card — no controls, lowest sensible quality. */
-function PreviewVideo({ src, onFatal, onReady }: { src: string; onFatal: () => void; onReady: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    let hls: Hls | null = null;
-    let cancelled = false;
-    video.muted = true;
-    const play = () => void video.play().catch(() => {});
-    // 'playing' = frames are actually rendering — the loading bar's finish line.
-    video.addEventListener('playing', onReady, { once: true });
-
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
-      video.addEventListener('error', onFatal);
-      play();
-    } else {
-      void import('hls.js').then(({ default: HlsCtor }) => {
-        if (cancelled) return;
-        if (!HlsCtor.isSupported()) return onFatal();
-        hls = new HlsCtor({
-          liveSyncDurationCount: 3,
-          maxBufferLength: 6,
-          // A card is ~300px wide: cap the level to the element so previews stream 240p,
-          // not the 720p a full player would pick.
-          capLevelToPlayerSize: true,
-          startLevel: 0,
-        });
-        hls.on(HlsCtor.Events.ERROR, (_e, data) => {
-          if (data.fatal) onFatal(); // previews are disposable — no recovery dance, just vanish
-        });
-        hls.loadSource(src);
-        hls.attachMedia(video);
-        hls.on(HlsCtor.Events.MANIFEST_PARSED, play);
-      });
-    }
-
-    return () => {
-      cancelled = true;
-      hls?.destroy();
-      video.removeEventListener('error', onFatal);
-      video.removeEventListener('playing', onReady);
-      video.removeAttribute('src');
-      video.load();
-    };
-  }, [src, onFatal, onReady]);
-
-  return <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />;
-}
-
 /**
  * Live-video preview inside a model card, replacing the old hover-zoom.
  *
@@ -137,15 +78,18 @@ function PreviewVideo({ src, onFatal, onReady }: { src: string; onFatal: () => v
  * arbitrated by the focus manager above. Skipped entirely for visitors with
  * prefers-reduced-motion or Data Saver on.
  *
- * Sources: BongaCams cards play their feed's raw HLS in a muted <video>; Chaturbate cards mount
- * the provider's embed_video_only iframe (same player as the model page) — it can't be muted
- * programmatically, but disable_sound=1 starts it silent and the pointer-events-none holder
- * keeps it non-interactive. Only one preview is ever active at a time (hover intent / mobile
- * single-active), so at most one iframe is live.
+ * The PICTURE comes from the provider's video plugin (lib/cams/providers/video.ts); everything
+ * above — intent, arbitration, opt-outs, the loading sweep, failure handling — lives here and
+ * is therefore identical for every provider, present and future. Only one preview is ever
+ * active at a time (hover intent / mobile single-active), so at most one surface is live.
  *
  * Renders null server-side; the static thumbnail stays underneath as backdrop and fallback.
  */
-export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
+export default function CamCardPreview({ model }: Props) {
+  const plugin = VIDEO_PLUGINS[model.provider];
+  const Preview = plugin.Preview;
+  // Nothing to preview → the card keeps its static thumbnail and we never arm any listener.
+  const previewable = Boolean(Preview) && plugin.canPlay(model);
   const holderRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   // Mobile center-focus autoplay is opt-in: only when the visitor browses 1-per-row (one big
@@ -169,7 +113,7 @@ export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
 
   useEffect(() => {
     const holder = holderRef.current;
-    if (!holder || (!streamUrl && !embedUrl)) return;
+    if (!holder || !previewable) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if ((navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return;
     // The stretched link paints above this layer, so hover must be observed on the card root.
@@ -215,7 +159,7 @@ export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
       armEvents.forEach((e) => window.removeEventListener(e, arm));
       cleanupFocus?.();
     };
-  }, [streamUrl, embedUrl, activate, mobileCols]);
+  }, [previewable, activate, mobileCols]);
 
   return (
     <div ref={holderRef} className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -225,29 +169,8 @@ export default function CamCardPreview({ streamUrl, embedUrl }: Props) {
           <div className="h-full w-1/3 animate-cam-load bg-emerald-500 shadow-[0_0_6px_theme(colors.emerald.400)]" />
         </div>
       )}
-      {active && !failed && (
-        streamUrl ? (
-          <PreviewVideo src={streamUrl} onFatal={onFatal} onReady={onReady} />
-        ) : embedUrl ? (
-          /* Chaturbate's own player, same embed as the model page — no chat, muted start. The
-             holder is pointer-events-none, so clicks fall through to the card's navigation link
-             and the visitor can't unmute a preview.
-             The 16:9 stream is LETTERBOXED (full-width, centered on black) inside the 4:3 card
-             instead of filling it: an iframe can't be object-fit, so filling would make the CB
-             player crop the frame — the "zoomed in" look. Bars show the whole scene instead. */
-          <div className="absolute inset-0 flex items-center justify-center bg-black">
-            <iframe
-              src={embedUrl}
-              title=""
-              aria-hidden="true"
-              tabIndex={-1}
-              scrolling="no"
-              allow="autoplay"
-              className="aspect-video w-full border-0"
-              onLoad={onReady}
-            />
-          </div>
-        ) : null
+      {active && !failed && Preview && (
+        <Preview model={model} onReady={onReady} onFatal={onFatal} />
       )}
     </div>
   );

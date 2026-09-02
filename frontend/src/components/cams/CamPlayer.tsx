@@ -1,43 +1,36 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { getMuted, getServerMuted, setMuted, subscribeMuted } from '@/lib/cams/soundPref';
 import { useTranslations } from 'next-intl';
-import type Hls from 'hls.js';
+import { VIDEO_PLUGINS } from '@/lib/cams/providers/video';
+import type { CamModel } from '@/lib/cams/types';
 import CamThumbFallback from './CamThumbFallback';
 
 interface Props {
-  embedUrl: string;
-  thumbUrl: string;
+  model: CamModel;
+  /** Resolved display name (the page falls back through registry values). */
   displayName: string;
-  /** False for providers that refuse framing (BongaCams sends X-Frame-Options: SAMEORIGIN). */
-  canEmbed: boolean;
-  /** HLS live stream — the playback path for providers that refuse framing. */
-  streamUrl?: string;
   /** Server-counted affiliate redirect — the offline/no-stream fallback link. */
   outUrl: string;
 }
 
 /**
- * THE cam view on model pages. The two providers take different playback surfaces because
- * their streams have different constraints:
+ * THE cam view on model pages — a HOST, not a player.
  *
- *   HLS    — BongaCams' feed hands out a PLAIN public m3u8 (no token), so it plays in OUR
- *            chromeless <video> with our own control bar (live dot · mute · fullscreen).
- *   iframe — Chaturbate's stream is only resolvable/playable from the VISITOR'S own IP: the
- *            tokenized playlist is bound to whoever resolved it, and the datacenter VPS is in
- *            fact BLOCKED from resolving it at all (Cloudflare datacenter challenge — verified
- *            on staging: rooms that resolve from a residential IP return null from the VPS).
- *            So we hand Chaturbate its own embed_video_only player in an iframe: the browser
- *            resolves + plays it, it carries NO chat, and it autoplays muted (disable_sound=1
- *            in embedUrl). The player owns its audio and fullscreen — a cross-origin iframe is
- *            unreachable from our sound store, so we do NOT overlay our bar on it.
- *   link   — BongaCams offline/streamless: thumb + play affordance via the counted redirect.
+ * The picture comes from the provider's video plugin (lib/cams/providers/video.ts): Chaturbate
+ * hands over its own iframe (its stream is only resolvable from the visitor's IP — see memory
+ * cb-stream-token-ip-bound), BongaCams plays a plain public m3u8 in our <video>, and a future
+ * provider brings whatever surface it needs. This component owns everything that must be
+ * IDENTICAL for every provider:
  *
- * (History: Chaturbate briefly played through our <video> via a server-side HLS resolve. That
- * works in dev only because the container and browser share one NAT IP; it fails in production.
- * See memory cb-stream-token-ip-bound. Matching lemoncams' custom muted player would need a
- * paid residential-proxy resolve path — deferred.)
+ *   - the /out/ affiliate overlay, rendered whenever a surface is playing — derived from the
+ *     contract, never from provider ids, so a new provider cannot silently stop monetizing;
+ *   - the control bar (live dot · mute · fullscreen), rendered unless the plugin says it
+ *     `ownsControls` (a cross-origin iframe or an SDK with its own bar);
+ *   - the facade: thumb + play affordance over the counted redirect, for models that can't
+ *     play and for any surface that reports a fatal error, so dead third-party playback code
+ *     still earns the click.
  */
 const subscribeFullscreen = (onChange: () => void) => {
   document.addEventListener('fullscreenchange', onChange);
@@ -45,7 +38,9 @@ const subscribeFullscreen = (onChange: () => void) => {
 };
 const subscribeNever = () => () => {};
 
-export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, streamUrl, outUrl }: Props) {
+export default function CamPlayer({ model, displayName, outUrl }: Props) {
+  const { thumbUrl } = model;
+  const plugin = VIDEO_PLUGINS[model.provider];
   const t = useTranslations('liveSex');
   const wrapperRef = useRef<HTMLDivElement>(null);
   // Shared sound store (header button + this player + the bar toggle all drive it): defaults
@@ -66,13 +61,11 @@ export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, s
     () => false,
   );
 
-  // Chaturbate (canEmbed) → its own iframe player; BongaCams → our <video>. See the header note.
-  const isIframeProvider = canEmbed && embedUrl.length > 0;
-  const effectiveStream = !isIframeProvider && !streamFailed ? streamUrl : undefined;
-  const canStream = Boolean(effectiveStream);
-  // Our control bar only rides over OUR <video> (BongaCams). The Chaturbate iframe carries its
-  // own controls; overlaying ours would just mask them with a mute button that can't reach it.
-  const showOwnBar = canStream;
+  // ONE decision: is a provider surface playing? Everything else derives from it, so no
+  // provider-shaped booleans remain to forget about when a provider is added.
+  const playing = plugin.canPlay(model) && !streamFailed;
+  // Our bar only rides over surfaces that don't carry their own (see VideoPlugin.ownsControls).
+  const showOwnBar = playing && !plugin.ownsControls;
 
   const onStreamFatal = useCallback(() => setStreamFailed(true), []);
 
@@ -85,20 +78,13 @@ export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, s
 
   return (
     <div ref={wrapperRef} className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
-      {isIframeProvider ? (
-        /* Chaturbate's bare-stream player: no chat, no room UI, autoplays muted (disable_sound=1
-           lives in embedUrl). The visitor's browser resolves and plays it, so it works cross-IP
-           where our server-side resolve cannot. Its own slim bar owns mute/fullscreen. */
-        <iframe
-          src={embedUrl}
-          title={displayName}
-          className="absolute inset-0 h-full w-full"
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-          allowFullScreen
-          scrolling="no"
+      {playing ? (
+        <plugin.Player
+          model={model}
+          muted={muted}
+          poster={thumbUrl || undefined}
+          onFatal={onStreamFatal}
         />
-      ) : canStream ? (
-        <HlsSurface src={effectiveStream!} poster={thumbUrl || undefined} muted={muted} onFatal={onStreamFatal} />
       ) : (
         <a
           href={outUrl}
@@ -134,9 +120,9 @@ export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, s
           redirect (counted server-side, template-built) — the same money path as the CTA and
           the offline facade. Only over the PLAYING surfaces; the offline branch is already an
           /out/ link. BongaCams' control bar sits ABOVE this (z-20) so mute/fullscreen keep
-          working and only a click on the picture leaves; the Chaturbate iframe is fully covered,
-          so its muted autoplay is a preview and any click goes to the provider through /out/. */}
-      {(isIframeProvider || canStream) && (
+          working and only a click on the picture leaves; a provider iframe is fully covered, so
+          its muted autoplay is a preview and any click goes to the provider through /out/. */}
+      {playing && (
         <a
           href={outUrl}
           target="_blank"
@@ -192,118 +178,5 @@ export default function CamPlayer({ embedUrl, thumbUrl, displayName, canEmbed, s
         </div>
       )}
     </div>
-  );
-}
-
-/** Chromeless HLS playback — mute is owned by the control bar above, nothing floats here. */
-function HlsSurface({
-  src,
-  poster,
-  muted,
-  onFatal,
-}: {
-  src: string;
-  poster?: string;
-  muted: boolean;
-  onFatal: () => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  /** Recovery attempts per error class — a dead stream must not loop startLoad forever. */
-  const MAX_RECOVERIES = 2;
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    let hls: Hls | null = null;
-    let cancelled = false;
-    // Audible autoplay needs a user gesture. A returning visitor's saved sound-on preference
-    // unmutes BEFORE any click, and the browser then blocks playback — muted playback always
-    // wins over none. ONLY NotAllowedError downgrades: any other rejection (e.g. the no-src
-    // NotSupportedError from the [muted] effect racing this one before hls attaches) must not
-    // force-mute a browser that would have allowed sound. The downgrade flips the SHARED
-    // store non-persistently so the buttons show the truth ("Unmute") while the saved
-    // preference survives for the next page.
-    const downgradeToMuted = () => {
-      video.muted = true;
-      void video.play().catch(() => {});
-      setMuted(true, { persist: false });
-    };
-    const play = () =>
-      void video.play().catch((err: unknown) => {
-        if (!video.muted && (err as Error)?.name === 'NotAllowedError') downgradeToMuted();
-      });
-    const onNativeError = () => onFatal();
-
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
-      video.addEventListener('error', onNativeError);
-      play();
-    } else {
-      void import('hls.js').then(({ default: HlsCtor }) => {
-        if (cancelled) return;
-        if (!HlsCtor.isSupported()) return onFatal();
-        hls = new HlsCtor({ liveSyncDurationCount: 3, maxBufferLength: 10 });
-        const recoveries = { network: 0, media: 0 };
-        hls.on(HlsCtor.Events.ERROR, (_event, data) => {
-          if (!data.fatal) return;
-          if (data.type === HlsCtor.ErrorTypes.NETWORK_ERROR && recoveries.network < MAX_RECOVERIES) {
-            recoveries.network += 1;
-            hls?.startLoad();
-          } else if (data.type === HlsCtor.ErrorTypes.MEDIA_ERROR && recoveries.media < MAX_RECOVERIES) {
-            recoveries.media += 1;
-            hls?.recoverMediaError();
-          } else {
-            console.warn('[cams] live stream failed fatally (network/media) — if requests to the provider CDN (mmcdn.com / bcvcdn.com) show as blocked, an ad/privacy blocker is eating the stream', data.details);
-            onFatal();
-          }
-        });
-        hls.on(HlsCtor.Events.MANIFEST_PARSED, (_e, data) => {
-          if (!hls) return;
-          // Mid-ladder start (480p on the usual 240/480/720 set), clamped to what exists —
-          // safe here: hls.js delivers MANIFEST_PARSED to all handlers before auto-starting.
-          hls.startLevel = Math.min(1, data.levels.length - 1);
-          play();
-        });
-        hls.loadSource(src);
-        hls.attachMedia(video);
-      });
-    }
-
-    return () => {
-      cancelled = true;
-      hls?.destroy();
-      video.removeEventListener('error', onNativeError);
-      video.removeAttribute('src');
-      video.load();
-    };
-  }, [src, onFatal]);
-
-  // The control bar owns mute state; the element just follows it (survives src reloads too).
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = muted;
-    if (!muted) {
-      void video.play().catch((err: unknown) => {
-        // Blocked audible autoplay (saved preference, no gesture yet): stay muted and
-        // PLAYING, and let the shared store reflect it (non-persisted — see above).
-        if ((err as Error)?.name === 'NotAllowedError') {
-          video.muted = true;
-          void video.play().catch(() => {});
-          setMuted(true, { persist: false });
-        }
-      });
-    }
-  }, [muted]);
-
-  return (
-    <video
-      ref={videoRef}
-      className="absolute inset-0 h-full w-full object-contain"
-      poster={poster}
-      autoPlay
-      muted
-      playsInline
-    />
   );
 }

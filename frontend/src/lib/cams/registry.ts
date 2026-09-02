@@ -1,7 +1,6 @@
 import 'server-only';
 import type { CamModel, CamProvider, CamProviderAdapter } from './types';
-import { chaturbate } from './providers/chaturbate';
-import { bongacams, bongacamsEnabled } from './providers/bongacams';
+import { ALL_ADAPTERS } from './providers/adapters';
 import { syncModels } from './modelSync';
 
 /**
@@ -23,11 +22,13 @@ import { syncModels } from './modelSync';
  * once per refresh, so no page ever sorts 2,000 models to render 48 cards.
  */
 
-const adapters: CamProviderAdapter[] = [chaturbate, ...(bongacamsEnabled ? [bongacams] : [])];
+/** Each provider gates itself via `enabled()` (credentials present), so adding one never
+ * touches this line — see providers/adapters.ts. */
+const adapters: CamProviderAdapter[] = ALL_ADAPTERS.filter((a) => a.enabled());
 
 export const adapterById = new Map(adapters.map((a) => [a.id, a]));
 
-/** Providers actually wired up right now — BongaCams stays out until its campaign code is set. */
+/** Providers actually wired up right now — one stays out until its credentials are set. */
 export const enabledProviders = new Set<CamProvider>(adapters.map((a) => a.id));
 
 /**
