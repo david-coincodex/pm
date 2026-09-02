@@ -65,6 +65,11 @@ services:
       FRONTEND_URL: https://pornmode.com
       # Shared secret guarding POST /api/cam-models/sync (the frontend posts the feed roster)
       CAM_SYNC_SECRET: ${CAM_SYNC_SECRET}
+      # Healthchecks.io heartbeats (docs/monitoring.md). Empty => pings skipped, crons still run.
+      HEALTHCHECKS_PING_KEY: ${HEALTHCHECKS_PING_KEY:-}
+      # Names this environment's check slugs in the shared Healthchecks project. MUST be
+      # `prod` here — `staging` would feed staging's checks and mask outages on both sides.
+      HEALTHCHECKS_SLUG_PREFIX: prod
     depends_on:
       db:
         condition: service_healthy
