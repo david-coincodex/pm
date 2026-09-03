@@ -64,7 +64,12 @@
         "ukrainian",
         "polish",
         "turkish",
-        "arabic"
+        "arabic",
+        "hindi",
+        "tagalog",
+        "chinese",
+        "japanese",
+        "vietnamese"
       ]
     },
     "site": {

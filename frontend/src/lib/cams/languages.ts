@@ -28,6 +28,14 @@ export const CAM_LANGUAGES: { key: string; label: string }[] = [
   { key: 'polish', label: 'Polski' },
   { key: 'turkish', label: 'Türkçe' },
   { key: 'arabic', label: 'العربية' },
+  // Added with StripChat (#82): its roster made the Asian-language slices real inventory —
+  // measured live: in 235, ph 181, cn 68, jp 57, vn 40. Korean measured 8 — deliberately absent
+  // (a near-empty page); Australian is not a language (au counts as English).
+  { key: 'hindi', label: 'हिन्दी' },
+  { key: 'tagalog', label: 'Tagalog' },
+  { key: 'chinese', label: '中文' },
+  { key: 'japanese', label: '日本語' },
+  { key: 'vietnamese', label: 'Tiếng Việt' },
 ];
 
 const LANGUAGE_KEYS = new Set(CAM_LANGUAGES.map((l) => l.key));
@@ -50,6 +58,17 @@ const SYNONYMS: Record<string, string> = {
   polish: 'polish', polski: 'polish', polaco: 'polish', польский: 'polish',
   turkish: 'turkish', turkce: 'turkish', turco: 'turkish', турецкий: 'turkish',
   arabic: 'arabic', arabe: 'arabic', арабский: 'arabic', العربية: 'arabic',
+  hindi: 'hindi',
+  tagalog: 'tagalog', filipino: 'tagalog',
+  chinese: 'chinese', mandarin: 'chinese', chino: 'chinese', 中文: 'chinese',
+  japanese: 'japanese', japones: 'japanese', 日本語: 'japanese',
+  vietnamese: 'vietnamese',
+  // ISO-639-1 codes: StripChat's feed declares languages as codes ('en','zh','ja'), which the
+  // name-keyed rows above silently dropped — every sc row synced with languages: []. Exact
+  // whole-token matches only, so free-text fragments can't collide with a two-letter code.
+  en: 'english', es: 'spanish', ru: 'russian', fr: 'french', de: 'german', it: 'italian',
+  pt: 'portuguese', ro: 'romanian', uk: 'ukrainian', pl: 'polish', tr: 'turkish', ar: 'arabic',
+  hi: 'hindi', tl: 'tagalog', zh: 'chinese', ja: 'japanese', vi: 'vietnamese',
 };
 
 const strip = (s: string) =>
@@ -100,7 +119,6 @@ export function normalizeLanguages(raw: (string | undefined | null)[]): string[]
 const COUNTRY_TO_LANGUAGE: Record<string, string> = {
   // English-speaking (needed by the filter; the geo-promotion consumer skips 'english')
   us: 'english', gb: 'english', ca: 'english', au: 'english', nz: 'english', ie: 'english',
-  ph: 'english', in: 'english',
   // Spanish-speaking
   es: 'spanish', mx: 'spanish', co: 'spanish', ar: 'spanish', cl: 'spanish', pe: 'spanish',
   ve: 'spanish', ec: 'spanish', uy: 'spanish', py: 'spanish', bo: 'spanish', gt: 'spanish',
@@ -118,6 +136,13 @@ const COUNTRY_TO_LANGUAGE: Record<string, string> = {
   sa: 'arabic', eg: 'arabic', ae: 'arabic', ma: 'arabic', dz: 'arabic', tn: 'arabic',
   iq: 'arabic', jo: 'arabic', lb: 'arabic', kw: 'arabic', qa: 'arabic', om: 'arabic',
   bh: 'arabic', ye: 'arabic', ly: 'arabic', sy: 'arabic',
+  // in/ph moved OUT of english when their own pages shipped (#82): a country maps to exactly
+  // one language here, and the dedicated slice is worth more than padding the English page.
+  in: 'hindi',
+  ph: 'tagalog',
+  cn: 'chinese', tw: 'chinese', hk: 'chinese', mo: 'chinese',
+  jp: 'japanese',
+  vn: 'vietnamese',
 };
 
 export function languageForCountry(cc: string): string | null {
@@ -132,4 +157,5 @@ export function languageForCountry(cc: string): string | null {
 export const LANGUAGE_FLAGS: Record<string, string> = {
   english: 'us', spanish: 'es', russian: 'ru', french: 'fr', german: 'de', italian: 'it',
   portuguese: 'br', romanian: 'ro', ukrainian: 'ua', polish: 'pl', turkish: 'tr', arabic: 'sa',
+  hindi: 'in', tagalog: 'ph', chinese: 'cn', japanese: 'jp', vietnamese: 'vn',
 };
