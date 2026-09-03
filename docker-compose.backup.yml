@@ -41,7 +41,7 @@ services:
       # Mount the PARENT of uploads, not uploads itself. Strapi's local file destination renames
       # `public/uploads` to a backup directory before writing, and you cannot rename a volume mount
       # point — it fails instantly with "Local: backing up existing upload folder…". This is why
-      # docker-compose.prod.yml also mounts the whole `public` dir rather than just `uploads`.
+      # docker-compose.staging.yml also mounts the whole `public` dir rather than just `uploads`.
       - snapshot_public:/app/public
     # No ports: this instance is never served, only transferred into and out of.
     extra_hosts:

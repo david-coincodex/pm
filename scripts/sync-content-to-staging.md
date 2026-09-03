@@ -268,7 +268,7 @@ recreate the container — a plain `restart` keeps the `.next` cache.
 | Gotcha | Why it matters |
 |---|---|
 | users-permissions data IS content | permissions arrive with the sync (good — no manual role setup), but staging's end-user accounts are replaced by local's (see Scope) |
-| Never mount a volume at `public/uploads` itself | Strapi renames `public/uploads` to a backup dir before writing, and a mount point cannot be renamed — the transfer dies instantly with `Local: backing up existing upload folder…`. Mount the parent `public/` (docker-compose.backup.yml does; so does docker-compose.prod.yml) |
+| Never mount a volume at `public/uploads` itself | Strapi renames `public/uploads` to a backup dir before writing, and a mount point cannot be renamed — the transfer dies instantly with `Local: backing up existing upload folder…`. Mount the parent `public/` (docker-compose.backup.yml does; so does docker-compose.staging.yml) |
 | Schema must match | a mismatch fails the import *after* the destination is emptied; preflight fingerprints `src/api` + `src/components` on both sides |
 | Watchtower | it auto-pulls `:latest` and can recreate `backend` mid-transfer |
 | SQLite lock | do not use the local admin during a transfer; `docker compose run --rm` is the fallback |

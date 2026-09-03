@@ -32,7 +32,7 @@ images, pushes them to GHCR, and rolls them out on the `promode-staging` host.
 1. Push to `staging` → `.github/workflows/deploy-staging.yml` runs.
 2. **build-and-push**: builds `frontend` + `backend` (`target: production`), tags
    `:latest` and `:<sha>`, pushes to GHCR.
-3. **deploy**: SSHes to the host as the `deploy` user, rsyncs `docker-compose.prod.yml`
+3. **deploy**: SSHes to the host as the `deploy` user, rsyncs `docker-compose.staging.yml`
    → `/opt/promode/docker-compose.yml` and a generated `.env`, then
    `docker compose pull && docker compose up -d --remove-orphans`.
 4. Watchtower on the host also auto-pulls new `:latest` images on its schedule.
@@ -102,11 +102,20 @@ differences:
 |---|---|---|
 | Host | `vars.DEPLOY_HOST` — `167.233.101.88` | `vars.DEPLOY_HOST_PROD` — `167.233.77.129` |
 | Environment | `staging` | `production` |
-| Compose file | `docker-compose.prod.yml` | `docker-compose.production.yml` |
+| Compose file | `docker-compose.staging.yml` | `docker-compose.production.yml` |
+| Deploy workflow | `deploy-staging.yml` (on every branch) | `deploy-production.yml` (**only on the `production` branch**) |
 | Site / CMS | `staging.pornmode.com` / `cms-staging.pornmode.com` | `pornmode.com` / `cms.pornmode.com` |
 | Image tags | `:latest`, `:<sha>` | `:prod`, `:prod-<sha>` |
 | Media | re-served from the site host (`promode-uploads` router) | straight from `cms.pornmode.com` |
 
+- **The two compose files are independent.** Adding an env var to one does nothing for the
+  other. Promoting the cam providers went out with production's compose untouched, and both new
+  providers came up silently absent — an unset key disables that adapter and hides its
+  cam-category, so nothing errors. The staging file used to be called `docker-compose.prod.yml`,
+  which is precisely how that happened; it is now `docker-compose.staging.yml`.
+- **`deploy-production.yml` lives only on the `production` branch**, so a staging→production
+  merge never brings workflow changes intended for production. Promote by branching FROM
+  `production`, merging staging in, and adding the production workflow bits there.
 - **Images are rebuilt, not promoted.** `NEXT_PUBLIC_STRAPI_URL` is inlined into the client
   bundle at build time, so the staging image points at `cms-staging` for good. The `prod-`
   tag prefix keeps the two builds of the same commit from overwriting each other in GHCR.

@@ -133,7 +133,7 @@ jobs:
 
           rsync -az --checksum \
             -e "ssh -i private_key.pem -o StrictHostKeyChecking=no" \
-            docker-compose.prod.yml \
+            docker-compose.staging.yml \
             ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:/opt/promode/docker-compose.yml
 
       - name: Pull images and restart services
