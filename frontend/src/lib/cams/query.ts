@@ -100,11 +100,22 @@ export function pickNextModel(
   current: CamModel,
   matchTags: string[] = current.tags,
 ): CamModel | null {
-  const sameGender = snapshot.byViewers.filter((m) => m.gender === current.gender && m.id !== current.id);
-  if (sameGender.length === 0) return null;
-  const tagged = matchTags.length ? sameGender.filter((m) => m.tags.some((t) => matchTags.includes(t))) : [];
-  const pool = tagged.length ? tagged : sameGender;
-  return pool.find((m) => m.viewers < current.viewers) ?? pool[0];
+  // The ladder is computed by VALUE, not by walking byViewers in order: byViewers is the
+  // editorial view — non-comparable providers' cards are woven in at fixed positions with tiny
+  // viewer numbers — so "first entry with fewer viewers" stopped meaning "next room down" the
+  // day the weave shipped. Measured: every Next click, from every provider, landed on the
+  // first woven ImLive card. One pass, order-independent.
+  let below: CamModel | null = null; // biggest room strictly below the current one
+  let top: CamModel | null = null; // biggest room overall — the wrap target
+  for (const m of snapshot.byViewers) {
+    if (m.gender !== current.gender || m.id === current.id) continue;
+    if (matchTags.length && !m.tags.some((t) => matchTags.includes(t))) continue;
+    if (top === null || m.viewers > top.viewers) top = m;
+    if (m.viewers < current.viewers && (below === null || m.viewers > below.viewers)) below = m;
+  }
+  // A model whose tags no peer shares falls back to the gender-only ladder.
+  if (top === null && matchTags.length) return pickNextModel(snapshot, current, []);
+  return below ?? top;
 }
 
 export type CamPage = {

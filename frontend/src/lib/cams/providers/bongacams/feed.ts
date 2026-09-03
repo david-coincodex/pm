@@ -179,13 +179,15 @@ function normalize(row: BongaRow): CamModel | null {
     streamUrl: row.stream_feed_url?.startsWith('https://') ? row.stream_feed_url : undefined,
     viewers: Number(row.members_count ?? 0) || 0,
     location: cleanLocation(row.hometown) ?? cleanLocation(row.homecountry),
-    // The feed's own act tags (values, not keys — the keys are just indices) PLUS the
-    // attribute tags derived from the profile fields, which are what actually reach our
-    // categories. Deduped, because both sources can name the same thing.
+    // Attribute tags FIRST, then the feed's own act tags (values, not keys — the keys are just
+    // indices), deduped. The order is load-bearing: the sync sanitizer keeps only the first 20
+    // tags, and 297 of 300 sampled rooms already carry 20+ act tags — appended last, every
+    // attribute tag would be silently cut from the registry while the live snapshot kept them,
+    // so category pages would look right and offline model pages would quietly lose their chips.
     tags: [
       ...new Set([
-        ...(row.tags ? Object.values(row.tags).map((t) => String(t).toLowerCase().trim()).filter(Boolean) : []),
         ...attributeTags(row),
+        ...(row.tags ? Object.values(row.tags).map((t) => String(t).toLowerCase().trim()).filter(Boolean) : []),
       ]),
     ],
     languages: normalizeLanguages([row.primary_language, row.secondary_language]),
