@@ -46,7 +46,8 @@
       "enum": [
         "cb",
         "bc",
-        "il"
+        "il",
+        "sc"
       ]
     },
     "languageKey": {
@@ -63,7 +64,12 @@
         "ukrainian",
         "polish",
         "turkish",
-        "arabic"
+        "arabic",
+        "hindi",
+        "tagalog",
+        "chinese",
+        "japanese",
+        "vietnamese"
       ]
     },
     "site": {

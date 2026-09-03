@@ -24,6 +24,14 @@ type ProviderEntry = {
    */
   viewersComparable: boolean;
   /**
+   * Days a model may stay unseen before its row and media are deleted, when the provider's
+   * own terms demand something stricter than our default. Stripcash requires aggregators to
+   * remove all stored content for a model absent from their API for 30 consecutive days;
+   * our house default (CAM_MODEL_RETENTION_DAYS, 60) would keep it twice as long. Absent =
+   * use the default.
+   */
+  retentionDays?: number;
+  /**
    * URL template for a fresh LIVE frame, `{username}` substituted — for providers whose thumb
    * path is derivable. null when only the feed's stored thumbUrl can be used (hashed paths).
    */
@@ -59,6 +67,15 @@ export const SNAPSHOT_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
 export const AUDIENCE_PEAK_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
   (id) => PROVIDERS[id].viewersComparable,
 );
+
+/**
+ * Effective retention for a provider: its own stricter window when it declares one, else the
+ * house default. Keeps the cleanup cron free of provider literals — it asks this function.
+ */
+export function retentionDaysFor(provider: ProviderId, fallbackDays: number): number {
+  const own = PROVIDERS[provider]?.retentionDays;
+  return typeof own === 'number' && own > 0 ? own : fallbackDays;
+}
 
 /** `cb` → `chaturbate` on lemoncams, for the one-shot activity-history backfill. */
 export const LEMONCAMS_SLUGS: Record<ProviderId, string> = Object.fromEntries(

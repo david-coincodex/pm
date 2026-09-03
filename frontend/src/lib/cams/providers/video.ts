@@ -38,4 +38,9 @@ export const VIDEO_PLUGINS: Record<CamProvider, VideoPlugin> = {
     // Needs the room's live connection data; an offline/registry-only model has none.
     canPlay: (m) => Boolean(m.imliveRoom),
   },
+  sc: {
+    Player: dynamic(() => import('./stripchat/Player'), { ssr: false }),
+    Preview: dynamic(() => import('./stripchat/Preview'), { ssr: false }),
+    canPlay: (m) => Boolean(m.streamUrl),
+  },
 };

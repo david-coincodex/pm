@@ -1,7 +1,13 @@
 import type { Core } from '@strapi/strapi';
 import { runBackfillTick } from '../api/cam-model/activity-backfill';
 import type { TaskResult } from './heartbeat';
-import { PORTRAIT_PROVIDERS, SNAPSHOT_PROVIDERS, captureUrlFor } from '../api/cam-model/providers';
+import {
+  PORTRAIT_PROVIDERS,
+  PROVIDER_IDS,
+  SNAPSHOT_PROVIDERS,
+  captureUrlFor,
+  retentionDaysFor,
+} from '../api/cam-model/providers';
 import {
   CAM_MODEL_UID as UID,
   ONLINE_WINDOW_MS,
@@ -71,10 +77,22 @@ const service = (strapi: Core.Strapi) => strapi.service(UID) as unknown as CamMo
  * cascade — entry deletion orphans upload files — so photos go through the service's
  * removePhotos first. Failed rows are excluded from re-queries (the loop re-reads from the
  * top after each batch) so one poisoned row can't spin it forever.
+ *
+ * RETENTION IS PER PROVIDER. Most providers use the house window (CAM_MODEL_RETENTION_DAYS,
+ * 60 days), but a provider's own terms can demand something stricter — Stripcash requires
+ * aggregators to delete everything about a model absent from their API for 30 consecutive
+ * days. Providers are therefore grouped by their effective window and each group is swept
+ * with its own cutoff. The grouping comes from the kernel (providers.json), so this cron holds
+ * no provider literals; when every provider shares the default the grouped sweep is exactly
+ * the single query it replaced.
  */
 export async function cleanupExpired({ strapi }: { strapi: Core.Strapi }): Promise<TaskResult> {
-  const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  strapi.log.info(`[cam-model] cleanup: scanning for models unseen since ${cutoff}`);
+  // provider ids keyed by the window they expire under — one sweep per distinct window.
+  const byWindow = new Map<number, string[]>();
+  for (const provider of PROVIDER_IDS) {
+    const days = retentionDaysFor(provider, RETENTION_DAYS);
+    byWindow.set(days, [...(byWindow.get(days) ?? []), provider]);
+  }
   const q = strapi.db.query(UID);
   const svc = service(strapi);
   let deleted = 0;
@@ -82,35 +100,48 @@ export async function cleanupExpired({ strapi }: { strapi: Core.Strapi }): Promi
   // abort rule must be the same fact, or they drift apart when the rule changes.
   let aborted = false;
   const failedIds: number[] = [];
-  for (;;) {
-    const rows: CamModelRow[] = await q.findMany({
-      where: { lastSeenAt: { $lt: cutoff }, ...(failedIds.length ? { id: { $notIn: failedIds } } : {}) },
-      populate: { photos: true },
-      limit: 500,
-    });
-    if (rows.length === 0) break;
-    for (const row of rows) {
-      try {
-        // A photo that would not delete keeps its ROW alive too — deleting the model while
-        // its media still exists is exactly how files orphan (no cascade). The row stays in
-        // the expired set and is retried on the next run.
-        const failed = await svc.removePhotos(row.photos ?? []);
-        if (failed > 0) {
+  for (const [days, providers] of byWindow) {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    strapi.log.info(
+      `[cam-model] cleanup: scanning ${providers.join(',')} for models unseen since ${cutoff} (${days}d)`,
+    );
+    for (;;) {
+      const rows: CamModelRow[] = await q.findMany({
+        where: {
+          provider: { $in: providers },
+          lastSeenAt: { $lt: cutoff },
+          ...(failedIds.length ? { id: { $notIn: failedIds } } : {}),
+        },
+        populate: { photos: true },
+        limit: 500,
+      });
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        try {
+          // A photo that would not delete keeps its ROW alive too — deleting the model while
+          // its media still exists is exactly how files orphan (no cascade). The row stays in
+          // the expired set and is retried on the next run.
+          const failed = await svc.removePhotos(row.photos ?? []);
+          if (failed > 0) {
+            failedIds.push(row.id);
+            continue;
+          }
+          await q.delete({ where: { id: row.id } });
+          deleted += 1;
+        } catch (err) {
           failedIds.push(row.id);
-          continue;
+          strapi.log.warn(`[cam-model] cleanup: failed to delete ${row.key}: ${String(err)}`);
         }
-        await q.delete({ where: { id: row.id } });
-        deleted += 1;
-      } catch (err) {
-        failedIds.push(row.id);
-        strapi.log.warn(`[cam-model] cleanup: failed to delete ${row.key}: ${String(err)}`);
+      }
+      if (failedIds.length >= CLEANUP_MAX_FAILURES) {
+        strapi.log.error(`[cam-model] cleanup: aborting run after ${failedIds.length} failures`);
+        aborted = true;
+        break;
       }
     }
-    if (failedIds.length >= CLEANUP_MAX_FAILURES) {
-      strapi.log.error(`[cam-model] cleanup: aborting run after ${failedIds.length} failures`);
-      aborted = true;
-      break;
-    }
+    // The failure budget is for the whole run, not per window: a poisoned batch must not get
+    // a fresh allowance just because the next provider group starts.
+    if (aborted) break;
   }
   if (deleted > 0 || failedIds.length > 0) {
     strapi.log.info(
