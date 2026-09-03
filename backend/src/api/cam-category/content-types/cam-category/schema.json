@@ -46,7 +46,8 @@
       "enum": [
         "cb",
         "bc",
-        "il"
+        "il",
+        "sc"
       ]
     },
     "languageKey": {

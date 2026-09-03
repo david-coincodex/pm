@@ -21,7 +21,8 @@
       "enum": [
         "cb",
         "bc",
-        "il"
+        "il",
+        "sc"
       ],
       "required": true
     },
