@@ -18,9 +18,12 @@ CDNs; durable imagery lives in the media library.
 
 ### 1. Live snapshot (`frontend/src/lib/cams/registry.ts`)
 
-The runtime source of truth for *who is streaming right now*. An unref'd poller fetches both
-provider feeds every 45 s (Chaturbate affiliate JSON, 4×500 rows; BongaCams promo API, 7×300
-rows — page sizes chosen to stay under Next's 2 MB data-cache ceiling per response). Guarantees:
+The runtime source of truth for *who is streaming right now*. An unref'd poller fetches every
+enabled provider feed every 45 s (Chaturbate affiliate JSON, 4×500 rows; BongaCams promo API,
+7×300 rows — page sizes chosen to stay under Next's 2 MB data-cache ceiling per response;
+ImLive host-list API, one request, free-chat rooms only). A provider is enabled when its
+credentials are set (`adapter.enabled()`), so an unset key skips the provider instead of
+breaking the snapshot. Guarantees:
 
 - Readers never wait inside the 45 s TTL; a hard 5-minute bound blocks rather than serve older data.
 - `instrumentation.ts` warms the snapshot at boot, so freshness never depends on traffic.
@@ -71,8 +74,9 @@ emits webhooks (hundreds of `/api/revalidate` calls per sync). Raw-layer creates
 
 ### 3. Photos (upload plugin, folder "Cam Models")
 
-Per model, up to **4 images**: the BongaCams profile portrait (Chaturbate has none) plus
-rotating live-snapshot captures. Ingestion is cron-drained, not inline in the sync request —
+Per model, up to **4 images**: the profile portrait where the feed has one (BongaCams, ImLive;
+Chaturbate has none) plus rotating live-snapshot captures (Chaturbate, BongaCams — ImLive's
+"thumb" IS its static portrait, so snapshotting it is disabled in the provider kernel). Ingestion is cron-drained, not inline in the sync request —
 restart-safe, and slow third-party fetches never block the request path. The pending queue is
 the DB itself: `profileImageUrl != profileImageIngestedUrl` means "not ingested yet"
 (the marker is stamped even on failure so a dead URL can't starve the queue).
@@ -82,6 +86,25 @@ timeout, 1 MB size check — header-based, i.e. advisory; safe because hosts are
 a strict host allowlist: `thumb.live.mmcdn.com`, `i.bgicdn.com`.
 Files land on the `strapi_public` volume and are served through the Traefik `/uploads` router
 on the public host (content-hashed names, so the 1-year cache header is safe under rotation).
+
+## Adding a provider
+
+Providers are self-contained plugins; shared code holds no provider branches. The whole job:
+
+1. `frontend/src/lib/cams/providers/<name>/` — `meta.ts` (facts as data), `feed.ts`
+   (server-only fetch + normalize + `outboundUrl`), `Player.tsx` / `Preview.tsx` (or `null`
+   for photo-only), `index.ts`. Add the id to `providers/ids.ts`, the meta to
+   `providers/meta.ts`, the video plugin to `providers/video.ts`, the adapter to
+   `providers/adapters.ts` — `Record<CamProvider, …>` makes the build fail until all exist.
+2. One entry in `backend/src/api/cam-model/providers.json` (the backend kernel — photo hosts,
+   capability flags; everything backend derives from it).
+3. The id in the two Strapi enums: `cam-model.provider` and `cam-category.providerKey`
+   (literal by necessity — Strapi reads schemas statically).
+4. Env for its credentials (compose + deploy workflow + GitHub env secret), affiliate
+   template verified per `docs/cam-affiliate-links.md`.
+5. `node scripts/check-provider-parity.mjs` — asserts frontend meta ≡ backend kernel ≡ both
+   enums; the compiler and this check name anything forgotten. Content: the provider's
+   cam-category row is pushed ONLY after the deploy that ships the enum (else the push 400s).
 
 ## Cron jobs
 
@@ -145,6 +168,7 @@ Frontend-side "crons" are just the snapshot poller (45 s) and the piggy-backed m
 | Variable | Where | Purpose |
 |---|---|---|
 | `CHATURBATE_WM`, `BONGACAMS_CAMPAIGN` | frontend env (server-only, never `NEXT_PUBLIC_`) | Affiliate feed credentials |
+| `IMLIVE_API_KEY`, `IMLIVE_WID` | frontend env (server-only) | ImLive host-list API key + affiliate WID; key unset ⇒ ImLive disabled |
 | `CAM_SYNC_SECRET` | **both** backend and frontend env | Guards `POST /api/cam-models/sync`; unset backend-side = route rejects everything; unset frontend-side = sync disabled with one warning log |
 | `CAM_MODEL_RETENTION_DAYS` | backend env (optional) | Cleanup window override, default 60 |
 

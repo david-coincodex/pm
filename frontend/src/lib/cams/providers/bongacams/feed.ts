@@ -1,9 +1,9 @@
 import 'server-only';
-import type { CamModel, CamProviderAdapter, CamGender } from '../types';
-import { FEED_CACHE } from './feedCache';
-import { cleanDisplayName, cleanLocation } from '../displayName';
-import { normalizeLanguages } from '../languages';
-import { normalizeCountry } from '../countries';
+import type { CamModel, CamProviderAdapter, CamGender } from '../../types';
+import { FEED_CACHE } from '../feedCache';
+import { cleanDisplayName, cleanLocation } from '../../displayName';
+import { normalizeLanguages } from '../../languages';
+import { normalizeCountry } from '../../countries';
 
 /**
  * BongaCams promo API (JSON), verified against a live response for campaign 660500.
@@ -141,6 +141,7 @@ export const bongacams: CamProviderAdapter = {
    * what the model page plays. Offline or missing stream → thumbnail + link-out facade.
    */
   canEmbed: false,
+  enabled: () => bongacamsEnabled,
 
   async fetchOnline() {
     if (!bongacamsEnabled) return [];

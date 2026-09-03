@@ -54,7 +54,9 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale, w
               </>
             ) : crumb.label;
             return (
-              <li key={crumb.href} className="flex items-center gap-1.5">
+              /* Index-qualified: two crumbs may legitimately share an href (a filter whose
+                 provider has no category page yet falls back to the hub). */
+              <li key={`${i}-${crumb.href}`} className="flex items-center gap-1.5">
                 {i > 0 && (
                   <svg
                     className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}

@@ -8,7 +8,8 @@ import { strapiMediaUrl } from '@/lib/strapi';
 import { getOnlineModels, findOnlineModel, adapterById } from '@/lib/cams/registry';
 import { findKnownModel } from '@/lib/cams/modelDb';
 import { getCamCategories, categoriesForModel } from '@/lib/cams/categories';
-import { parseActivity, activitySummary, MIN_HEATMAP_HOURS } from '@/lib/cams/activity';
+import { PROVIDER_META } from '@/lib/cams/providers/meta';
+import { parseActivity, activitySummary, MIN_HEATMAP_HOURS, SESSION_GAP_MS } from '@/lib/cams/activity';
 import { pickNextModel } from '@/lib/cams/query';
 import { camCategoryPath } from '@/lib/cams/filters';
 import { providerFromSlug, CAM_PROVIDER_NAMES, type CamProvider } from '@/lib/cams/types';
@@ -94,6 +95,7 @@ export default async function CamModelPage({ params }: Props) {
   if (!provider) notFound();
   const adapter = adapterById.get(provider);
   if (!adapter) notFound();
+  const meta = PROVIDER_META[provider];
   const username = cleanCamUsername(rawUsername);
   if (!username) notFound();
 
@@ -125,7 +127,10 @@ export default async function CamModelPage({ params }: Props) {
   const showPhotos = photos.length > 0;
   // Offline cover, freshest first: the platform's live thumb URL (Chaturbate 404s these the
   // moment the room closes — expected), then our newest captured snapshot, then the placeholder.
-  const offlineCover = provider === 'cb' ? adapter.thumbUrl(username) : (known?.thumbUrl ?? null);
+  // Providers whose live thumb URL is rebuildable from the username get it fresh (it 404s the
+  // moment the room closes — expected, the peer marker reveals our snapshot); the rest can only
+  // use the registry's last-known URL, since their image paths are hashed.
+  const offlineCover = meta.media.liveThumbDerivable ? adapter.thumbUrl(username) : (known?.thumbUrl ?? null);
   const offlineFallback = knownPhotos.length ? knownPhotos[knownPhotos.length - 1].src : null;
   const providerCategory = categories.find((c) => c.kind === 'provider' && c.providerKey === provider) ?? null;
   const providerSite = providerCategory?.site ?? null;
@@ -150,7 +155,26 @@ export default async function CamModelPage({ params }: Props) {
   const sidebar = (
     <div className="space-y-5">
       <CamSiteOffer site={providerSite} />
-      {online && model && <CamModelStats model={model} nowMs={snapshot.fetchedAtMs} />}
+      {/* Session start: the live feed's own value when it publishes one, else the start the
+          registry observed (see the sync controller) — one pill, two ways of knowing. The
+          observed start is trusted only while lastSeenAt is fresh: a model who just returned
+          after hours offline still carries the PREVIOUS session's start until the next sync
+          write, and "Live for 23h" at minute one would be a lie. Same gap rule the backend
+          uses to declare a session new. */}
+      {online && model && (
+        <CamModelStats
+          model={model}
+          nowMs={snapshot.fetchedAtMs}
+          liveSince={
+            model.onlineSince ??
+            (known?.wentOnlineAt &&
+            known.lastSeenAt &&
+            snapshot.fetchedAtMs - Date.parse(known.lastSeenAt) <= SESSION_GAP_MS
+              ? known.wentOnlineAt
+              : null)
+          }
+        />
+      )}
       <CamCategoryChips categories={modelCategories} />
       {showHeatmap && <CamActivityHeatmap activity={activityPairs} />}
       <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -161,15 +185,12 @@ export default async function CamModelPage({ params }: Props) {
 
   return (
     <>
-      {/* The Chaturbate embed pulls its player bundles + video from these origins the moment
-          the iframe mounts — warm the connections while the HTML still streams (React hoists
-          these into <head>, same pattern as the rel=prev/next links on listings). */}
-      {online && adapter.canEmbed && (
-        <>
-          <link rel="preconnect" href="https://chaturbate.com" />
-          <link rel="preconnect" href="https://web2.static.mmcdn.com" />
-        </>
-      )}
+      {/* A provider's player pulls its bundles + video from these origins the moment it mounts —
+          warm the connections while the HTML still streams (React hoists these into <head>, same
+          pattern as the rel=prev/next links on listings). Declared per provider in its meta, so
+          only THIS provider's origins are warmed and a new provider brings its own. */}
+      {online &&
+        meta.media.preconnect.map((href) => <link key={href} rel="preconnect" href={href} />)}
       <Breadcrumbs
         locale={locale}
         width="full"
@@ -234,7 +255,9 @@ export default async function CamModelPage({ params }: Props) {
               </CamCtaLink>
               {/* Our sound button only drives OUR <video> (BongaCams). Chaturbate plays in its
                   own iframe, which owns its audio — a button here couldn't reach it. */}
-              {online && !adapter.canEmbed && <CamSoundButton />}
+              {/* Only when OUR surface owns the audio: a provider iframe or SDK player has
+                  its own sound control that our store cannot reach. */}
+              {online && !meta.video.ownsControls && <CamSoundButton />}
               <CamFavoriteButton
                 provider={provider}
                 username={username}
@@ -262,14 +285,7 @@ export default async function CamModelPage({ params }: Props) {
           />
 
           {online && model ? (
-            <CamPlayer
-              embedUrl={model.embedUrl}
-              thumbUrl={model.thumbUrl}
-              displayName={displayName}
-              canEmbed={adapter.canEmbed}
-              streamUrl={model.streamUrl}
-              outUrl={routes.camOut(provider, username)}
-            />
+            <CamPlayer model={model} displayName={displayName} outUrl={routes.camOut(provider, username)} />
           ) : (
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
               <CamThumbFallback displayName={displayName} />
