@@ -1,6 +1,6 @@
 import { factories } from '@strapi/strapi';
 import { createHash } from 'node:crypto';
-import { CAM_MODEL_UID as UID, ROW_REFRESH_SLACK_MS, SESSION_TOLERANCE_MS } from '../constants';
+import { CAM_MODEL_UID as UID, ROW_REFRESH_SLACK_MS, SESSION_GAP_MS, SESSION_TOLERANCE_MS } from '../constants';
 import { reviseActivity } from '../session-history';
 import { PROVIDER_ID_SET } from '../providers';
 import { pingHeartbeat } from '../../../cron/heartbeat';
@@ -173,8 +173,11 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
               firstSeenAt: nowIso,
               lastSeenAt: nowIso,
               // First sighting is almost always mid-session — a model found 3h into her
-              // stream seeds wentOnlineAt and a 3h activity pair right away.
-              wentOnlineAt: m.onlineSince,
+              // stream seeds wentOnlineAt and a 3h activity pair right away. When the feed
+              // reports no session start at all (ImLive has no seconds_online), the sighting
+              // itself IS the start we know about — the same value reviseActivity puts in the
+              // pair it writes below, so the two never disagree.
+              wentOnlineAt: m.onlineSince ?? nowIso,
               activity: reviseActivity({
                 stored: null,
                 sessionChanged: true,
@@ -224,7 +227,15 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
       const sessionChanged =
         m.onlineSince !== null &&
         (wentOnlineMs === null || Math.abs(Date.parse(m.onlineSince) - wentOnlineMs) > SESSION_TOLERANCE_MS);
-      if (!stale && !peakBeaten && !identityChanged && !sessionChanged) continue;
+      // Feeds that report no session start (ImLive publishes no seconds_online; some BongaCams
+      // rows lack online_time) leave our own sighting record as the only clock. Absent from the
+      // roster for longer than one session gap means this is a FRESH session, and it has to be
+      // written now rather than at the next hourly refresh — otherwise the page would advertise
+      // the previous session's start for up to an hour. Same SESSION_GAP_MS reviseActivity uses
+      // to decide the same question, so the pill and the heatmap agree by construction.
+      const observedSessionChanged =
+        m.onlineSince === null && (wentOnlineMs === null || now.getTime() - lastSeenMs > SESSION_GAP_MS);
+      if (!stale && !peakBeaten && !identityChanged && !sessionChanged && !observedSessionChanged) continue;
       pending.push({ row, m, sessionChanged });
     }
 
@@ -244,8 +255,27 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
     const WRITE_BATCH = 20;
     for (let i = 0; i < pending.length; i += WRITE_BATCH) {
       await Promise.all(
-        pending.slice(i, i + WRITE_BATCH).map(({ row, m, sessionChanged }) =>
-          q.update({
+        pending.slice(i, i + WRITE_BATCH).map(({ row, m, sessionChanged }) => {
+          const activity = reviseActivity({
+            stored: activityById.get(row.id) ?? null,
+            sessionChanged,
+            sessionStartMs: m.onlineSince ? Date.parse(m.onlineSince) : null,
+            // Pre-touch lastSeenAt: when the model was last confirmed online BEFORE now —
+            // exact to the sync cadence, which is what makes the tail patch trustworthy.
+            lastSeenMs: row.lastSeenAt ? new Date(row.lastSeenAt).getTime() : null,
+            nowMs: now.getTime(),
+          });
+          // A feed-reported start is stored raw (see cleanOnlineSince: no floor, so the
+          // tolerance comparison stays stable). With no reported start, take the one the
+          // activity history just decided on — deriving both from the SAME history is what
+          // keeps "live for 3h" and the heatmap's session from telling different stories.
+          let wentOnlineAt: string | undefined;
+          if (m.onlineSince !== null) {
+            if (sessionChanged) wentOnlineAt = m.onlineSince;
+          } else if (activity.length > 0) {
+            wentOnlineAt = new Date(activity[activity.length - 1][0] * 60_000).toISOString();
+          }
+          return q.update({
             where: { id: row.id },
             data: {
               displayName: m.displayName,
@@ -254,22 +284,14 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
               languages: m.languages,
               tags: m.tags,
               lastSeenAt: nowIso,
-              ...(sessionChanged ? { wentOnlineAt: m.onlineSince } : {}),
-              activity: reviseActivity({
-                stored: activityById.get(row.id) ?? null,
-                sessionChanged,
-                sessionStartMs: m.onlineSince ? Date.parse(m.onlineSince) : null,
-                // Pre-touch lastSeenAt: when the model was last confirmed online BEFORE now —
-                // exact to the sync cadence, which is what makes the tail patch trustworthy.
-                lastSeenMs: row.lastSeenAt ? new Date(row.lastSeenAt).getTime() : null,
-                nowMs: now.getTime(),
-              }),
+              ...(wentOnlineAt !== undefined ? { wentOnlineAt } : {}),
+              activity,
               peakViewers: Math.max(m.viewers, row.peakViewers ?? 0),
               profileImageUrl: m.profileImageUrl,
               thumbUrl: m.thumbUrl,
             },
-          }),
-        ),
+          });
+        }),
       );
       updated += Math.min(WRITE_BATCH, pending.length - i);
     }

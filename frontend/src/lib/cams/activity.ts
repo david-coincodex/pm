@@ -21,7 +21,7 @@ const WEEK_MS = 7 * DAY_MS;
 /** The heatmap's window — mirrors the backend's ACTIVITY_WINDOW_DAYS minus its trim slack. */
 export const ACTIVITY_DISPLAY_DAYS = 28;
 /** Same gap rule as the backend: lastSeenAt further than this past a pair's end is a new session. */
-const SESSION_GAP_MS = 2 * 60 * 60 * 1000;
+export const SESSION_GAP_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Hide the widget until the history says something: under this many hours (WITHIN the display

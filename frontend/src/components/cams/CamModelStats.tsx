@@ -9,13 +9,26 @@ import Pill from '@/components/ui/Pill';
  * an instance of the shared Pill primitive.
  *
  * `nowMs` is the snapshot's own timestamp, passed in rather than Date.now(): render stays pure
- * (idempotent under re-render), and it is the MORE accurate clock anyway — onlineSince was
- * derived from the feed at exactly that moment.
+ * (idempotent under re-render), and it is the MORE accurate clock anyway — a feed-reported
+ * session start was derived at exactly that moment.
+ *
+ * `liveSince` comes from the caller rather than off the model because not every feed publishes
+ * a session start: providers that do (Chaturbate's seconds_online, BongaCams' online_time) give
+ * an exact one, and for the rest the registry supplies the start we OBSERVED — accurate to the
+ * sync cadence. Both are the same kind of fact here, and this component treats them alike.
  */
-export default function CamModelStats({ model, nowMs }: { model: CamModel; nowMs: number }) {
+export default function CamModelStats({
+  model,
+  nowMs,
+  liveSince,
+}: {
+  model: CamModel;
+  nowMs: number;
+  liveSince: string | null;
+}) {
   const t = useTranslations('liveSex');
   const locale = useLocale();
-  const liveForMs = model.onlineSince ? nowMs - Date.parse(model.onlineSince) : null;
+  const liveForMs = liveSince ? nowMs - Date.parse(liveSince) : null;
 
   return (
     // Two columns on mobile (stats sit inline under the player); one stacked column in the

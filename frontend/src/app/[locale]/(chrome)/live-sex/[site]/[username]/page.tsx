@@ -9,7 +9,7 @@ import { getOnlineModels, findOnlineModel, adapterById } from '@/lib/cams/regist
 import { findKnownModel } from '@/lib/cams/modelDb';
 import { getCamCategories, categoriesForModel } from '@/lib/cams/categories';
 import { PROVIDER_META } from '@/lib/cams/providers/meta';
-import { parseActivity, activitySummary, MIN_HEATMAP_HOURS } from '@/lib/cams/activity';
+import { parseActivity, activitySummary, MIN_HEATMAP_HOURS, SESSION_GAP_MS } from '@/lib/cams/activity';
 import { pickNextModel } from '@/lib/cams/query';
 import { camCategoryPath } from '@/lib/cams/filters';
 import { providerFromSlug, CAM_PROVIDER_NAMES, type CamProvider } from '@/lib/cams/types';
@@ -155,7 +155,26 @@ export default async function CamModelPage({ params }: Props) {
   const sidebar = (
     <div className="space-y-5">
       <CamSiteOffer site={providerSite} />
-      {online && model && <CamModelStats model={model} nowMs={snapshot.fetchedAtMs} />}
+      {/* Session start: the live feed's own value when it publishes one, else the start the
+          registry observed (see the sync controller) — one pill, two ways of knowing. The
+          observed start is trusted only while lastSeenAt is fresh: a model who just returned
+          after hours offline still carries the PREVIOUS session's start until the next sync
+          write, and "Live for 23h" at minute one would be a lie. Same gap rule the backend
+          uses to declare a session new. */}
+      {online && model && (
+        <CamModelStats
+          model={model}
+          nowMs={snapshot.fetchedAtMs}
+          liveSince={
+            model.onlineSince ??
+            (known?.wentOnlineAt &&
+            known.lastSeenAt &&
+            snapshot.fetchedAtMs - Date.parse(known.lastSeenAt) <= SESSION_GAP_MS
+              ? known.wentOnlineAt
+              : null)
+          }
+        />
+      )}
       <CamCategoryChips categories={modelCategories} />
       {showHeatmap && <CamActivityHeatmap activity={activityPairs} />}
       <p className="text-xs text-slate-400 dark:text-slate-500">
