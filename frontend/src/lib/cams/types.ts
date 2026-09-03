@@ -7,7 +7,12 @@
  * models sitemap survive restarts — see lib/cams/modelDb.ts for the read side.
  */
 
-export type CamProvider = 'cb' | 'bc';
+import { CAM_PROVIDER_IDS, type CamProvider } from './providers/ids';
+import { PROVIDER_META } from './providers/meta';
+
+/** Re-exported so the ~30 existing `from '@/lib/cams/types'` imports keep working; the list
+ * itself lives in providers/ids.ts, the bottom of the kernel's dependency graph. */
+export type { CamProvider };
 
 export type CamGender = 'f' | 'm' | 'c' | 't';
 
@@ -42,6 +47,20 @@ export interface CamModel {
   /** Lowercase ISO-2, when the feed's country resolves (see lib/cams/countries.ts). */
   country?: string;
   onlineSince?: string;
+  /**
+   * ImLive's per-room SDK connection data (their player needs the room's servers, not a URL).
+   * EPHEMERAL: a model who reconnects gets a new working server, so this lives ONLY in the
+   * in-memory snapshot — never synced to the registry, never read for an offline model.
+   */
+  imliveRoom?: {
+    hostId: string;
+    roomId: string;
+    workingServer: string;
+    cdnServer: string;
+    comServer: string;
+    webrtcData: string;
+    mainImage: string;
+  };
   /** e.g. 'public' | 'private' | 'group' (provider-specific). */
   showType?: string;
 }
@@ -56,6 +75,12 @@ export interface CamProviderAdapter {
    * offer a click-out instead of an iframe that can only render a refusal.
    */
   canEmbed: boolean;
+  /**
+   * Whether this provider is wired up right now — normally "are its credentials set". The
+   * registry registers `ALL_ADAPTERS.filter((a) => a.enabled())`, so a provider gates itself
+   * instead of the registry growing a ternary per provider.
+   */
+  enabled(): boolean;
   /** Everyone currently online. Throws on failure — the registry degrades gracefully. */
   fetchOnline(): Promise<CamModel[]>;
   /** These three are total functions of the username — they work for offline models too. */
@@ -71,15 +96,23 @@ export interface CamProviderAdapter {
   embedUrl(username: string): string;
 }
 
-export const isCamProvider = (v: string): v is CamProvider => v === 'cb' || v === 'bc';
+const PROVIDER_ID_SET: ReadonlySet<string> = new Set(CAM_PROVIDER_IDS);
 
-/** Display names, client-safe (the adapters are server-only). Kept next to CamProvider so a
- * new provider forces this map to be updated in the same file as the type. */
-export const CAM_PROVIDER_NAMES: Record<CamProvider, string> = { cb: 'Chaturbate', bc: 'BongaCams' };
+export const isCamProvider = (v: string): v is CamProvider => PROVIDER_ID_SET.has(v);
 
-/** URL slugs for the providers — identical to their cam-category slugs, and the first path
- * segment of every model page (/live-sex/bongacams/<username>/). */
-export const CAM_PROVIDER_SLUGS: Record<CamProvider, string> = { cb: 'chaturbate', bc: 'bongacams' };
+/* The three lookup maps below are DERIVED from providers/meta.ts — a new provider brings its
+ * own metadata and appears here automatically, with no edit in this file. */
+
+/** Display names, client-safe (the feeds are server-only). */
+export const CAM_PROVIDER_NAMES: Record<CamProvider, string> = Object.fromEntries(
+  CAM_PROVIDER_IDS.map((id) => [id, PROVIDER_META[id].name]),
+) as Record<CamProvider, string>;
+
+/** URL slugs — identical to the provider cam-category slugs, and the first path segment of
+ * every model page (/live-sex/bongacams/<username>/). */
+export const CAM_PROVIDER_SLUGS: Record<CamProvider, string> = Object.fromEntries(
+  CAM_PROVIDER_IDS.map((id) => [id, PROVIDER_META[id].slug]),
+) as Record<CamProvider, string>;
 
 const SLUG_TO_PROVIDER = new Map(
   (Object.entries(CAM_PROVIDER_SLUGS) as [CamProvider, string][]).map(([id, slug]) => [slug, id]),

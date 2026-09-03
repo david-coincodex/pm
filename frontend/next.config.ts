@@ -20,6 +20,13 @@ const nextConfig: NextConfig = {
    * served from cache. That regeneration reads the in-memory cam snapshot, so it costs ~20 ms.
    */
   expireTime: 60,
+  /**
+   * The dev-only overlay badge (bottom-left, "N issues"). Off because it sits on top of the
+   * page in every local screenshot we take for the blog — scripts/lib/screenshots.mjs already
+   * hides `nextjs-portal` per shot, but that only helps shots taken through that helper, not a
+   * manual grab or a look at the local site. No effect on production, which never renders it.
+   */
+  devIndicators: false,
   images: {
     unoptimized: true,
     remotePatterns: [

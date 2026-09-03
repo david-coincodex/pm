@@ -66,6 +66,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_STRAPI_URL=https://cms.pornmode.com
             NEXT_PUBLIC_MEDIA_BASE=https://cms.pornmode.com
+            NEXT_PUBLIC_IMLIVE_SPONSOR_ID=10207425
+            NEXT_PUBLIC_IMLIVE_ORIGIN=53175
           tags: |
             ghcr.io/david-coincodex/pm-frontend:prod
             ghcr.io/david-coincodex/pm-frontend:prod-${{ github.sha }}
@@ -119,6 +121,8 @@ jobs:
           GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
           CAM_SYNC_SECRET: ${{ secrets.CAM_SYNC_SECRET }}
           HEALTHCHECKS_PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          IMLIVE_API_KEY: ${{ secrets.IMLIVE_API_KEY }}
+          STRIPCASH_API_KEY: ${{ secrets.STRIPCASH_API_KEY }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -138,6 +142,10 @@ jobs:
             echo "CAM_SYNC_SECRET=$CAM_SYNC_SECRET"
             # Empty until the HEALTHCHECKS_PING_KEY secret exists; heartbeat pings are then skipped (crons still run).
             echo "HEALTHCHECKS_PING_KEY=$HEALTHCHECKS_PING_KEY"
+            # Empty = that provider is simply not listed (its adapter reports disabled and its
+            # cam-category hides itself). ImLive and StripChat both gate on their key this way.
+            echo "IMLIVE_API_KEY=$IMLIVE_API_KEY"
+            echo "STRIPCASH_API_KEY=$STRIPCASH_API_KEY"
             # Pins compose to this exact build. To roll back, edit this line on the host
             # to an earlier prod-<sha> and re-run `docker compose up -d`.
             echo "IMAGE_TAG=prod-${{ github.sha }}"

@@ -1,4 +1,5 @@
 import { factories } from '@strapi/strapi';
+import { ALLOWED_PHOTO_HOSTS as KERNEL_PHOTO_HOSTS } from '../providers';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,7 +15,8 @@ const MAX_PHOTO_BYTES = 1_000_000;
  * Only provider CDNs we ingest from. fetchUrlToInputFile already blocks private/internal IPs
  * (SSRF blocklist), but URLs originate in feed data, so we pin the hosts too.
  */
-const ALLOWED_PHOTO_HOSTS = new Set(['thumb.live.mmcdn.com', 'i.bgicdn.com']);
+/** From the provider kernel (providers.json): every provider's image CDN, and nothing else. */
+const ALLOWED_PHOTO_HOSTS = KERNEL_PHOTO_HOSTS;
 
 let folderIdPromise: Promise<number> | null = null;
 

@@ -20,7 +20,9 @@
       "type": "enumeration",
       "enum": [
         "cb",
-        "bc"
+        "bc",
+        "il",
+        "sc"
       ],
       "required": true
     },
