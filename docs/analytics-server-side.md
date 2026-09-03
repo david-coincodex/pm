@@ -36,7 +36,7 @@ GA4 → **Admin** → **Data streams** → pick the web stream → **Measurement
 ### 2. Store it
 
 - **Staging/production:** add a GitHub repo secret named `GA_API_SECRET`. The deploy workflow
-  writes it into the server's `.env`, and `docker-compose.prod.yml` passes it to the frontend
+  writes it into the server's `.env`, and `docker-compose.staging.yml` passes it to the frontend
   container. Until that secret exists the value is empty and server events silently no-op.
 - **Locally:** `GA_API_SECRET=… docker compose up -d frontend`, or add it to your shell env.
   With it unset, `trackServerEvent` warns once per call in development and sends nothing — local

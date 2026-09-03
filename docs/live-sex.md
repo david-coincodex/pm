@@ -106,10 +106,16 @@ wrong before they went right.
 3. The id in the two Strapi enums: `cam-model.provider` and `cam-category.providerKey`
    (literal by necessity — Strapi reads schemas statically). **Strapi caches schemas**: restart
    the backend or the enum still rejects the new id.
-4. Env for its credentials — `docker-compose.yml`, `docker-compose.prod.yml`, the deploy
-   workflow's env block AND its `.env.deploy` echo, then `gh secret set … --env <env>`. A
-   secret gets no default so an unset key simply hides the provider; a public affiliate id
-   (it ships in every outbound URL) gets a baked default.
+4. Env for its credentials — **four files, one per target**: `docker-compose.yml` (dev),
+   `docker-compose.staging.yml`, `docker-compose.production.yml`, and each deploy workflow's env
+   block AND its `.env.deploy` echo; then `gh secret set … --env staging` and `--env production`.
+   A secret gets no default so an unset key simply hides the provider; a public affiliate id
+   (it ships in every outbound URL) gets a baked default. `NEXT_PUBLIC_*` values must be
+   `build-args`, not runtime env — they are inlined into the client bundle.
+   **This is the step that bit us**: the provider keys were added to the staging compose only,
+   so production deployed with ImLive and StripChat silently absent — an unset key disables the
+   adapter and hides its cam-category, which produces no error anywhere. Remember also that
+   `deploy-production.yml` exists only on the `production` branch.
 5. Affiliate template verified per `docs/cam-affiliate-links.md`, then
    `node scripts/check-provider-parity.mjs` — it asserts frontend meta ≡ backend kernel ≡ both
    enums, and the compiler names anything else forgotten.
@@ -278,7 +284,7 @@ Frontend-side "crons" are just the snapshot poller (45 s) and the piggy-backed m
 Dev defaults live in `docker-compose.yml` / `backend/.env`
 (`local-dev-cam-sync-secret`). Staging/production get `CAM_SYNC_SECRET` from the
 `deploy-staging.yml` "Write .env file" step — **the `CAM_SYNC_SECRET` repo secret must be
-created in GitHub before the next deploy**, and `docker-compose.prod.yml` passes it to both
+created in GitHub before the next deploy**, and `docker-compose.staging.yml` passes it to both
 services.
 
 ## Deploying / transferring to staging & production
@@ -291,7 +297,7 @@ Order matters — backend first:
    without it the frontend sync is disabled and the backend rejects every post, so the model
    registry stays empty forever (no model pages, empty models-sitemap). It's wired into both
    services and the deploy workflow already; only the secret value is missing.
-2. **BongaCams**: `BONGACAMS_CAMPAIGN` now defaults to `660500` in `docker-compose.prod.yml`
+2. **BongaCams**: `BONGACAMS_CAMPAIGN` now defaults to `660500` in `docker-compose.staging.yml`
    (matching the baked `CHATURBATE_WM`), so the live BC grid works without extra wiring. To
    change the campaign later, promote it to a workflow secret.
 3. **Run the content push** (`scripts/push-changed-content.mjs --apply`) — the code deploy ships

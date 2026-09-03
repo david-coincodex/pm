@@ -53,7 +53,7 @@ the `DATABASE_*` values.
 | `STRAPI_INTERNAL_URL` | R | Server-side Strapi URL over the Docker network: `http://backend:1339`. |
 | `REVALIDATE_SECRET` | O | 🔒 Shared secret for the Strapi publish webhook → `/api/revalidate`. Set it if you want publishes to purge the cache instantly. |
 | `GA_API_SECRET` | O | 🔒 GA4 Measurement Protocol secret for **server-side** offer/cam-click events (this audience blocks gtag). Server-only — never `NEXT_PUBLIC_`. |
-| `CHATURBATE_WM` | O | 🔒 Chaturbate affiliate WM. Default `y98oG` (baked in `docker-compose.prod.yml`). |
+| `CHATURBATE_WM` | O | 🔒 Chaturbate affiliate WM. Default `y98oG` (baked in `docker-compose.staging.yml`). |
 | `BONGACAMS_CAMPAIGN` | O | 🔒 BongaCams campaign id. Default `660500`. Unset ⇒ BongaCams disabled (Chaturbate-only). |
 | `IMLIVE_API_KEY` | O | 🔒 ImLive Webcam API subscription key. Unset ⇒ ImLive disabled (not listed, category hidden). |
 | `IMLIVE_WID` | O | ImLive affiliate WID for the /out/ template. Default `126682575285` (baked in compose). |
@@ -85,10 +85,27 @@ see the promote checklist in docs/monitoring.md).
 / `DEPLOY_HOST_PROD` (production).
 
 > ⚠️ If you add a NEW env var the cam feature (or anything) needs, it must be added in **three
-> places per environment**: the compose file (`docker-compose.prod.yml` / `docker-compose.production.yml`),
+> places per environment**: the compose file (`docker-compose.staging.yml` / `docker-compose.production.yml`),
 > the workflow's "Write .env file" step, and the GitHub environment secret/var. Missing any one
 > silently leaves it empty on that host — this is exactly what stranded `CAM_SYNC_SECRET` on
 > production at launch.
+>
+> **"Per environment" means literally per file.** The two compose files are separate documents;
+> editing one does nothing for the other. `IMLIVE_API_KEY`/`STRIPCASH_API_KEY` were added to the
+> staging compose and the staging workflow, promoted, and production came up with **both cam
+> providers silently absent** — an unset key means the adapter reports disabled and its
+> cam-category hides itself, so there is no error anywhere, just two missing sites. The old
+> filename `docker-compose.prod.yml` (which shipped to STAGING) is why; it is now
+> `docker-compose.staging.yml`.
+>
+> Note also that `deploy-production.yml` exists **only on the `production` branch**, so a
+> staging→production merge never carries workflow changes made for production. Promote by
+> branching from `production`, merging staging into it, and adding the production workflow bits
+> in that branch — one deploy that is correct from the start.
+>
+> **Build-time vs runtime:** `NEXT_PUBLIC_*` is inlined into the client bundle, so it must be a
+> `build-args` entry in the workflow. A runtime env value alone changes nothing on a deployed
+> image (this is why `NEXT_PUBLIC_IMLIVE_SPONSOR_ID`/`_ORIGIN` are build args in both workflows).
 
 ---
 
