@@ -119,10 +119,12 @@ async function loadSite(slug) {
   );
   const site = json.data?.[0];
   if (!site) throw new Error(`site not found in Strapi: ${slug}`);
+  // The reviewers behind OUR review of this site. This is the only corpus the article may
+  // quote from, so keep enough text to actually quote (4k, not the 1.2k a summary needs), and
+  // drop sources we scraped nothing from — an empty source can only produce an invented quote.
   const quotes = (site.scrapedReviews?.sources ?? [])
-    .filter((s) => s.sourceName && s.content)
-    // First ~1200 chars is the review's own summary; the tail is boilerplate and link soup.
-    .map((s) => ({ source: s.sourceName, url: s.sourceUrl, text: String(s.content).slice(0, 1200) }));
+    .filter((s) => s.sourceName && String(s.content ?? '').trim().length > 200)
+    .map((s) => ({ source: s.sourceName, url: s.sourceUrl, text: String(s.content).slice(0, 4000) }));
   return {
     slug,
     name: site.name,
@@ -251,8 +253,45 @@ function priceProblems(text) {
   });
 }
 
+const normalise = (t) =>
+  t.replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\s+/g, ' ').trim().toLowerCase();
+
+/**
+ * Blockquotes may ONLY come from the reviewers behind our own reviews (scrapedReviews.sources),
+ * never from the comparison pages passed as --context: those ground the facts, they are not
+ * voices we present as reviews. Checked mechanically rather than trusted, in two parts —
+ * the attribution names a source we actually hold, and the words are really in that source.
+ */
+function quoteProblems(html, sites) {
+  const allowed = new Map();
+  for (const site of sites) for (const q of site.thirdPartyQuotes) {
+    allowed.set(normalise(q.source), normalise(`${allowed.get(normalise(q.source)) ?? ''} ${q.text}`));
+  }
+  const blocks = [...html.matchAll(/<blockquote>([\s\S]*?)<\/blockquote>/g)].map((m) => m[1]);
+  if (blocks.length < 2) return [`only ${blocks.length} blockquote(s); at least 2 are required`];
+
+  const problems = [];
+  for (const block of blocks) {
+    const attribution = block.match(/<footer>([\s\S]*?)<\/footer>/)?.[1] ?? '';
+    const name = normalise(attribution.replace(/^[\s—–-]+/, ''));
+    const quoted = normalise(block.replace(/<footer>[\s\S]*?<\/footer>/, '').replace(/<[^>]+>/g, ' ')).replace(/^["']|["'…]+$/g, '');
+    if (!name) { problems.push(`a blockquote has no <footer> attribution`); continue; }
+    const corpus = [...allowed.entries()].find(([source]) => name.includes(source) || source.includes(name))?.[1];
+    if (!corpus) {
+      problems.push(`blockquote attributed to "${attribution.trim()}", which is not one of our review sources (${[...allowed.keys()].join(', ')})`);
+      continue;
+    }
+    // Match on the opening run: reviewers get trimmed with an ellipsis, but the first words
+    // must be theirs verbatim — a paraphrase inside quotation marks is a fabricated quote.
+    const head = quoted.slice(0, Math.min(60, quoted.length));
+    if (head.length < 20) problems.push(`blockquote from "${attribution.trim()}" is too short to verify`);
+    else if (!corpus.includes(head)) problems.push(`blockquote attributed to "${attribution.trim()}" is not verbatim in that source: "${head}…"`);
+  }
+  return problems;
+}
+
 /** Everything a draft must satisfy before it is worth fact-checking. */
-function draftProblems(gen, links) {
+function draftProblems(gen, links, sites) {
   const missingKeys = ['metaTitle', 'title', 'description', 'contentHtml', 'faqs', 'verdict', 'prosConsA', 'prosConsB']
     .filter((k) => gen[k] == null)
     .map((k) => `output is missing "${k}"`);
@@ -262,7 +301,12 @@ function draftProblems(gen, links) {
     ...gen.faqs.flatMap((f) => [f.question, f.answer]),
     ...(gen.prosConsA.pros ?? []), ...(gen.prosConsA.cons ?? []),
     ...(gen.prosConsB.pros ?? []), ...(gen.prosConsB.cons ?? [])].join(' \n ');
-  return [...widgetProblems(gen.contentHtml), ...linkProblems(gen.contentHtml, links), ...priceProblems(allCopy)];
+  return [
+    ...widgetProblems(gen.contentHtml),
+    ...linkProblems(gen.contentHtml, links),
+    ...priceProblems(allCopy),
+    ...quoteProblems(gen.contentHtml, sites),
+  ];
 }
 
 const dealCard = (documentId) => `<div data-component="site-card" data-site-id="${documentId}"></div>`;
@@ -326,9 +370,9 @@ async function main() {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const ask = attempt === 1
       ? brief
-      : `${brief}\n\nYour previous draft broke these REQUIRED rules. Fix exactly these and return the whole JSON object again, keeping everything else:\n- ${draftProblems(gen, links).join('\n- ')}`;
+      : `${brief}\n\nYour previous draft broke these REQUIRED rules. Fix exactly these and return the whole JSON object again, keeping everything else:\n- ${draftProblems(gen, links, [a, b]).join('\n- ')}`;
     gen = await chat(system, ask);
-    const problems = draftProblems(gen, links);
+    const problems = draftProblems(gen, links, [a, b]);
     if (problems.length === 0) break;
     console.log(`  attempt ${attempt}: ${problems.length} rule violation(s) — ${attempt < MAX_ATTEMPTS ? 'asking for a fix' : 'giving up'}`);
     for (const p of problems) console.log(`    · ${p}`);
