@@ -7,7 +7,7 @@ import { localizedAlternates } from '@/lib/pagination';
 import { strapiMediaUrl } from '@/lib/strapi';
 import { getOnlineModels, findOnlineModel, adapterById } from '@/lib/cams/registry';
 import { findKnownModel } from '@/lib/cams/modelDb';
-import { getCamCategories, categoriesForModel } from '@/lib/cams/categories';
+import { getCamCategories, categoriesForModel, crossProviderTags } from '@/lib/cams/categories';
 import { PROVIDER_META } from '@/lib/cams/providers/meta';
 import { parseActivity, activitySummary, MIN_HEATMAP_HOURS, SESSION_GAP_MS } from '@/lib/cams/activity';
 import { pickNextModel } from '@/lib/cams/query';
@@ -114,7 +114,10 @@ export default async function CamModelPage({ params }: Props) {
   const country = model?.country ?? known?.country ?? null;
   const lastSeenAt = !online && known?.lastSeenAt ? new Date(known.lastSeenAt) : null;
 
-  const nextModel = model ? pickNextModel(snapshot, model) : null;
+  // Similarity compares only tags that mean something across providers, so a provider's own
+  // vocabulary can't make "same cam site" look like "similar model" (see crossProviderTags).
+  const similarityTags = crossProviderTags(tags, categories);
+  const nextModel = model ? pickNextModel(snapshot, model, similarityTags) : null;
   // The photo strip: the registry's media-library photos (ingested profile portrait plus
   // rotating live-snapshot captures, oldest → newest). A model the sync knows but the media
   // cron hasn't reached yet falls back to the feed's live portrait URL.
@@ -141,7 +144,14 @@ export default async function CamModelPage({ params }: Props) {
   for (const m of snapshot.byViewers) {
     if (similar.length >= 12) break;
     if (m.id === `${provider}:${username}`) continue;
-    if (gender && !(m.gender === gender && (tags.length === 0 || m.tags.some((tag) => tags.includes(tag))))) continue;
+    if (
+      gender &&
+      !(
+        m.gender === gender &&
+        (similarityTags.length === 0 || m.tags.some((tag) => similarityTags.includes(tag)))
+      )
+    )
+      continue;
     similar.push(m);
   }
 

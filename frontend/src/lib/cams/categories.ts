@@ -69,3 +69,24 @@ export function modelMatchesCategory(model: CamModel, category: CamCategory): bo
 export function categoriesForModel(model: CamModel, categories: CamCategory[]): CamCategory[] {
   return categories.filter((c) => modelMatchesCategory(model, c));
 }
+
+/**
+ * The subset of a model's tags that means something ACROSS providers — its tags that appear in
+ * some tag category's `matchTags`. This is what "similar" and "next" should compare on.
+ *
+ * Raw tags are the wrong basis, because each provider has its own vocabulary and those private
+ * words act as provider markers: ImLive stamps every room 'free chat', BongaCams describes acts
+ * ('dildofucking', 'cock-sucking') that no other feed uses. Intersecting raw tags therefore
+ * matches same-provider rooms far more often than genuinely similar ones — the model page ends
+ * up recommending the site the visitor is already on instead of the best rooms we have.
+ *
+ * Provider (and gender, and language) categories are excluded by construction: only `tag` kind
+ * categories contribute, so being on the same cam site is never a reason to call two models
+ * similar.
+ */
+export function crossProviderTags(tags: string[], categories: CamCategory[]): string[] {
+  const vocabulary = new Set(
+    categories.filter((c) => c.kind === 'tag').flatMap((c) => c.matchTags ?? []),
+  );
+  return tags.filter((t) => vocabulary.has(t));
+}

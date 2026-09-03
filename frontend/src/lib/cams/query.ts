@@ -89,11 +89,20 @@ export function countByFilter(snapshot: OnlineSnapshot, state: CamFilterState, c
  * next candidate is the most-viewed room below the current one, wrapping to the top when the
  * ladder is exhausted. Descending instead of "highest first" avoids ping-ponging between the
  * same two top rooms on repeated clicks.
+ *
+ * `matchTags` is the tag set to compare on, and callers should pass the CROSS-PROVIDER subset
+ * (see crossProviderTags in lib/cams/categories): a provider's private vocabulary otherwise
+ * acts as a provider marker and "Next" keeps landing on the same cam site. Defaults to the
+ * model's own tags for callers with no category list to hand.
  */
-export function pickNextModel(snapshot: OnlineSnapshot, current: CamModel): CamModel | null {
+export function pickNextModel(
+  snapshot: OnlineSnapshot,
+  current: CamModel,
+  matchTags: string[] = current.tags,
+): CamModel | null {
   const sameGender = snapshot.byViewers.filter((m) => m.gender === current.gender && m.id !== current.id);
   if (sameGender.length === 0) return null;
-  const tagged = current.tags.length ? sameGender.filter((m) => m.tags.some((t) => current.tags.includes(t))) : [];
+  const tagged = matchTags.length ? sameGender.filter((m) => m.tags.some((t) => matchTags.includes(t))) : [];
   const pool = tagged.length ? tagged : sameGender;
   return pool.find((m) => m.viewers < current.viewers) ?? pool[0];
 }
