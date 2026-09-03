@@ -8,9 +8,15 @@ import { loadScript } from '../shared/loadScript';
  *
  * VERIFIED against the live SDK (2026-09-02): anonymous free-chat playback needs NO partner
  * credentials — `sponsorId` omitted and the docs' example `origin: 2` produced
- * `onChatStart {chatmode:'free'}` and 1280x720 video. `NEXT_PUBLIC_IMLIVE_SPONSOR_ID` /
- * `_ORIGIN` are honored if ever set (e.g. if ImLive later wants player-side attribution), but
- * are not required — our revenue path is the /out/ affiliate redirect, independent of this.
+ * `onChatStart {chatmode:'free'}` and 1280x720 video.
+ *
+ * Since 2026-09-03 the real partner values ARE set: sponsorId 10207425 and origin 53175,
+ * verified live by reading the config the SDK is actually handed (`chatData.sponsorId`,
+ * `guest.origin`) with free chat still connecting at 1280x720 — worth checking that way,
+ * because a bad origin fails as `hostOffline` rather than as an auth error. They are
+ * NEXT_PUBLIC_*, so they are inlined at BUILD time: a runtime env var alone changes nothing
+ * on a deployed image (see the Dockerfile ARGs and the deploy workflow's build-args).
+ * Player-side attribution only — our revenue path is the /out/ affiliate redirect.
  *
  * The room's connection data (working server, CDN, BOSH comms, webrtcdata) is per-session and
  * arrives with each feed refresh in `model.imliveRoom`; a model who reconnects gets new values,

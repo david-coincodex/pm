@@ -39,6 +39,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_STRAPI_URL=https://cms-staging.pornmode.com
             NEXT_PUBLIC_MEDIA_BASE=https://staging.pornmode.com
+            NEXT_PUBLIC_IMLIVE_SPONSOR_ID=10207425
+            NEXT_PUBLIC_IMLIVE_ORIGIN=53175
           tags: |
             ghcr.io/david-coincodex/pm-frontend:latest
             ghcr.io/david-coincodex/pm-frontend:${{ github.sha }}
