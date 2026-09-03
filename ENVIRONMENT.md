@@ -59,6 +59,8 @@ the `DATABASE_*` values.
 | `IMLIVE_WID` | O | ImLive affiliate WID for the /out/ template. Default `126682575285` (baked in compose). |
 | `STRIPCASH_API_KEY` | O | 🔒 Stripcash (StripChat) aggregators-API key, issued PER DOMAIN in their dashboard. Unset ⇒ StripChat disabled (not listed, category hidden). |
 | `STRIPCASH_USER_ID` | O | Stripcash affiliate userId for the /out/ template + feed. Default baked in compose (it ships in every outbound URL, so not a secret). |
+| `NEXT_PUBLIC_IMLIVE_SPONSOR_ID` | O | 🏗️ ImLive partner sponsor id for its player (`10207425`). Public — inlined into the client bundle, so it must be a **build arg**; a runtime value alone does nothing. |
+| `NEXT_PUBLIC_IMLIVE_ORIGIN` | O | 🏗️ ImLive origin id for its player (`53175`). Same build-time rule. Player attribution only — the /out/ redirect is the money path. |
 | **`CAM_SYNC_SECRET`** | **R** | 🔒 **Same value as the backend.** Unset frontend-side ⇒ the registry sync is disabled (one warning log), registry never fills. |
 | `NODE_ENV` / `PORT` / `HOSTNAME` | R | `production` / `3002` / `0.0.0.0`. |
 

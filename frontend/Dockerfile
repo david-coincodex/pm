@@ -25,6 +25,13 @@ ENV NEXT_PUBLIC_STRAPI_URL=$NEXT_PUBLIC_STRAPI_URL
 # to the Strapi origin, which is what local dev wants.
 ARG NEXT_PUBLIC_MEDIA_BASE=http://localhost:1339
 ENV NEXT_PUBLIC_MEDIA_BASE=$NEXT_PUBLIC_MEDIA_BASE
+# ImLive player attribution: their SDK takes the partner sponsor id and origin id in its chat
+# config. Public by nature (they ship inside the client bundle), and only the PLAYER uses them —
+# the money path is the /out/ affiliate redirect, which is unaffected either way.
+ARG NEXT_PUBLIC_IMLIVE_SPONSOR_ID=
+ENV NEXT_PUBLIC_IMLIVE_SPONSOR_ID=$NEXT_PUBLIC_IMLIVE_SPONSOR_ID
+ARG NEXT_PUBLIC_IMLIVE_ORIGIN=
+ENV NEXT_PUBLIC_IMLIVE_ORIGIN=$NEXT_PUBLIC_IMLIVE_ORIGIN
 RUN npm run build
 
 # ── production (Next.js standalone output) ────────────────────────────────────
