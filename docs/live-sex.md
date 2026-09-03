@@ -90,22 +90,123 @@ on the public host (content-hashed names, so the 1-year cache header is safe und
 
 ## Adding a provider
 
-Providers are self-contained plugins; shared code holds no provider branches. The whole job:
+Providers are self-contained plugins; shared code holds no provider branches. The mechanical
+part is small — the judgement calls below it are where the last four integrations actually went
+wrong before they went right.
+
+### The mechanical part
 
 1. `frontend/src/lib/cams/providers/<name>/` — `meta.ts` (facts as data), `feed.ts`
-   (server-only fetch + normalize + `outboundUrl`), `Player.tsx` / `Preview.tsx` (or `null`
-   for photo-only), `index.ts`. Add the id to `providers/ids.ts`, the meta to
-   `providers/meta.ts`, the video plugin to `providers/video.ts`, the adapter to
-   `providers/adapters.ts` — `Record<CamProvider, …>` makes the build fail until all exist.
+   (server-only fetch + normalize + `outboundUrl`), `Player.tsx` / `Preview.tsx` (or omit for
+   photo-only), `index.ts`. Add the id to `providers/ids.ts`, the meta to `providers/meta.ts`,
+   the video plugin to `providers/video.ts`, the adapter to `providers/adapters.ts` —
+   `Record<CamProvider, …>` makes the build fail until all exist.
 2. One entry in `backend/src/api/cam-model/providers.json` (the backend kernel — photo hosts,
-   capability flags; everything backend derives from it).
+   capability flags, optional `retentionDays`; everything backend derives from it).
 3. The id in the two Strapi enums: `cam-model.provider` and `cam-category.providerKey`
-   (literal by necessity — Strapi reads schemas statically).
-4. Env for its credentials (compose + deploy workflow + GitHub env secret), affiliate
-   template verified per `docs/cam-affiliate-links.md`.
-5. `node scripts/check-provider-parity.mjs` — asserts frontend meta ≡ backend kernel ≡ both
-   enums; the compiler and this check name anything forgotten. Content: the provider's
-   cam-category row is pushed ONLY after the deploy that ships the enum (else the push 400s).
+   (literal by necessity — Strapi reads schemas statically). **Strapi caches schemas**: restart
+   the backend or the enum still rejects the new id.
+4. Env for its credentials — `docker-compose.yml`, `docker-compose.prod.yml`, the deploy
+   workflow's env block AND its `.env.deploy` echo, then `gh secret set … --env <env>`. A
+   secret gets no default so an unset key simply hides the provider; a public affiliate id
+   (it ships in every outbound URL) gets a baked default.
+5. Affiliate template verified per `docs/cam-affiliate-links.md`, then
+   `node scripts/check-provider-parity.mjs` — it asserts frontend meta ≡ backend kernel ≡ both
+   enums, and the compiler names anything else forgotten.
+6. Content LAST: the provider's cam-category row is pushed only after the deploy that ships the
+   enum, else the push 400s. Until the feed is enabled the row hides itself
+   (`getCamCategories` filters provider categories by `enabledProviders`), so it is safe to
+   create early and push late.
+
+### Categorisation — the part that gets skipped
+
+A provider whose models reach no categories is invisible on the pages that carry search
+traffic. **Measure coverage before declaring the integration done**: what share of its rooms
+match at least one `tag` category? Real numbers from this codebase — ImLive 92%, StripChat 99%,
+Chaturbate 72%, and BongaCams 31% until it was fixed.
+
+The trap is assuming a provider's own tags are the categorisation source:
+
+- BongaCams ships **20 tags per model** that describe ACTS (`dildofucking`, `cock-sucking`,
+  `dancing`) and almost nothing about the model. Its attributes lived in separate profile
+  fields (`ethnicity`, `hair_color`, `bust_size`, `butt_size`, `pubic_hair`, `display_age`,
+  `is_vibratoy`) that we ignored for months.
+- StripChat ships ~67 tags per model over 835 slugs, prefixed by niche (`girls/asian`), and its
+  profile-attribute fields are null on the aggregator endpoint.
+- ImLive ships no tags at all — only structured attributes.
+
+So: find where the attributes actually live, map them to OUR vocabulary (the `matchTags` of the
+`tag` cam-categories) with an explicit table, and **build that table from a measured sample** —
+every provider map in this repo carries the observed value counts next to its keys. An
+unmapped value must produce no tag rather than a guess. Two rules worth stating because both
+were nearly broken: never emit a provider's raw taxonomy wholesale (the sync caps tags at 20,
+and the chips become noise), and never map a field that does not mean what it looks like —
+StripChat's `sexual_preference` is "bisexual" for 73% of rooms, which would file most of the
+roster under gay/bi on the strength of a preference checkbox.
+
+### Ranking and the viewer badge
+
+`ranking.viewersComparable` says whether the provider's count is a real concurrent audience.
+True for Chaturbate (`num_users`, median 137), BongaCams (`members_count`, median 96) and
+StripChat (`viewersCount`, max 4,659) — those compete on the raw number and show the badge.
+False for ImLive, whose number is guests in a free room (0–7): it is ranked editorially at
+`mixShare` cadence and its cards hide the badge rather than print a misleading "0". Sorting a
+non-comparable number against real ones put ImLive's best room at global rank 800 of 890, which
+is how the flag came to exist. The same flag also gates the backfill's `MIN_PEAK`, since a
+viewer threshold cannot filter a number that is not an audience.
+
+### Similarity is cross-provider by construction
+
+"Similar" and "Next" compare only tags that exist in our shared vocabulary
+(`crossProviderTags`). A provider's private words otherwise act as a provider marker — ImLive
+stamps every room `free chat`, BongaCams describes acts nobody else uses — and the model page
+ends up recommending the cam site the visitor is already on. Provider, gender and language
+categories never participate in similarity.
+
+### Compliance is a data decision, not a code decision
+
+Read the provider's aggregator terms and express them as kernel facts, so the crons obey them
+without knowing the provider exists:
+
+- **Images that may not be downloaded** → `hasProfilePortrait: false`, `liveSnapshots: false`,
+  `photoHosts: []`. That is what keeps the ingest crons away (their provider lists derive from
+  those flags). Leave `photoHosts` empty even though the frontend emits those hosts: putting
+  never-downloaded hosts in an SSRF allowlist would pre-authorise the forbidden fetch, and the
+  parity check now treats a no-ingest provider as the deliberate exception.
+- **A stricter deletion window** → `retentionDays` in the backend kernel. `cleanupExpired`
+  groups providers by effective window and sweeps each on its own cutoff (StripChat is 30 days
+  against the house 60).
+- **Geo restrictions** → drop those rooms in the feed. Our pages are one statically cached
+  document for every country, so per-viewer filtering is not available; log the dropped count
+  so the cost stays visible (StripChat drops ~62% of public rooms and still fills its cap).
+
+### Playback
+
+Three shapes exist, and the plugin contract is what makes shared code inherit monetisation and
+controls rather than silently miss them:
+
+- **Plain HLS** (BongaCams, StripChat) — `HlsSurface`/`HlsPreview` one-liners,
+  `ownsControls: false`, `canPlay: (m) => Boolean(m.streamUrl)`. Verify the WHOLE chain from a
+  non-datacenter IP: master → variant → segments, each `200` with `access-control-allow-origin:
+  *`. Chaturbate's tokens turned out IP-bound once; that failure only appears in production.
+- **Provider iframe** (Chaturbate) — `ownsControls: true`, since our bar cannot reach a
+  cross-origin player.
+- **Provider SDK** (ImLive) — expect to fight it. Theirs pauses on tab-hide and resumes live
+  video from a stale buffer, and its `onUserGestureMade()` silently re-requests the stream, so
+  calling it on a healthy instance kills playback. Keep such quirks in the provider directory
+  (`imlive/useLiveRecovery.ts`), never in the shared host.
+
+Also check whether the feed publishes a session start (`seconds_online` or similar). If it does
+not, nothing breaks: the sync stamps `wentOnlineAt` from our own first sighting, which drives
+both the "Live for" pill and the heatmap.
+
+### Verification before merge
+
+`check-provider-parity.mjs`, both `tsc` runs, ESLint, the affiliate grep gate, and the saved
+cam-video regression suite for the EXISTING providers (a new provider must not disturb them).
+Then in a real browser: hub page, model page playback, hover preview, mute, `/out/` redirect
+equal to the template (live + punctuated username + offline + garbage→404), viewer badge,
+category coverage, and the sync writing sane rows.
 
 ## Cron jobs
 
