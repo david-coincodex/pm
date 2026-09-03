@@ -56,10 +56,83 @@ function mapGender(g: string | undefined): CamGender {
   return 'f';
 }
 
+/**
+ * BongaCams' own tags describe ACTS, not attributes — measured over 100 rooms, the top tags are
+ * chatting, blowjob, dancing, dildofucking, deepthroat, anal-play. Rich (20 per model!) but
+ * nearly worthless for categorisation: only 31% of rooms matched ANY of our categories, against
+ * 92% for ImLive and 99% for StripChat, which is why BongaCams was largely missing from the
+ * category pages that carry search traffic.
+ *
+ * The attributes were in the feed all along, in dedicated profile fields we simply never read.
+ * These maps translate them into our category vocabulary, exactly as the ImLive feed does with
+ * its profile attributes. Values below are the ONLY ones observed across a 300-room sample
+ * (counts noted) — an unlisted value produces no tag rather than a guess.
+ */
+const ETHNICITY_TAGS: Record<string, string[]> = {
+  hispanic: ['latina'], // 24
+  asian: ['asian'], // 14
+  black: ['ebony'], // 4
+  // 'white' (257) and 'indian' (1) have no category of their own — deliberately unmapped.
+};
+const HAIR_TAGS: Record<string, string[]> = {
+  brunette: ['brunette'], // 153
+  blonde: ['blonde'], // 95
+  redhead: ['redhead'], // 52
+};
+/** Only the ends of the scale say anything; 'medium' (100 of 300) is not a claim. */
+const BUST_TAGS: Record<string, string[]> = {
+  huge: ['big tits'], // 12
+  large: ['big tits'], // 121
+  small: ['small tits'], // 67
+};
+const BUTT_TAGS: Record<string, string[]> = {
+  big: ['big ass'], // 102
+};
+const PUBIC_HAIR_TAGS: Record<string, string[]> = {
+  hairy_pussy: ['hairy'], // 24
+  shaved_pussy: ['shaved'], // 211
+  // 'trimmed_pussy' (65) is neither — unmapped.
+};
+/** Ages that carry a category. Measured: 48 of 300 rooms ≤19, 66 ≥35. */
+const TEEN_MAX_AGE = 19;
+const MILF_MIN_AGE = 35;
+
+function attributeTags(row: BongaRow): string[] {
+  const out: string[] = [];
+  const add = (map: Record<string, string[]>, value: string | undefined) => {
+    const hit = map[(value ?? '').toLowerCase().trim()];
+    if (hit) out.push(...hit);
+  };
+  add(ETHNICITY_TAGS, row.ethnicity);
+  add(HAIR_TAGS, row.hair_color);
+  add(BUST_TAGS, row.bust_size);
+  add(BUTT_TAGS, row.butt_size);
+  add(PUBIC_HAIR_TAGS, row.pubic_hair);
+  // A vibrating toy in the room IS the interactive-toys category (205 of 300 rooms).
+  if (row.is_vibratoy === true || String(row.is_vibratoy).toLowerCase() === 'true') out.push('interactive');
+  const age = Number(row.display_age);
+  if (Number.isFinite(age) && age >= 18 && age <= 80) {
+    if (age <= TEEN_MAX_AGE) out.push('teen');
+    else if (age >= MILF_MIN_AGE) out.push('milf');
+  }
+  // NOT mapped on purpose: `sexual_preference` is 'bisexual' for 220 of 300 rooms, which would
+  // file three quarters of the roster under a gay/bi category on the strength of a preference
+  // checkbox rather than anything about the show.
+  return out;
+}
+
 type BongaRow = {
   username?: string;
   display_name?: string;
   gender?: string;
+  /** Profile attributes — the categorisation source (see attributeTags above). */
+  ethnicity?: string;
+  hair_color?: string;
+  bust_size?: string;
+  butt_size?: string;
+  pubic_hair?: string;
+  display_age?: string | number;
+  is_vibratoy?: boolean | string;
   members_count?: number;
   online_time?: number;
   chat_url?: string;
@@ -106,8 +179,15 @@ function normalize(row: BongaRow): CamModel | null {
     streamUrl: row.stream_feed_url?.startsWith('https://') ? row.stream_feed_url : undefined,
     viewers: Number(row.members_count ?? 0) || 0,
     location: cleanLocation(row.hometown) ?? cleanLocation(row.homecountry),
-    // Values, not keys — the keys are just indices.
-    tags: row.tags ? Object.values(row.tags).map((t) => String(t).toLowerCase().trim()).filter(Boolean) : [],
+    // The feed's own act tags (values, not keys — the keys are just indices) PLUS the
+    // attribute tags derived from the profile fields, which are what actually reach our
+    // categories. Deduped, because both sources can name the same thing.
+    tags: [
+      ...new Set([
+        ...(row.tags ? Object.values(row.tags).map((t) => String(t).toLowerCase().trim()).filter(Boolean) : []),
+        ...attributeTags(row),
+      ]),
+    ],
     languages: normalizeLanguages([row.primary_language, row.secondary_language]),
     country: normalizeCountry(row.homecountry),
     onlineSince: Number.isFinite(secondsOnline) ? new Date(Date.now() - secondsOnline * 1000).toISOString() : undefined,
