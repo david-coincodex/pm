@@ -85,6 +85,11 @@ https://go.whitetrafsa.com?onlineModels={username}&userId={STRIPCASH_USER_ID}
 - The feed row also carries a ready-made `clickUrl`; we ignore it and build from the template,
   so online, offline and registry-only models all produce the identical link.
 - Env: `STRIPCASH_USER_ID` (server-only).
+- The **site-deal offer** (`/offer/`, sidebar) uses the same host without a model:
+  `https://go.whitetrafsa.com?userId={STRIPCASH_USER_ID}` (from the pricing sheet, so
+  `scripts/import-offers.mjs` owns it — not this file). Verified 302 →
+  `stripchat.com/?affiliateId=…&userId=…`. stripchat.com bot-walls curl on the FINAL hop
+  (403); the attribution hop before it is what must be right.
 
 ## Where the redirect MUST be used (and is)
 
