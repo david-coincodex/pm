@@ -89,13 +89,33 @@ export function countByFilter(snapshot: OnlineSnapshot, state: CamFilterState, c
  * next candidate is the most-viewed room below the current one, wrapping to the top when the
  * ladder is exhausted. Descending instead of "highest first" avoids ping-ponging between the
  * same two top rooms on repeated clicks.
+ *
+ * `matchTags` is the tag set to compare on, and callers should pass the CROSS-PROVIDER subset
+ * (see crossProviderTags in lib/cams/categories): a provider's private vocabulary otherwise
+ * acts as a provider marker and "Next" keeps landing on the same cam site. Defaults to the
+ * model's own tags for callers with no category list to hand.
  */
-export function pickNextModel(snapshot: OnlineSnapshot, current: CamModel): CamModel | null {
-  const sameGender = snapshot.byViewers.filter((m) => m.gender === current.gender && m.id !== current.id);
-  if (sameGender.length === 0) return null;
-  const tagged = current.tags.length ? sameGender.filter((m) => m.tags.some((t) => current.tags.includes(t))) : [];
-  const pool = tagged.length ? tagged : sameGender;
-  return pool.find((m) => m.viewers < current.viewers) ?? pool[0];
+export function pickNextModel(
+  snapshot: OnlineSnapshot,
+  current: CamModel,
+  matchTags: string[] = current.tags,
+): CamModel | null {
+  // The ladder is computed by VALUE, not by walking byViewers in order: byViewers is the
+  // editorial view — non-comparable providers' cards are woven in at fixed positions with tiny
+  // viewer numbers — so "first entry with fewer viewers" stopped meaning "next room down" the
+  // day the weave shipped. Measured: every Next click, from every provider, landed on the
+  // first woven ImLive card. One pass, order-independent.
+  let below: CamModel | null = null; // biggest room strictly below the current one
+  let top: CamModel | null = null; // biggest room overall — the wrap target
+  for (const m of snapshot.byViewers) {
+    if (m.gender !== current.gender || m.id === current.id) continue;
+    if (matchTags.length && !m.tags.some((t) => matchTags.includes(t))) continue;
+    if (top === null || m.viewers > top.viewers) top = m;
+    if (m.viewers < current.viewers && (below === null || m.viewers > below.viewers)) below = m;
+  }
+  // A model whose tags no peer shares falls back to the gender-only ladder.
+  if (top === null && matchTags.length) return pickNextModel(snapshot, current, []);
+  return below ?? top;
 }
 
 export type CamPage = {

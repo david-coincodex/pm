@@ -1,0 +1,42 @@
+{
+  "_doc": "Backend mirror of the frontend provider kernel (frontend/src/lib/cams/providers/*/meta.ts) — the subset the backend needs. Docker build contexts are per-service, so the two runtimes cannot share a module; scripts/check-provider-parity.mjs asserts they agree (ids, slugs, photo hosts) and also that the Strapi schema enums list exactly these ids. Adding a provider: one entry here, one directory in the frontend, and the id in the two schema.json enums. Everything else in backend/src derives from this file.",
+  "providers": {
+    "cb": {
+      "slug": "chaturbate",
+      "photoHosts": ["thumb.live.mmcdn.com"],
+      "hasProfilePortrait": false,
+      "liveSnapshots": true,
+      "viewersComparable": true,
+      "captureThumbTemplate": "https://thumb.live.mmcdn.com/riw/{username}.jpg",
+      "lemoncamsSlug": "chaturbate"
+    },
+    "il": {
+      "slug": "imlive",
+      "photoHosts": ["i0.wlmediahub.com", "i0.imlmediahub.com"],
+      "hasProfilePortrait": true,
+      "liveSnapshots": false,
+      "viewersComparable": false,
+      "captureThumbTemplate": null,
+      "lemoncamsSlug": "imlive"
+    },
+    "sc": {
+      "slug": "stripchat",
+      "photoHosts": [],
+      "hasProfilePortrait": false,
+      "liveSnapshots": false,
+      "viewersComparable": true,
+      "captureThumbTemplate": null,
+      "lemoncamsSlug": "stripchat",
+      "retentionDays": 30
+    },
+    "bc": {
+      "slug": "bongacams",
+      "photoHosts": ["i.bgicdn.com"],
+      "hasProfilePortrait": true,
+      "liveSnapshots": true,
+      "viewersComparable": true,
+      "captureThumbTemplate": null,
+      "lemoncamsSlug": "bongacams"
+    }
+  }
+}

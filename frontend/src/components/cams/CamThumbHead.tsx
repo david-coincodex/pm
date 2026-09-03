@@ -1,3 +1,5 @@
+import { ALL_THUMB_HOSTS } from '@/lib/cams/providers/meta';
+
 /**
  * Head support for pages that render provider thumbnails: connection warmup + the
  * broken-image fallback. Belongs on EVERY page with cam thumbs — the live-sex layout covers
@@ -12,7 +14,7 @@
  * credentials mode — a crossorigin-anonymous preconnect warms a socket that plain images can
  * never use, which is worse than no hint at all.
  */
-const THUMB_HOSTS = ['https://thumb.live.mmcdn.com', 'https://i.bgicdn.com'];
+const THUMB_HOSTS = ALL_THUMB_HOSTS.map((h) => `https://${h}`);
 
 /**
  * Broken-thumbnail handler.

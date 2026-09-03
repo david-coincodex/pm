@@ -7,7 +7,9 @@
  * frontend, whose grids show live cam thumbnails — so captures are NSFW by nature (this is
  * an adult site, and that is the point of the announcement).
  */
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { chromium } from 'playwright';
 
 const VIEWPORT = { width: 1440, height: 900 };
@@ -71,6 +73,10 @@ export async function firstLiveModelPath(frontend) {
   const res = await fetch(`${frontend}/live-sex/`).catch(() => null);
   if (!res || !res.ok) return null;
   const html = await res.text();
-  const m = html.match(/\/live-sex\/(chaturbate|bongacams)\/[A-Za-z0-9_.-]+\//);
+  const slugs = Object.values(
+    JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../backend/src/api/cam-model/providers.json'), 'utf-8')).providers,
+  ).map((p) => p.slug);
+  // Slugs from the provider kernel — a new provider's model pages are matched automatically.
+  const m = html.match(new RegExp(`/live-sex/(${slugs.join('|')})/[A-Za-z0-9_.-]+/`));
   return m ? m[0] : null;
 }

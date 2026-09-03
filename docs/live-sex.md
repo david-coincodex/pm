@@ -18,9 +18,13 @@ CDNs; durable imagery lives in the media library.
 
 ### 1. Live snapshot (`frontend/src/lib/cams/registry.ts`)
 
-The runtime source of truth for *who is streaming right now*. An unref'd poller fetches both
-provider feeds every 45 s (Chaturbate affiliate JSON, 4×500 rows; BongaCams promo API, 7×300
-rows — page sizes chosen to stay under Next's 2 MB data-cache ceiling per response). Guarantees:
+The runtime source of truth for *who is streaming right now*. An unref'd poller fetches every
+enabled provider feed every 45 s (Chaturbate affiliate JSON, 4×500 rows; BongaCams promo API,
+7×300 rows — page sizes chosen to stay under Next's 2 MB data-cache ceiling per response;
+ImLive host-list API, one request, free-chat rooms only; StripChat via the Stripcash
+aggregators API, one request, public rooms only, capped at the 2,000 biggest). A provider is enabled when its
+credentials are set (`adapter.enabled()`), so an unset key skips the provider instead of
+breaking the snapshot. Guarantees:
 
 - Readers never wait inside the 45 s TTL; a hard 5-minute bound blocks rather than serve older data.
 - `instrumentation.ts` warms the snapshot at boot, so freshness never depends on traffic.
@@ -71,8 +75,9 @@ emits webhooks (hundreds of `/api/revalidate` calls per sync). Raw-layer creates
 
 ### 3. Photos (upload plugin, folder "Cam Models")
 
-Per model, up to **4 images**: the BongaCams profile portrait (Chaturbate has none) plus
-rotating live-snapshot captures. Ingestion is cron-drained, not inline in the sync request —
+Per model, up to **4 images**: the profile portrait where the feed has one (BongaCams, ImLive;
+Chaturbate has none) plus rotating live-snapshot captures (Chaturbate, BongaCams — ImLive's
+"thumb" IS its static portrait, so snapshotting it is disabled in the provider kernel). Ingestion is cron-drained, not inline in the sync request —
 restart-safe, and slow third-party fetches never block the request path. The pending queue is
 the DB itself: `profileImageUrl != profileImageIngestedUrl` means "not ingested yet"
 (the marker is stamped even on failure so a dead URL can't starve the queue).
@@ -82,6 +87,126 @@ timeout, 1 MB size check — header-based, i.e. advisory; safe because hosts are
 a strict host allowlist: `thumb.live.mmcdn.com`, `i.bgicdn.com`.
 Files land on the `strapi_public` volume and are served through the Traefik `/uploads` router
 on the public host (content-hashed names, so the 1-year cache header is safe under rotation).
+
+## Adding a provider
+
+Providers are self-contained plugins; shared code holds no provider branches. The mechanical
+part is small — the judgement calls below it are where the last four integrations actually went
+wrong before they went right.
+
+### The mechanical part
+
+1. `frontend/src/lib/cams/providers/<name>/` — `meta.ts` (facts as data), `feed.ts`
+   (server-only fetch + normalize + `outboundUrl`), `Player.tsx` / `Preview.tsx` (or omit for
+   photo-only), `index.ts`. Add the id to `providers/ids.ts`, the meta to `providers/meta.ts`,
+   the video plugin to `providers/video.ts`, the adapter to `providers/adapters.ts` —
+   `Record<CamProvider, …>` makes the build fail until all exist.
+2. One entry in `backend/src/api/cam-model/providers.json` (the backend kernel — photo hosts,
+   capability flags, optional `retentionDays`; everything backend derives from it).
+3. The id in the two Strapi enums: `cam-model.provider` and `cam-category.providerKey`
+   (literal by necessity — Strapi reads schemas statically). **Strapi caches schemas**: restart
+   the backend or the enum still rejects the new id.
+4. Env for its credentials — `docker-compose.yml`, `docker-compose.prod.yml`, the deploy
+   workflow's env block AND its `.env.deploy` echo, then `gh secret set … --env <env>`. A
+   secret gets no default so an unset key simply hides the provider; a public affiliate id
+   (it ships in every outbound URL) gets a baked default.
+5. Affiliate template verified per `docs/cam-affiliate-links.md`, then
+   `node scripts/check-provider-parity.mjs` — it asserts frontend meta ≡ backend kernel ≡ both
+   enums, and the compiler names anything else forgotten.
+6. Content LAST: the provider's cam-category row is pushed only after the deploy that ships the
+   enum, else the push 400s. Until the feed is enabled the row hides itself
+   (`getCamCategories` filters provider categories by `enabledProviders`), so it is safe to
+   create early and push late.
+
+### Categorisation — the part that gets skipped
+
+A provider whose models reach no categories is invisible on the pages that carry search
+traffic. **Measure coverage before declaring the integration done**: what share of its rooms
+match at least one `tag` category? Real numbers from this codebase — ImLive 92%, StripChat 99%,
+Chaturbate 72%, and BongaCams 31% until it was fixed.
+
+The trap is assuming a provider's own tags are the categorisation source:
+
+- BongaCams ships **20 tags per model** that describe ACTS (`dildofucking`, `cock-sucking`,
+  `dancing`) and almost nothing about the model. Its attributes lived in separate profile
+  fields (`ethnicity`, `hair_color`, `bust_size`, `butt_size`, `pubic_hair`, `display_age`,
+  `is_vibratoy`) that we ignored for months.
+- StripChat ships ~67 tags per model over 835 slugs, prefixed by niche (`girls/asian`), and its
+  profile-attribute fields are null on the aggregator endpoint.
+- ImLive ships no tags at all — only structured attributes.
+
+So: find where the attributes actually live, map them to OUR vocabulary (the `matchTags` of the
+`tag` cam-categories) with an explicit table, and **build that table from a measured sample** —
+every provider map in this repo carries the observed value counts next to its keys. An
+unmapped value must produce no tag rather than a guess. Two rules worth stating because both
+were nearly broken: never emit a provider's raw taxonomy wholesale (the sync caps tags at 20,
+and the chips become noise), and never map a field that does not mean what it looks like —
+StripChat's `sexual_preference` is "bisexual" for 73% of rooms, which would file most of the
+roster under gay/bi on the strength of a preference checkbox.
+
+### Ranking and the viewer badge
+
+`ranking.viewersComparable` says whether the provider's count is a real concurrent audience.
+True for Chaturbate (`num_users`, median 137), BongaCams (`members_count`, median 96) and
+StripChat (`viewersCount`, max 4,659) — those compete on the raw number and show the badge.
+False for ImLive, whose number is guests in a free room (0–7): it is ranked editorially at
+`mixShare` cadence and its cards hide the badge rather than print a misleading "0". Sorting a
+non-comparable number against real ones put ImLive's best room at global rank 800 of 890, which
+is how the flag came to exist. The same flag also gates the backfill's `MIN_PEAK`, since a
+viewer threshold cannot filter a number that is not an audience.
+
+### Similarity is cross-provider by construction
+
+"Similar" and "Next" compare only tags that exist in our shared vocabulary
+(`crossProviderTags`). A provider's private words otherwise act as a provider marker — ImLive
+stamps every room `free chat`, BongaCams describes acts nobody else uses — and the model page
+ends up recommending the cam site the visitor is already on. Provider, gender and language
+categories never participate in similarity.
+
+### Compliance is a data decision, not a code decision
+
+Read the provider's aggregator terms and express them as kernel facts, so the crons obey them
+without knowing the provider exists:
+
+- **Images that may not be downloaded** → `hasProfilePortrait: false`, `liveSnapshots: false`,
+  `photoHosts: []`. That is what keeps the ingest crons away (their provider lists derive from
+  those flags). Leave `photoHosts` empty even though the frontend emits those hosts: putting
+  never-downloaded hosts in an SSRF allowlist would pre-authorise the forbidden fetch, and the
+  parity check now treats a no-ingest provider as the deliberate exception.
+- **A stricter deletion window** → `retentionDays` in the backend kernel. `cleanupExpired`
+  groups providers by effective window and sweeps each on its own cutoff (StripChat is 30 days
+  against the house 60).
+- **Geo restrictions** → drop those rooms in the feed. Our pages are one statically cached
+  document for every country, so per-viewer filtering is not available; log the dropped count
+  so the cost stays visible (StripChat drops ~62% of public rooms and still fills its cap).
+
+### Playback
+
+Three shapes exist, and the plugin contract is what makes shared code inherit monetisation and
+controls rather than silently miss them:
+
+- **Plain HLS** (BongaCams, StripChat) — `HlsSurface`/`HlsPreview` one-liners,
+  `ownsControls: false`, `canPlay: (m) => Boolean(m.streamUrl)`. Verify the WHOLE chain from a
+  non-datacenter IP: master → variant → segments, each `200` with `access-control-allow-origin:
+  *`. Chaturbate's tokens turned out IP-bound once; that failure only appears in production.
+- **Provider iframe** (Chaturbate) — `ownsControls: true`, since our bar cannot reach a
+  cross-origin player.
+- **Provider SDK** (ImLive) — expect to fight it. Theirs pauses on tab-hide and resumes live
+  video from a stale buffer, and its `onUserGestureMade()` silently re-requests the stream, so
+  calling it on a healthy instance kills playback. Keep such quirks in the provider directory
+  (`imlive/useLiveRecovery.ts`), never in the shared host.
+
+Also check whether the feed publishes a session start (`seconds_online` or similar). If it does
+not, nothing breaks: the sync stamps `wentOnlineAt` from our own first sighting, which drives
+both the "Live for" pill and the heatmap.
+
+### Verification before merge
+
+`check-provider-parity.mjs`, both `tsc` runs, ESLint, the affiliate grep gate, and the saved
+cam-video regression suite for the EXISTING providers (a new provider must not disturb them).
+Then in a real browser: hub page, model page playback, hover preview, mute, `/out/` redirect
+equal to the template (live + punctuated username + offline + garbage→404), viewer badge,
+category coverage, and the sync writing sane rows.
 
 ## Cron jobs
 
@@ -145,8 +270,10 @@ Frontend-side "crons" are just the snapshot poller (45 s) and the piggy-backed m
 | Variable | Where | Purpose |
 |---|---|---|
 | `CHATURBATE_WM`, `BONGACAMS_CAMPAIGN` | frontend env (server-only, never `NEXT_PUBLIC_`) | Affiliate feed credentials |
+| `IMLIVE_API_KEY`, `IMLIVE_WID` | frontend env (server-only) | ImLive host-list API key + affiliate WID; key unset ⇒ ImLive disabled |
+| `STRIPCASH_API_KEY`, `STRIPCASH_USER_ID` | frontend env (server-only) | Stripcash per-domain aggregators key + affiliate userId; key unset ⇒ StripChat disabled |
 | `CAM_SYNC_SECRET` | **both** backend and frontend env | Guards `POST /api/cam-models/sync`; unset backend-side = route rejects everything; unset frontend-side = sync disabled with one warning log |
-| `CAM_MODEL_RETENTION_DAYS` | backend env (optional) | Cleanup window override, default 60 |
+| `CAM_MODEL_RETENTION_DAYS` | backend env (optional) | Cleanup window override, default 60. A provider whose terms demand a stricter window sets `retentionDays` in the backend kernel (providers.json) and is swept on its own cutoff — StripChat is 30 days, per Stripcash's aggregator rules |
 
 Dev defaults live in `docker-compose.yml` / `backend/.env`
 (`local-dev-cam-sync-secret`). Staging/production get `CAM_SYNC_SECRET` from the

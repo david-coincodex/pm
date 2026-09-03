@@ -213,7 +213,7 @@ const EXCLUDED_COLLECTIONS = new Set(['cam-favorites', 'cam-models']);
 /**
  * Media owned by an excluded collection must not sync either. cam-model photos (API profile
  * pics + snapshot captures) are uploaded by the backend capture service as `${key}-${ts}` where
- * key is `${provider}:${username}` (provider ∈ cb|bc) — see
+ * key is `${provider}:${username}` (provider ids from the kernel manifest) — see
  * backend/src/api/cam-model/services/cam-model.ts. That `provider:` colon prefix is the
  * deterministic signal (no editorial filename carries a colon). These images regenerate on each
  * environment from its own live feeds via the ingest/snapshot crons, so shipping the local dev
@@ -221,7 +221,13 @@ const EXCLUDED_COLLECTIONS = new Set(['cam-favorites', 'cam-models']);
  * Filtered from BOTH sides of the file diff: local ones never upload, staging's own captures
  * never register as "staging-only" noise.
  */
-const isCamModelMedia = (file) => /^(cb|bc):/.test(file.name ?? '');
+/** Provider ids come from the kernel (backend/src/api/cam-model/providers.json), so a new
+ * provider's captures are excluded from content pushes automatically. */
+const CAM_PROVIDER_IDS = Object.keys(
+  JSON.parse(readFileSync(join(REPO, 'backend/src/api/cam-model/providers.json'), 'utf-8')).providers,
+);
+const CAM_MEDIA_RE = new RegExp(`^(${CAM_PROVIDER_IDS.join('|')}):`);
+const isCamModelMedia = (file) => CAM_MEDIA_RE.test(file.name ?? '');
 
 /**
  * Natural key per collection — the cross-instance identity (documentIds differ, see header).

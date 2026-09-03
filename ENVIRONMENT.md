@@ -55,6 +55,12 @@ the `DATABASE_*` values.
 | `GA_API_SECRET` | O | 🔒 GA4 Measurement Protocol secret for **server-side** offer/cam-click events (this audience blocks gtag). Server-only — never `NEXT_PUBLIC_`. |
 | `CHATURBATE_WM` | O | 🔒 Chaturbate affiliate WM. Default `y98oG` (baked in `docker-compose.prod.yml`). |
 | `BONGACAMS_CAMPAIGN` | O | 🔒 BongaCams campaign id. Default `660500`. Unset ⇒ BongaCams disabled (Chaturbate-only). |
+| `IMLIVE_API_KEY` | O | 🔒 ImLive Webcam API subscription key. Unset ⇒ ImLive disabled (not listed, category hidden). |
+| `IMLIVE_WID` | O | ImLive affiliate WID for the /out/ template. Default `126682575285` (baked in compose). |
+| `STRIPCASH_API_KEY` | O | 🔒 Stripcash (StripChat) aggregators-API key, issued PER DOMAIN in their dashboard. Unset ⇒ StripChat disabled (not listed, category hidden). |
+| `STRIPCASH_USER_ID` | O | Stripcash affiliate userId for the /out/ template + feed. Default baked in compose (it ships in every outbound URL, so not a secret). |
+| `NEXT_PUBLIC_IMLIVE_SPONSOR_ID` | O | 🏗️ ImLive partner sponsor id for its player (`10207425`). Public — inlined into the client bundle, so it must be a **build arg**; a runtime value alone does nothing. |
+| `NEXT_PUBLIC_IMLIVE_ORIGIN` | O | 🏗️ ImLive origin id for its player (`53175`). Same build-time rule. Player attribution only — the /out/ redirect is the money path. |
 | **`CAM_SYNC_SECRET`** | **R** | 🔒 **Same value as the backend.** Unset frontend-side ⇒ the registry sync is disabled (one warning log), registry never fills. |
 | `NODE_ENV` / `PORT` / `HOSTNAME` | R | `production` / `3002` / `0.0.0.0`. |
 
@@ -113,6 +119,6 @@ If the live-cam section misbehaves, it's almost always one of these:
 |---|---|---|
 | **`CAM_SYNC_SECRET`** | backend **and** frontend, same value | Registry never fills → no model pages, empty models-sitemap. |
 | `NEXT_PUBLIC_STRAPI_URL` | frontend **build** | Wrong value ⇒ every browser call 404s against the wrong (gated) CMS. |
-| `CHATURBATE_WM` / `BONGACAMS_CAMPAIGN` | frontend runtime | Wrong ⇒ affiliate clicks credited to the wrong account / provider disabled. |
+| `CHATURBATE_WM` / `BONGACAMS_CAMPAIGN` / `IMLIVE_API_KEY` + `IMLIVE_WID` / `STRIPCASH_API_KEY` + `STRIPCASH_USER_ID` | frontend runtime | Wrong ⇒ affiliate clicks credited to the wrong account / provider disabled. |
 | `GA_API_SECRET` | frontend runtime | Unset ⇒ cam/offer clicks aren't counted server-side. |
 | `REVALIDATE_SECRET` | frontend runtime + Strapi webhook | Unset ⇒ CMS edits wait for the ISR window instead of purging instantly. |
