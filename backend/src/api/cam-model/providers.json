@@ -19,6 +19,16 @@
       "captureThumbTemplate": null,
       "lemoncamsSlug": "imlive"
     },
+    "sc": {
+      "slug": "stripchat",
+      "photoHosts": [],
+      "hasProfilePortrait": false,
+      "liveSnapshots": false,
+      "viewersComparable": true,
+      "captureThumbTemplate": null,
+      "lemoncamsSlug": "stripchat",
+      "retentionDays": 30
+    },
     "bc": {
       "slug": "bongacams",
       "photoHosts": ["i.bgicdn.com"],

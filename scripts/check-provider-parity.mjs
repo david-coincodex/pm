@@ -90,10 +90,21 @@ for (const id of frontendIds.filter((i) => backend[i] && frontendMeta.has(i))) {
   // Superset, not equality: the frontend list is "hosts we preconnect because we emit URLs
   // there", the backend list is "hosts the ingest may download from". A provider whose feed
   // sometimes names an alternate CDN belongs in the backend list only — preconnecting a host
-  // we may never use is waste. What must hold: everything we emit is downloadable.
-  const missing = f.thumbHosts.filter((h) => !b.photoHosts.includes(h));
+  // we may never use is waste. What must hold: everything we DOWNLOAD is allowlisted.
+  //
+  // A provider that ingests nothing is the exception, and deliberately so: some terms permit
+  // hotlinking only (Stripcash: "You must not download these images"). Its photoHosts stays
+  // EMPTY on purpose — putting never-downloaded hosts in an SSRF allowlist would pre-authorise
+  // exactly the fetches the terms forbid. So the subset rule applies only where an ingest
+  // capability is actually on; if one is ever switched on, this check starts demanding the
+  // hosts, which is the moment to think about it again.
+  const ingests = b.hasProfilePortrait || b.liveSnapshots;
+  const missing = ingests ? f.thumbHosts.filter((h) => !b.photoHosts.includes(h)) : [];
   if (missing.length) {
     fail(`${id}: frontend emits [${missing}] but backend photoHosts [${b.photoHosts}] would reject them`);
+  }
+  if (!ingests && b.photoHosts.length > 0) {
+    fail(`${id}: ingests nothing (hasProfilePortrait/liveSnapshots both false) yet allowlists photoHosts [${b.photoHosts}]`);
   }
   if (f.hasProfilePortrait !== b.hasProfilePortrait) fail(`${id}: hasProfilePortrait disagrees`);
   if (f.liveSnapshots !== b.liveSnapshots) fail(`${id}: liveSnapshots disagrees`);
@@ -101,6 +112,11 @@ for (const id of frontendIds.filter((i) => backend[i] && frontendMeta.has(i))) {
   // decides on it whether a viewer-count threshold may filter the provider's rows at all.
   if (f.viewersComparable !== b.viewersComparable) fail(`${id}: viewersComparable disagrees`);
   if (f.lemoncamsSlug !== b.lemoncamsSlug) fail(`${id}: lemoncamsSlug disagrees`);
+  // Backend-only (like captureThumbTemplate): a stricter deletion window a provider's terms
+  // demand. Nonsense values would silently widen retention, so validate rather than trust.
+  if (b.retentionDays !== undefined && !(Number.isInteger(b.retentionDays) && b.retentionDays > 0)) {
+    fail(`${id}: retentionDays must be a positive integer, got ${JSON.stringify(b.retentionDays)}`);
+  }
 }
 
 // ── 3: the two Strapi enums (literal by necessity) ───────────────────────────────
