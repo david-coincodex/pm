@@ -45,6 +45,7 @@ function parseMeta(src, file) {
     thumbHosts: pickList('thumbHosts'),
     hasProfilePortrait: pickBool('hasProfilePortrait'),
     liveSnapshots: pickBool('liveSnapshots'),
+    viewersComparable: pickBool('viewersComparable'),
     lemoncamsSlug: pick('lemoncamsSlug'),
   };
 }
@@ -96,6 +97,9 @@ for (const id of frontendIds.filter((i) => backend[i] && frontendMeta.has(i))) {
   }
   if (f.hasProfilePortrait !== b.hasProfilePortrait) fail(`${id}: hasProfilePortrait disagrees`);
   if (f.liveSnapshots !== b.liveSnapshots) fail(`${id}: liveSnapshots disagrees`);
+  // Must agree in both runtimes: the frontend hides the viewer badge on this fact, the backend
+  // decides on it whether a viewer-count threshold may filter the provider's rows at all.
+  if (f.viewersComparable !== b.viewersComparable) fail(`${id}: viewersComparable disagrees`);
   if (f.lemoncamsSlug !== b.lemoncamsSlug) fail(`${id}: lemoncamsSlug disagrees`);
 }
 

@@ -16,6 +16,14 @@ type ProviderEntry = {
   hasProfilePortrait: boolean;
   liveSnapshots: boolean;
   /**
+   * Is `viewers`/`peakViewers` a real concurrent-audience count? Mirrors the frontend meta's
+   * ranking.viewersComparable (parity-checked). FALSE for a provider whose number measures
+   * something else — ImLive reports guests in its free room (0-7) — which is why any backend
+   * rule that treats the number as a popularity PROXY must exclude such providers rather than
+   * silently rank or filter them out of existence.
+   */
+  viewersComparable: boolean;
+  /**
    * URL template for a fresh LIVE frame, `{username}` substituted — for providers whose thumb
    * path is derivable. null when only the feed's stored thumbUrl can be used (hashed paths).
    */
@@ -42,6 +50,14 @@ export const PORTRAIT_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
 /** Providers whose thumb is a LIVE frame worth capturing periodically → the snapshot cron. */
 export const SNAPSHOT_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
   (id) => PROVIDERS[id].liveSnapshots,
+);
+
+/**
+ * Providers whose peakViewers can be read as "how much audience did this room draw" — the only
+ * ones a viewer-count threshold can meaningfully filter (see the backfill's MIN_PEAK).
+ */
+export const AUDIENCE_PEAK_PROVIDERS: ProviderId[] = PROVIDER_IDS.filter(
+  (id) => PROVIDERS[id].viewersComparable,
 );
 
 /** `cb` → `chaturbate` on lemoncams, for the one-shot activity-history backfill. */

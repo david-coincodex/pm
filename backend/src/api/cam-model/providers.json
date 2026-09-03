@@ -6,6 +6,7 @@
       "photoHosts": ["thumb.live.mmcdn.com"],
       "hasProfilePortrait": false,
       "liveSnapshots": true,
+      "viewersComparable": true,
       "captureThumbTemplate": "https://thumb.live.mmcdn.com/riw/{username}.jpg",
       "lemoncamsSlug": "chaturbate"
     },
@@ -14,6 +15,7 @@
       "photoHosts": ["i0.wlmediahub.com", "i0.imlmediahub.com"],
       "hasProfilePortrait": true,
       "liveSnapshots": false,
+      "viewersComparable": false,
       "captureThumbTemplate": null,
       "lemoncamsSlug": "imlive"
     },
@@ -22,6 +24,7 @@
       "photoHosts": ["i.bgicdn.com"],
       "hasProfilePortrait": true,
       "liveSnapshots": true,
+      "viewersComparable": true,
       "captureThumbTemplate": null,
       "lemoncamsSlug": "bongacams"
     }
