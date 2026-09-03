@@ -69,6 +69,23 @@ https://imlive.com/wmaster.asp?wid={IMLIVE_WID}&linkid=1036&promocode=BCODEL0000
   different WID, no nickname. Model clicks and site-deal clicks are attributed separately.
 - Env: `IMLIVE_WID` (server-only, default `126682575285` baked in compose).
 
+### StripChat (`sc`) — bought through Stripcash
+
+```
+https://go.whitetrafsa.com?onlineModels={username}&userId={STRIPCASH_USER_ID}
+```
+
+- `{username}` = the feed `username` verbatim (mixed case and `__` verified: `Isa__Blanc`).
+- Verified live: `302 → stripchat.com/{username}?affiliateId=…&modelName=…&userId=…` — the
+  `affiliateId` is minted per click by their redirector, so the attribution hop is theirs to
+  build; ours only needs to carry `userId`.
+- `userId` is the affiliate id, NOT a secret — it travels in every outbound URL. It doubles as
+  the feed's query parameter, which is why `STRIPCASH_USER_ID` has a baked default while
+  `STRIPCASH_API_KEY` (the per-domain feed key) never does.
+- The feed row also carries a ready-made `clickUrl`; we ignore it and build from the template,
+  so online, offline and registry-only models all produce the identical link.
+- Env: `STRIPCASH_USER_ID` (server-only).
+
 ## Where the redirect MUST be used (and is)
 
 Every user-facing outbound surface links `routes.camOut(provider, username)` — never a raw
@@ -92,12 +109,15 @@ sitemap all link `routes.camModel` (our page), never `/out/`. The `affiliateUrl`
 **Grep gate** (run after touching cam components; must return nothing):
 
 ```
-grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com\|imlive\.com' frontend/src/components frontend/src/app \
-  | grep -v 'app/out/model' | grep -v thumb.live.mmcdn
+grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com\|imlive\.com\|stripchat\.com\|whitetrafsa\.com' \
+  frontend/src/components frontend/src/app | grep -v 'app/out/model' | grep -v thumb.live.mmcdn
 ```
 
-(The ImLive SDK loader in `lib/cams/providers/imlive/sdk.ts` references `wlmediahub.com` —
-player infrastructure, not a money link, and outside the gated directories anyway.)
+Only money hosts belong in that list. Media hosts are deliberately absent: `wlmediahub.com`
+(ImLive's SDK loader), `doppiocdn.com` / `strpst.com` (StripChat images) and
+`growcdnssedge.com` (its HLS) are player and image infrastructure that legitimately appears in
+provider metadata and card markup — the same reason `thumb.live.mmcdn.com` is filtered out
+above. The gate polices links that carry attribution, not bytes.
 
 ## Adding a provider — checklist
 
@@ -117,6 +137,10 @@ player infrastructure, not a money link, and outside the gated directories anywa
 4. Run the grep gate above.
 
 ## Current verified state (2026-09-03, live probes)
+
+- `/out/model/stripchat/MZZZWETWET/` → `302 https://go.whitetrafsa.com/?onlineModels=MZZZWETWET&userId=d049…b2a6`,
+  which 302s on to `stripchat.com/MZZZWETWET?affiliateId=…` ✓ (also `Isa__Blanc` with a double
+  underscore ✓; garbage username → 404, no event ✓)
 
 - `/out/model/chaturbate/vesia/` → `302 https://chaturbate.com/in/?tour=YrCr&campaign=y98oG&track=default&room=vesia` ✓
 - `/out/model/bongacams/CarmellaAngel/` → `302 https://bngprm.com/promo.php?type=direct_link&v=2&c=660500&models[]=CarmellaAngel` ✓

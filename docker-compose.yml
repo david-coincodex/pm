@@ -55,6 +55,8 @@ services:
       # ImLive hostlist API key (secret — no default; unset ⇒ ImLive disabled entirely).
       IMLIVE_API_KEY: ${IMLIVE_API_KEY:-}
       IMLIVE_WID: ${IMLIVE_WID:-126682575285}
+      STRIPCASH_API_KEY: ${STRIPCASH_API_KEY:-}
+      STRIPCASH_USER_ID: ${STRIPCASH_USER_ID:-d049206f9ddd5694ad628f6e5ba9717a76851349ae4e3e0565f219188cb9b2a6}
       # Shared secret for the cam feed roster sync -> Strapi POST /api/cam-models/sync.
       # Must match CAM_SYNC_SECRET in backend/.env.
       CAM_SYNC_SECRET: ${CAM_SYNC_SECRET:-local-dev-cam-sync-secret}

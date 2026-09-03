@@ -29,7 +29,7 @@ const PROVIDER_SLUGS = LEMONCAMS_SLUGS;
 /** VERSIONED: bump when a provider is added, so the one-shot scan runs once more per
  * environment and imports the newcomer's history. Merges are idempotent and pair-rich rows are
  * skipped, so the re-scan is mostly cursor movement. */
-const STORE_KEY = 'activityBackfill-v2';
+const STORE_KEY = 'activityBackfill-v3';
 /** Rows advanced per tick; at DELAY_MS spacing a tick stays well inside its cron window. */
 const BATCH = 250;
 const DELAY_MS = 300;

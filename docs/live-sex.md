@@ -21,7 +21,8 @@ CDNs; durable imagery lives in the media library.
 The runtime source of truth for *who is streaming right now*. An unref'd poller fetches every
 enabled provider feed every 45 s (Chaturbate affiliate JSON, 4×500 rows; BongaCams promo API,
 7×300 rows — page sizes chosen to stay under Next's 2 MB data-cache ceiling per response;
-ImLive host-list API, one request, free-chat rooms only). A provider is enabled when its
+ImLive host-list API, one request, free-chat rooms only; StripChat via the Stripcash
+aggregators API, one request, public rooms only, capped at the 2,000 biggest). A provider is enabled when its
 credentials are set (`adapter.enabled()`), so an unset key skips the provider instead of
 breaking the snapshot. Guarantees:
 
@@ -169,8 +170,9 @@ Frontend-side "crons" are just the snapshot poller (45 s) and the piggy-backed m
 |---|---|---|
 | `CHATURBATE_WM`, `BONGACAMS_CAMPAIGN` | frontend env (server-only, never `NEXT_PUBLIC_`) | Affiliate feed credentials |
 | `IMLIVE_API_KEY`, `IMLIVE_WID` | frontend env (server-only) | ImLive host-list API key + affiliate WID; key unset ⇒ ImLive disabled |
+| `STRIPCASH_API_KEY`, `STRIPCASH_USER_ID` | frontend env (server-only) | Stripcash per-domain aggregators key + affiliate userId; key unset ⇒ StripChat disabled |
 | `CAM_SYNC_SECRET` | **both** backend and frontend env | Guards `POST /api/cam-models/sync`; unset backend-side = route rejects everything; unset frontend-side = sync disabled with one warning log |
-| `CAM_MODEL_RETENTION_DAYS` | backend env (optional) | Cleanup window override, default 60 |
+| `CAM_MODEL_RETENTION_DAYS` | backend env (optional) | Cleanup window override, default 60. A provider whose terms demand a stricter window sets `retentionDays` in the backend kernel (providers.json) and is swept on its own cutoff — StripChat is 30 days, per Stripcash's aggregator rules |
 
 Dev defaults live in `docker-compose.yml` / `backend/.env`
 (`local-dev-cam-sync-secret`). Staging/production get `CAM_SYNC_SECRET` from the
