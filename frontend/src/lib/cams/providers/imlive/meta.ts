@@ -33,8 +33,10 @@ export const imliveMeta: ProviderMeta = {
     mixShare: 12,
   },
   video: {
-    // Their SDK renders its own sound button.
-    ownsControls: true,
+    // The SDK CAN render its own sound button, but we suppress it (Player passes
+    // soundButton: false) and bridge the shared mute store into setVolume() instead — so
+    // imLive gets the same bar and header toggle as every same-origin surface.
+    ownsControls: false,
   },
   external: { lemoncamsSlug: 'imlive' },
 };

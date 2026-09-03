@@ -23,6 +23,26 @@ const REASON_NAVIGATE_AWAY = 902;
 /** Close reasons produced by our own destroy() — never a stream failure. */
 const SELF_CLOSE_REASONS = new Set(['userExit', 'navigateAway']);
 
+/**
+ * Close reasons that mean the room is genuinely gone: the model ended her free session, moved
+ * to a paid show, or the gateway refused us. Rebuilding cannot help, and MEASURED it actively
+ * hurts — three quick reconnects to a departed room earned an `accessDenied` from their
+ * gateway. These go straight to the affiliate facade; every other reason (transport drops,
+ * timeouts, an unlabelled close) is ambiguous and may be worth one rebuild.
+ */
+const TERMINAL_CLOSE_REASONS = new Set([
+  'hostOffline',
+  'isOffline',
+  'accessDenied',
+  'hostInPrivate',
+  'roomClosed',
+]);
+
+/** Is this close reason final, or worth a rebuild? See TERMINAL_CLOSE_REASONS. */
+export function isTerminalClose(why: string): boolean {
+  return TERMINAL_CLOSE_REASONS.has(why);
+}
+
 type VideoChatInstance = {
   destroy?: (reason: number) => void;
   setVolume?: (v: number) => void;
@@ -46,16 +66,27 @@ export type ImliveMountOptions = {
   volume: number;
   /** true on cards: the documented fast preview path (no chat gateway handshake). */
   preview: boolean;
-  /** Show the SDK's own sound button (model page yes, silent card preview no). */
+  /** Show the SDK's own sound button. We keep it OFF everywhere: the model page bridges the
+   * shared mute store into setVolume() so imLive wears the same bar as every other surface,
+   * and card previews are silent. Kept as an option in case a surface ever wants theirs. */
   soundButton: boolean;
   handlers?: Handlers;
 };
 
+/** A mounted player: release it on unmount, and drive its volume from the shared mute store. */
+export type ImlivePlayerHandle = {
+  /** ALWAYS call on unmount: the SDK holds a comms connection; destroy() releases it. */
+  teardown: () => void;
+  /** 0..1. The documented live-volume API — no remount needed for a mute toggle. */
+  setVolume: (volume: number) => void;
+  /** The documented autoplay-resume call; invoke inside a real user gesture (our unmute click). */
+  userGesture: () => void;
+};
+
 /**
- * Mount the SDK player. Returns a teardown function — ALWAYS call it on unmount: the SDK holds
- * a comms connection to the room, and `destroy()` is what releases it.
+ * Mount the SDK player. Returns a handle — ALWAYS call its teardown on unmount.
  */
-export async function mountImlivePlayer(opts: ImliveMountOptions): Promise<() => void> {
+export async function mountImlivePlayer(opts: ImliveMountOptions): Promise<ImlivePlayerHandle> {
   const room = opts.model.imliveRoom;
   if (!room) throw new Error('imlive: model has no room connection data');
 
@@ -127,16 +158,27 @@ export async function mountImlivePlayer(opts: ImliveMountOptions): Promise<() =>
     },
   });
 
-  return () => {
-    try {
-      instance.destroy?.(REASON_NAVIGATE_AWAY);
-    } catch {
-      /* a teardown failure must never break navigation */
-    }
+  return {
+    teardown: () => {
+      try {
+        instance.destroy?.(REASON_NAVIGATE_AWAY);
+      } catch {
+        /* a teardown failure must never break navigation */
+      }
+    },
+    setVolume: (volume: number) => {
+      try {
+        instance.setVolume?.(volume);
+      } catch {
+        /* a volume failure must never take the stream down */
+      }
+    },
+    userGesture: () => {
+      try {
+        instance.onUserGestureMade?.();
+      } catch {
+        /* same */
+      }
+    },
   };
-}
-
-/** Push the shared mute state into a live instance (model page sound button parity). */
-export function setImliveVolume(instance: unknown, volume: number): void {
-  (instance as VideoChatInstance | null)?.setVolume?.(volume);
 }
