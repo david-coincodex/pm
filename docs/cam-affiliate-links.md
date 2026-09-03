@@ -25,7 +25,7 @@ the short ids `cb`/`bc` are internal data keys and never appear in URLs or analy
 
 ## The saved templates (one per provider)
 
-Templates live in the provider adapters — `frontend/src/lib/cams/providers/*.ts`, method
+Templates live in the provider adapters — `frontend/src/lib/cams/providers/*/feed.ts`, method
 `outboundUrl(username)` (the `CamProviderAdapter` interface makes it mandatory for every
 future provider).
 
@@ -55,6 +55,20 @@ https://bngprm.com/promo.php?type=direct_link&v=2&c={BONGACAMS_CAMPAIGN}&models[
   slugs like `tina-love-`; both forms resolve — we use the username we already have.)
 - Env: `BONGACAMS_CAMPAIGN` (server-only).
 
+### ImLive (`il`)
+
+```
+https://imlive.com/wmaster.asp?wid={IMLIVE_WID}&linkid=1036&promocode=BCODEL0000000_00000&from=freevideo10&nickname={username}
+```
+
+- `{username}` = the feed `NickName` verbatim (mixed case and `_` verified: `Ari_Love`).
+- `wmaster.asp` answers **200 directly** — it is itself the tracking landing (attribution in
+  the query), no redirect hop to follow.
+- The **site-deal offer** (`/offer/`, sidebar) uses a different template on purpose —
+  `wmaster2.ashx?WID=126592432095&LinkID=1036&…&from=freevideo6` (per the deals sheet):
+  different WID, no nickname. Model clicks and site-deal clicks are attributed separately.
+- Env: `IMLIVE_WID` (server-only, default `126682575285` baked in compose).
+
 ## Where the redirect MUST be used (and is)
 
 Every user-facing outbound surface links `routes.camOut(provider, username)` — never a raw
@@ -78,9 +92,12 @@ sitemap all link `routes.camModel` (our page), never `/out/`. The `affiliateUrl`
 **Grep gate** (run after touching cam components; must return nothing):
 
 ```
-grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com' frontend/src/components frontend/src/app \
+grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com\|imlive\.com' frontend/src/components frontend/src/app \
   | grep -v 'app/out/model' | grep -v thumb.live.mmcdn
 ```
+
+(The ImLive SDK loader in `lib/cams/providers/imlive/sdk.ts` references `wlmediahub.com` —
+player infrastructure, not a money link, and outside the gated directories anyway.)
 
 ## Adding a provider — checklist
 
@@ -99,9 +116,11 @@ grep -rn 'chaturbate\.com\|bongacams\.com\|bngprm\.com' frontend/src/components 
      http://localhost:3002/out/model/<site>/<username>/` must equal the template output.
 4. Run the grep gate above.
 
-## Current verified state (2026-09-02, live probes)
+## Current verified state (2026-09-03, live probes)
 
 - `/out/model/chaturbate/vesia/` → `302 https://chaturbate.com/in/?tour=YrCr&campaign=y98oG&track=default&room=vesia` ✓
 - `/out/model/bongacams/CarmellaAngel/` → `302 https://bngprm.com/promo.php?type=direct_link&v=2&c=660500&models[]=CarmellaAngel` ✓
-- Offline registry-only model → same template ✓ · garbage username → 404, no event ✓
+- `/out/model/imlive/CleoLangley/` → `302 https://imlive.com/wmaster.asp?wid=126682575285&linkid=1036&promocode=BCODEL0000000_00000&from=freevideo10&nickname=CleoLangley` ✓
+  (also `Ari_Love` with underscore ✓; template URL itself answers `HTTP 200` at imlive.com ✓)
+- Offline registry-only model → same template ✓ (all providers) · garbage username → 404, no event ✓
 - Zero raw provider hrefs outside the adapters ✓
