@@ -67,13 +67,24 @@ export type OnlineSnapshot = {
   byId: Map<string, CamModel>;
   degradedProviders: CamProvider[];
   /**
-   * Providers whose feed fetch FAILED this refresh, retained-or-not — the monitoring signal
-   * (modelSync forwards it; the roster-sync heartbeat pings /fail on it). Distinct from
-   * degradedProviders on purpose: that one means "nothing to show" and drives the UI banner,
-   * so it stays empty during a warm outage where retention hides the blip from visitors —
-   * exactly when the monitor still must know the feed is dead.
+   * Providers whose feed fetch failed on THIS refresh, retained-or-not. Logging/diagnostics
+   * only. Distinct from degradedProviders on purpose: that one means "nothing to show" and
+   * drives the UI banner, so it stays empty during a warm outage where retention hides the
+   * blip from visitors.
    */
   failedProviders: CamProvider[];
+  /**
+   * Providers that have failed EVERY refresh for at least SUSTAINED_FAILURE_MS — the paging
+   * signal (modelSync forwards these; the roster-sync heartbeat pings /fail on them).
+   *
+   * Not the same as failedProviders, and the difference is the whole point: a single failed
+   * poll is routine (measured: all four feeds rejecting together on one cycle from a local
+   * network blip, every one of them covered by retention) and it woke someone up for nothing.
+   * Retention serves last-known models for the 45s until the next poll, so one miss is
+   * invisible to visitors and not actionable. A feed that is still failing minutes later IS
+   * actionable — a rotated key, a changed endpoint, a blocked IP — and that is what pages.
+   */
+  sustainedFailures: CamProvider[];
   fetchedAt: string;
   fetchedAtMs: number;
   /** Changes with every refresh — derived-result caches key off it. */
@@ -86,6 +97,7 @@ const EMPTY: OnlineSnapshot = {
   byId: new Map(),
   degradedProviders: adapters.map((a) => a.id),
   failedProviders: adapters.map((a) => a.id),
+  sustainedFailures: [],
   fetchedAt: new Date(0).toISOString(),
   fetchedAtMs: 0,
   version: 'empty',
@@ -137,7 +149,22 @@ function startPolling(): void {
   box.pollTimer = timer;
 }
 
-function build(models: CamModel[], degradedProviders: CamProvider[], failedProviders: CamProvider[]): OnlineSnapshot {
+/**
+ * How long a feed must be failing CONTINUOUSLY before it pages. Two full sync cadences: long
+ * enough that a blip or a single slow response never alerts, short enough that a genuinely
+ * broken feed is reported inside the check's own 10-minute period.
+ */
+const SUSTAINED_FAILURE_MS = 10 * 60 * 1000;
+
+/** provider → when its current unbroken run of failures started. Cleared on any success. */
+const failingSince = new Map<CamProvider, number>();
+
+function build(
+  models: CamModel[],
+  degradedProviders: CamProvider[],
+  failedProviders: CamProvider[],
+  sustainedFailures: CamProvider[],
+): OnlineSnapshot {
   const byViewers = rankModels(models);
   const byNewest = [...models].sort((a, b) => (b.onlineSince ?? '').localeCompare(a.onlineSince ?? ''));
   const fetchedAtMs = Date.now();
@@ -147,6 +174,7 @@ function build(models: CamModel[], degradedProviders: CamProvider[], failedProvi
     byId: new Map(models.map((m) => [m.id, m])),
     degradedProviders,
     failedProviders,
+    sustainedFailures,
     fetchedAt: new Date(fetchedAtMs).toISOString(),
     fetchedAtMs,
     version: `${fetchedAtMs}-${models.length}`,
@@ -160,12 +188,15 @@ function refresh(): Promise<OnlineSnapshot> {
       const results = await Promise.allSettled(adapters.map((a) => a.fetchOnline()));
       const models: CamModel[] = [];
       const degradedProviders: CamProvider[] = [];
-      // Monitoring signal: EVERY provider whose fetch rejected this cycle, retained or not.
+      // Diagnostics: every provider whose fetch rejected this cycle, retained or not.
       const failedProviders: CamProvider[] = [];
       results.forEach((r, i) => {
         const id = adapters[i].id;
         if (r.status === 'fulfilled') {
           models.push(...r.value);
+          // Recovery resets the clock, so an intermittent feed never accumulates its way to a
+          // page: only an UNBROKEN run of failures counts.
+          failingSince.delete(id);
           return;
         }
         // This provider's feed failed this cycle. Rather than drop all its models — which
@@ -177,6 +208,7 @@ function refresh(): Promise<OnlineSnapshot> {
         const retained = box.current?.byViewers.filter((m) => m.provider === id) ?? [];
         models.push(...retained);
         failedProviders.push(id);
+        if (!failingSince.has(id)) failingSince.set(id, Date.now());
         if (retained.length === 0) degradedProviders.push(id);
         console.error(
           `[cams] ${id} feed failed${retained.length ? ` (serving ${retained.length} last-known)` : ''}:`,
@@ -192,12 +224,17 @@ function refresh(): Promise<OnlineSnapshot> {
         return box.current ?? EMPTY;
       }
       box.lastFailureMs = 0;
-      box.current = build(models, degradedProviders, failedProviders);
+      const now = Date.now();
+      const sustainedFailures = failedProviders.filter(
+        (id) => now - (failingSince.get(id) ?? now) >= SUSTAINED_FAILURE_MS,
+      );
+      box.current = build(models, degradedProviders, failedProviders, sustainedFailures);
       // One line per refresh so freshness is VISIBLE in logs — this system silently served
       // hours-old data once; never again without a trace.
       console.log(
         `[cams] snapshot refreshed: ${models.length} models` +
-          (degradedProviders.length ? ` (degraded: ${degradedProviders.join(', ')})` : ''),
+          (degradedProviders.length ? ` (degraded: ${degradedProviders.join(', ')})` : '') +
+          (sustainedFailures.length ? ` (SUSTAINED failure: ${sustainedFailures.join(', ')})` : ''),
       );
       // Tripwire: a live roster never repeats exactly. When the data-cache incident froze the
       // feeds, the count sat at the same number for hours in plain sight — this makes a frozen
