@@ -26,7 +26,7 @@
     "cam-roster-sync": {
       "timeout": 600,
       "grace": 600,
-      "desc": "Roster sync heartbeat (POST /api/cam-models/sync; cadence = frontend SYNC_INTERVAL_MS ~5 min — retune both together; 10m period + 10m grace = deliberate margin). /fail = provider feeds failing or the lastSeenAt bulk touch broke; silence = the sync chain is broken."
+      "desc": "Roster sync heartbeat (POST /api/cam-models/sync; cadence = frontend SYNC_INTERVAL_MS ~5 min — retune both together; 10m period + 10m grace = deliberate margin). /fail = a provider feed failing CONTINUOUSLY for 10 min (single polls are covered by retention and do not page) or the lastSeenAt bulk touch broke; silence = the sync chain is broken."
     }
   }
 }
