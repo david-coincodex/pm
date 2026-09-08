@@ -12,7 +12,6 @@ import { compactNumber } from '@/lib/format';
 import { localizedPath, paginatedAlternates, paginatedNavLinks, paginatedTitle } from '@/lib/pagination';
 import CamBrowseShell from '@/components/cams/CamBrowseShell';
 import CamModelCard from '@/components/cams/CamModelCard';
-import CamFavoritesStrip from '@/components/cams/CamFavoritesStrip';
 import { CamGrid } from '@/components/cams/CamGrid';
 import Pagination from '@/components/Pagination';
 import SectionTitle from '@/components/SectionTitle';
@@ -30,8 +29,8 @@ import RichText from '@/components/RichText';
  *
  * The route is deliberately free of searchParams and cookies, which is what lets Next render
  * it statically and revalidate in the background: visitors are served finished HTML from the
- * route cache while the 60 s refresh happens off the request path. The two per-visitor pieces
- * (the favorites strip, the hearts) hydrate on the client instead — see CamFavoritesStrip.
+ * route cache while the 60 s refresh happens off the request path. The per-visitor pieces (the
+ * favorite hearts) hydrate on the client instead, so the document itself stays cookie-free.
  */
 
 type Props = { params: Promise<{ locale: string; path?: string[] }> };
@@ -114,9 +113,8 @@ export default async function CamListingPage({ params }: Props) {
   // and generateStaticParams, and the URL 404s — one view, one URL, no redirect to maintain.
   if (category && isDefaultFilter(seedFilterFor(category))) notFound();
 
-  const [t, tAccount, snapshot] = await Promise.all([
+  const [t, snapshot] = await Promise.all([
     getTranslations({ locale, namespace: 'liveSex' }),
-    getTranslations({ locale, namespace: 'account' }),
     getOnlineModels(),
   ]);
 
@@ -167,10 +165,6 @@ export default async function CamListingPage({ params }: Props) {
         {snapshot.degradedProviders.length > 0 && (
           <p className="mb-3 text-sm text-amber-600 dark:text-amber-400">{t('degradedNotice')}</p>
         )}
-
-        {/* Client-rendered: it is the only per-visitor block, and keeping it off the server
-            render is what keeps this whole route statically cacheable. */}
-        <CamFavoritesStrip title={tAccount('onlineNow')} />
 
         {/* Query-only navigation (?page=) never scrolls by itself — the sitewide anchor
             every paginated listing pairs with <Pagination>. */}

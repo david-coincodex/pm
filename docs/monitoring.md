@@ -6,9 +6,11 @@ service alerts when pings **stop arriving** against each check's schedule + grac
 what catches the worst failure mode, "the job silently stopped running" (hung run, dead
 scheduler, changed third-party API, broken sync chain, container down).
 
-**All notifications are sent by Healthchecks, never by us.** There is no mail or alerting
-code in this repo — deliberately, so alerting still works when our stack is too broken to
-send anything. Alert channels are configured in Healthchecks → Integrations (email today);
+**All notifications are sent by Healthchecks, never by us.** There is no *alerting* mail path
+in this repo — deliberately, so alerting still works when our stack is too broken to send
+anything. (The app does send transactional mail — account confirmation and password resets,
+through the Mailgun HTTP API in `MAILGUN_API_KEY`; that path is for visitors and is not used,
+or usable, for alerts.) Alert channels are configured in Healthchecks → Integrations (email today);
 every check attaches to all project integrations.
 
 ## The checks

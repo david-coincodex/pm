@@ -8,7 +8,7 @@ import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import MobileSearchOverlay from './MobileSearchOverlay';
 import ThemeToggle from './ThemeToggle';
-import HeartIcon from '@/components/HeartIcon';
+import AccountNavButton from '@/components/account/AccountNavButton';
 import { routes } from '@/lib/routes';
 import { siteSettings } from '@/lib/siteSettings';
 
@@ -100,15 +100,11 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
 
         <div className="ml-auto flex items-center gap-3">
           <SearchBar className="w-80" />
-          {siteSettings.features.liveSex && siteSettings.features.accounts && (
-            <Link
-              href={routes.favorites()}
-              aria-label={t('myFavorites')}
-              className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <HeartIcon className="h-5 w-5" />
-            </Link>
-          )}
+          {/* No heart here on purpose: the account button leads to the page that lists
+              favorites, so a second entry for the same destination is just clutter (the drawer
+              drops its favorites row for the same reason). The heart still marks individual
+              models on cards and model pages. */}
+          {siteSettings.features.accounts && <AccountNavButton variant="icon" />}
           <ThemeToggle />
           <LanguageSwitcher />
         </div>
@@ -216,16 +212,12 @@ export default function NavMenu({ activeSale }: { activeSale?: { slug: string; n
           )}
         </nav>
 
-        {siteSettings.features.liveSex && siteSettings.features.accounts && (
+        {/* No "My Favorites" row: the account button below leads there once signed in, and a
+            second entry for the same destination just crowded the drawer. Same reasoning as
+            the desktop bar, where the heart was dropped for the account button. */}
+        {siteSettings.features.accounts && (
           <div className="shrink-0 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
-            <Link
-              href={routes.favorites()}
-              onClick={() => setDrawerOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <HeartIcon className="h-4 w-4" />
-              {t('myFavorites')}
-            </Link>
+            <AccountNavButton variant="row" onNavigate={() => setDrawerOpen(false)} />
           </div>
         )}
         {/* Drawer footer: theme toggle + language switcher */}

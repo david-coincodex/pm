@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { Faq } from '@/lib/strapi';
 
 /**
@@ -8,9 +8,13 @@ import type { Faq } from '@/lib/strapi';
  * the initial HTML) and collapses it on the client after hydration. Uses native
  * <details> so the answer text is always present in the DOM.
  */
+const subscribeNever = () => () => {};
+
 export default function FaqAccordion({ items }: { items: Faq[] }) {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => { setCollapsed(true); }, []);
+  // "Collapsed" is simply "hydrated": the server renders every answer open (crawlers read
+  // them in the initial HTML), the client folds them after hydration. The store hook gives
+  // that flip without an effect-driven setState — same pattern as NavMenu.
+  const collapsed = useSyncExternalStore(subscribeNever, () => true, () => false);
 
   return (
     <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
