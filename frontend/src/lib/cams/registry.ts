@@ -346,8 +346,38 @@ function refresh(): Promise<OnlineSnapshot> {
 }
 
 /**
+ * Wait on a refresh, but never longer than `budgetMs`; null means the budget expired and the
+ * caller decides what to serve instead.
+ *
+ * BOTH reader paths go through this, deliberately. They used to differ — the stale path was
+ * bounded and the cold-boot path was not — which left a hanging feed during a container start
+ * able to hold a render for the full watchdog window (40s). One helper means the two cannot
+ * drift apart again.
+ */
+async function refreshWithin(budgetMs: number): Promise<OnlineSnapshot | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      refresh(),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(resolve, budgetMs, null);
+      }),
+    ]);
+  } finally {
+    // The loser of the race must not leave a live timer behind: this runs per request, and an
+    // uncleared one keeps a task queued for the whole budget.
+    clearTimeout(timer);
+  }
+}
+
+/**
  * The online snapshot. Returns instantly from memory whenever one exists — a stale snapshot is
  * served as-is while the refresh runs in the background.
+ *
+ * NEVER blocks longer than READER_WAIT_MS, in any state. A page that should exist must answer
+ * 200: model-page existence is resolved from the persistent registry, not from this snapshot,
+ * so an empty or stale snapshot costs accuracy (a live model briefly shown as offline) while a
+ * slow one costs the page itself.
  */
 export async function getOnlineModels(): Promise<OnlineSnapshot> {
   startPolling();
@@ -362,28 +392,25 @@ export async function getOnlineModels(): Promise<OnlineSnapshot> {
      * page rendering and indexable, and the refresh we started still lands for the next reader.
      */
     if (age > MAX_STALE_MS && !backingOff) {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        const fresh = await Promise.race([
-          refresh(),
-          new Promise<null>((resolve) => {
-            timer = setTimeout(resolve, READER_WAIT_MS, null);
-          }),
-        ]);
-        return fresh ?? box.current;
-      } finally {
-        // The loser of the race must not leave a live timer behind: under load this path runs
-        // per request, and an uncleared one keeps a task queued for the full budget.
-        clearTimeout(timer);
-      }
+      return (await refreshWithin(READER_WAIT_MS)) ?? box.current;
     }
     if (age > TTL_MS && !backingOff && !box.inFlight) void refresh();
     return box.current; // fresh or slightly stale — the reader never waits inside the TTL band
   }
   if (now - box.lastFailureMs < RETRY_BACKOFF_MS) return EMPTY;
-  // Cold boot: nothing stale to fall back on, so this one genuinely must wait — but the
-  // watchdog bounds it at REFRESH_TIMEOUT_MS instead of forever.
-  return refresh();
+  /**
+   * Cold boot: no snapshot to fall back on, so this reader does have to wait — but only for the
+   * same budget as everyone else. The watchdog alone left this path able to block for 40s, and a
+   * container restart while a feed is hanging is exactly the aftermath of an incident like the
+   * one this fix came from.
+   *
+   * EMPTY is a safe answer rather than a wrong one: a model page resolves existence from the
+   * registry, so it still renders 200 with its stored name and offline state. Listings fall back
+   * to their degraded banner. Both beat making the visitor — or Googlebot — hold the connection.
+   * The refresh we started keeps running and lands for the next reader; with healthy feeds it
+   * takes ~0.5s, so this budget is unreachable in normal operation.
+   */
+  return (await refreshWithin(READER_WAIT_MS)) ?? box.current ?? EMPTY;
 }
 
 /** One model by (provider, username) — from the live snapshot, or null when offline. */
