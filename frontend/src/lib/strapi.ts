@@ -221,6 +221,9 @@ type StrapiFetchOptions = Omit<RequestInit, 'body' | 'next'> & {
   next?: NextFetchRequestConfig;
 };
 
+/** Ceiling on any single CMS call made from a render or route handler. See strapiGet (#90). */
+const STRAPI_TIMEOUT_MS = 15_000;
+
 export async function strapiGet<T>(
   path: string,
   options: StrapiFetchOptions = {}
@@ -239,6 +242,17 @@ export async function strapiGet<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers as Record<string, string>),
     },
+    /**
+     * Bounded, always (#90). An unbounded fetch inside a render is the bug class that 524'd
+     * every cam model page: undici's own defaults are minutes long, and Cloudflare gives up at
+     * 100s, so a hung CMS turns into a timeout page rather than a slow one. Throwing here is
+     * strictly better — the callers that must survive a CMS blip already catch and fail open
+     * (see findKnownModel, which degrades to the offline render instead of a 404).
+     *
+     * 15s is far above a healthy call (the model-page lookup measures ~0.25s against
+     * production) so this fires only on a genuine hang. Overridable per call via `signal`.
+     */
+    signal: rest.signal ?? AbortSignal.timeout(STRAPI_TIMEOUT_MS),
     // `next` was previously hardcoded *after* spreading the caller's options, so
     // every per-call revalidate value in this file was silently discarded and
     // everything ran at 60s. `??` (not `||`) so an explicit 0/false survives.
