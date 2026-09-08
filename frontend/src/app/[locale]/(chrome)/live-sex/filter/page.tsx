@@ -4,23 +4,25 @@ import { getTranslations } from 'next-intl/server';
 import { siteSettings } from '@/lib/siteSettings';
 import { routes } from '@/lib/routes';
 import { getOnlineModels } from '@/lib/cams/registry';
+import { findKnownModels } from '@/lib/cams/modelDb';
+import { offlineFavoriteModel } from '@/lib/cams/offlineFavorite';
 import { getUser, getFavorites } from '@/lib/auth';
 import { getCamCategories } from '@/lib/cams/categories';
 import { selectByFilter, countByFilter, paginate, CAM_MAX_PAGE, type CamSort } from '@/lib/cams/query';
 import { filterFromParams, camFilterUrl } from '@/lib/cams/filters';
 import CamBrowseShell from '@/components/cams/CamBrowseShell';
 import CamModelCard from '@/components/cams/CamModelCard';
-import CamFavoritesStrip from '@/components/cams/CamFavoritesStrip';
 import { CamGrid } from '@/components/cams/CamGrid';
 import Pagination from '@/components/Pagination';
 import SectionTitle from '@/components/SectionTitle';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import CamListControls from '@/components/cams/CamListControls';
+import AuthLink from '@/components/account/AuthLink';
 import CamFilterRail from '@/components/cams/CamFilterRail';
 import CamLiveBadge from '@/components/cams/CamLiveBadge';
 import PaginationScrollAnchor from '@/components/PaginationScrollAnchor';
 import { compactNumber } from '@/lib/format';
-import { Link, getPathname } from '@/i18n/navigation';
+import { getPathname } from '@/i18n/navigation';
 
 /**
  * Listings for arbitrary filter combinations — "women and couples on Chaturbate tagged Teen".
@@ -64,10 +66,21 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
   ]);
 
   const tagSlugs = new Set(categories.filter((c) => c.kind === 'tag').map((c) => c.slug));
-  const state = filterFromParams(sp, tagSlugs);
   const sort: CamSort = sp.sort === 'new' ? 'new' : 'viewers';
   // fav=1 needs the account system; while accounts are off the param is inert.
   const favoritesView = siteSettings.features.accounts && sp.fav === '1';
+  /**
+   * The favorites view IGNORES every other facet, deliberately.
+   *
+   * A visitor's own list is a handful of models, so intersecting it with the facets they
+   * happened to be browsing ("female + German + milf") usually yields nothing and reads as
+   * "my favorites are gone". Showing the whole list is what they actually mean by "favorites",
+   * and it is why the pill's own href drops the facets too (CamListControls). The empty filter
+   * matches everything — see selectByFilter's fast path.
+   */
+  const state = favoritesView
+    ? { providers: [], genders: [], tags: [], languages: [] }
+    : filterFromParams(sp, tagSlugs);
   const requestedPage = Math.max(1, Math.min(Number(sp.page) || 1, CAM_MAX_PAGE));
 
   // The favorites view is per-user (cookie), which this route can afford — it renders per
@@ -75,9 +88,27 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
   // per-user result never enters the shared cache.
   const [user, favoriteRows] = favoritesView ? await Promise.all([getUser(), getFavorites()]) : [null, []];
   let models = selectByFilter(snapshot, state, categories, sort);
+  // Offline favorites (favorited but not in the live snapshot) are appended LAST so the view is
+  // the whole list, not just whoever happens to be streaming — a favorites page that hid your
+  // offline models would read as "half my favorites vanished". Their cards render dimmed with an
+  // OFFLINE tag (see CamModelCard); `offlineIds` tells the grid which ones.
+  const offlineIds = new Set<string>();
+  // How many favorites are actually LIVE — the count the badge shows. `total` below counts
+  // offline favorites too (they are real rows in the list), so it would mislabel the red
+  // "N live" pill; this is the honest number for it.
+  let liveFavCount = 0;
   if (favoritesView) {
     const favoriteIds = new Set(favoriteRows.map((f) => `${f.provider}:${f.username}`));
     models = models.filter((m) => favoriteIds.has(m.id));
+    liveFavCount = models.length;
+    const onlineIds = new Set(models.map((m) => m.id));
+    const offlineRows = favoriteRows.filter((f) => !onlineIds.has(`${f.provider}:${f.username}`));
+    const knownByKey = await findKnownModels(offlineRows.map((f) => `${f.provider}:${f.username}`));
+    const offlineModels = offlineRows
+      .map((f) => offlineFavoriteModel(f, knownByKey.get(`${f.provider}:${f.username}`)))
+      .filter((m): m is NonNullable<typeof m> => m !== null);
+    for (const m of offlineModels) offlineIds.add(m.id);
+    models = [...models, ...offlineModels];
   }
   const { items, total, totalPages, page } = paginate(models, requestedPage);
   const tagCounts = Object.fromEntries(
@@ -93,7 +124,7 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
         width="full"
         crumbs={[
           { label: t('breadcrumb'), href: routes.liveSex() },
-          { label: t('filteredCrumb'), href: routes.liveSex() },
+          { label: favoritesView ? tAccount('favoritesCrumb') : t('filteredCrumb'), href: routes.liveSex() },
         ]}
       />
       <CamBrowseShell
@@ -111,14 +142,21 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
           <p className="mb-3 text-sm text-amber-600 dark:text-amber-400">{t('degradedNotice')}</p>
         )}
 
-        <CamFavoritesStrip title={tAccount('onlineNow')} />
-
         <PaginationScrollAnchor page={page} scope="filter" />
         <section data-snapshot-at={snapshot.fetchedAt}>
           <SectionTitle
             as="h1"
-            title={t('matchingCams')}
-            badge={<CamLiveBadge className="hidden sm:flex">{t('liveCount', { count: compactNumber(total, locale) })}</CamLiveBadge>}
+            title={favoritesView ? tAccount('myFavoriteCams') : t('matchingCams')}
+            badge={
+              // In the favorites view the pulsing "N live" pill counts only the favorites that
+              // are actually streaming, and disappears when none are — a red LIVE badge over an
+              // all-offline list would be a lie.
+              !favoritesView || liveFavCount > 0 ? (
+                <CamLiveBadge className="hidden sm:flex">
+                  {t('liveCount', { count: compactNumber(favoritesView ? liveFavCount : total, locale) })}
+                </CamLiveBadge>
+              ) : undefined
+            }
             actionsBelowOnMobile
             actions={
               <CamListControls
@@ -141,9 +179,9 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
           {favoritesView && !user ? (
             <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               {t('favoritesLoginHint')}{' '}
-              <Link href={routes.login()} className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
+              <AuthLink mode="login" className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
                 {tAccount('signIn')}
-              </Link>
+              </AuthLink>
             </p>
           ) : items.length === 0 ? (
             <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
@@ -152,7 +190,7 @@ export default async function CamFilterPage({ params, searchParams }: Props) {
           ) : (
             <CamGrid>
               {items.map((m, i) => (
-                <CamModelCard key={m.id} model={m} priority={page === 1 && i < 6} />
+                <CamModelCard key={m.id} model={m} live={!offlineIds.has(m.id)} priority={page === 1 && i < 6} />
               ))}
             </CamGrid>
           )}

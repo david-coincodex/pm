@@ -41,7 +41,14 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale, w
   // list once and wrap the finished element.
   const list = (
     <>
-        <ol className="flex items-center gap-1.5 text-sm">
+        {/*
+          ONE line, always. `flex-nowrap` plus `min-w-0` on the row is what lets the last crumb
+          (a model name, arbitrary length) absorb the squeeze: it takes the leftover width and
+          ellipsizes, while every crumb before it keeps its natural size. Without this the
+          intermediate crumbs shrank instead and wrapped mid-label — "Live Sex" broke across
+          two lines on a phone.
+        */}
+        <ol className="flex min-w-0 flex-nowrap items-center gap-1.5 text-sm">
           {all.map((crumb, i) => {
             const isLast = i === all.length - 1;
             // Home crumb: home icon on mobile, label on sm+ (label kept for screen readers via sr-only).
@@ -56,7 +63,13 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale, w
             return (
               /* Index-qualified: two crumbs may legitimately share an href (a filter whose
                  provider has no category page yet falls back to the hub). */
-              <li key={`${i}-${crumb.href}`} className="flex items-center gap-1.5">
+              <li
+                key={`${i}-${crumb.href}`}
+                // Only the last crumb may shrink; the rest hold their width so their labels
+                // never break. `min-w-0` on the shrinking one is what makes `truncate` work
+                // inside a flex row.
+                className={`flex items-center gap-1.5 ${isLast ? 'min-w-0' : 'shrink-0'}`}
+              >
                 {i > 0 && (
                   <svg
                     className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
@@ -69,17 +82,21 @@ export default async function Breadcrumbs({ crumbs, variant = 'light', locale, w
                   </svg>
                 )}
                 {isLast ? (
-                  <span className={`font-medium truncate max-w-[200px] sm:max-w-none sm:overflow-visible sm:whitespace-normal ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                  /* Truncated at EVERY width, not just mobile: the trail is a wayfinding aid,
+                     and the full name is already the page's own h1, so an ellipsis here loses
+                     nothing. (It used to un-truncate from sm up, which just moved the wrapping
+                     to wider screens for long names.) */
+                  <span className={`truncate font-medium ${isDark ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                     {content}
                   </span>
                 ) : (
                   <Link
                     href={crumb.href}
-                    className={
+                    className={`whitespace-nowrap transition-colors ${
                       isDark
-                        ? 'text-slate-400 hover:text-white transition-colors'
-                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors'
-                    }
+                        ? 'text-slate-400 hover:text-white'
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
                   >
                     {content}
                   </Link>

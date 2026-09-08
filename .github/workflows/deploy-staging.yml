@@ -41,6 +41,7 @@ jobs:
             NEXT_PUBLIC_MEDIA_BASE=https://staging.pornmode.com
             NEXT_PUBLIC_IMLIVE_SPONSOR_ID=10207425
             NEXT_PUBLIC_IMLIVE_ORIGIN=53175
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.TURNSTILE_SITE_KEY }}
           tags: |
             ghcr.io/david-coincodex/pm-frontend:latest
             ghcr.io/david-coincodex/pm-frontend:${{ github.sha }}
@@ -96,6 +97,15 @@ jobs:
           HEALTHCHECKS_PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
           IMLIVE_API_KEY: ${{ secrets.IMLIVE_API_KEY }}
           STRIPCASH_API_KEY: ${{ secrets.STRIPCASH_API_KEY }}
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_URL: ${{ vars.MAILGUN_URL }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_REPLY_TO: ${{ vars.EMAIL_REPLY_TO }}
+          SUPPORT_EMAIL: ${{ vars.SUPPORT_EMAIL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -118,6 +128,25 @@ jobs:
             echo "IMLIVE_API_KEY=$IMLIVE_API_KEY"
             # Empty until the STRIPCASH_API_KEY secret exists; StripChat is then simply not listed.
             echo "STRIPCASH_API_KEY=$STRIPCASH_API_KEY"
+            # Mailgun is the sender; its key alone turns transactional email on (and with it
+            # required email confirmation). Empty ⇒ no mailer is registered and signups fall
+            # back to immediate sign-in rather than stranding unconfirmable accounts.
+            echo "MAILGUN_API_KEY=$MAILGUN_API_KEY"
+            # Both default in compose (pornmode.com / api.mailgun.net) when unset.
+            echo "MAILGUN_DOMAIN=$MAILGUN_DOMAIN"
+            echo "MAILGUN_URL=$MAILGUN_URL"
+            echo "EMAIL_FROM=$EMAIL_FROM"
+            echo "EMAIL_REPLY_TO=$EMAIL_REPLY_TO"
+            # Defaults to info@pornmode.com in compose when the variable is unset.
+            echo "SUPPORT_EMAIL=$SUPPORT_EMAIL"
+            # Empty until the Google OAuth client exists. Empty does NOT mean "off forever":
+            # the provider can then be enabled in Strapi's admin panel instead, and the site
+            # follows the CMS either way (no frontend variable).
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET"
+            # Must be set together with the TURNSTILE_SITE_KEY variable used as a build arg:
+            # one without the other makes the app refuse the captcha-protected routes.
+            echo "TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY"
           } > .env.deploy
 
       - name: Rsync compose file and .env to server

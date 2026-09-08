@@ -21,12 +21,26 @@ export default function Analytics() {
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
         strategy="afterInteractive"
       />
+      {/*
+        `page_location` is overridden on /account/ pages to drop the query string, because the
+        confirmation and password-reset links carry SINGLE-USE TOKENS there
+        (?confirmation=…, ?code=…). GA's automatic page_view would otherwise ship a live reset
+        token — enough to take over the account — to a third party, and store it in reports
+        anybody with property access can read. Everywhere else the full href is kept, so utm_*
+        campaign attribution is untouched.
+
+        Locale prefix is optional in the pattern: /account/… today, /de/account/… once more
+        locales come back.
+      */}
       <Script id="ga-init" strategy="afterInteractive">
         {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 window.gtag = gtag;
 gtag('js', new Date());
-gtag('config', '${GA_MEASUREMENT_ID}');`}
+var pmLoc = /^\\/([a-z]{2}\\/)?account\\//.test(location.pathname)
+  ? location.origin + location.pathname
+  : location.href;
+gtag('config', '${GA_MEASUREMENT_ID}', { page_location: pmLoc });`}
       </Script>
     </>
   );

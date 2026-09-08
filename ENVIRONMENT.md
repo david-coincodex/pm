@@ -38,6 +38,14 @@ the `DATABASE_*` values.
 | `CAM_MODEL_RETENTION_DAYS` | O | | default `60` — models unseen this long are deleted (page 404s, drops from sitemap) |
 | `HEALTHCHECKS_PING_KEY` | O | 🔒 | Healthchecks.io project ping key for cron/sync heartbeats (docs/monitoring.md). Unset ⇒ pings skipped, crons still run — but no alerting. |
 | `HEALTHCHECKS_SLUG_PREFIX` | O | | `staging`/`prod` — names this env's check slugs; hardcoded in each compose file, defaults to `dev` |
+| `STRAPI_PUBLIC_URL` | O | | This CMS's public origin (`https://cms.pornmode.com`). Strapi builds the Google OAuth `redirect_uri` from it, so it must match the URI registered in the Google console. |
+| **`MAILGUN_API_KEY`** | O | 🔒 | **The only mail path** — Mailgun's HTTP API (`@strapi/provider-email-mailgun`); there is no SMTP configuration at all. Set ⇒ mail works AND email confirmation is required. Unset ⇒ no mailer, confirmation off, registration signs the visitor straight in. Dev keeps it in `backend/.env`. |
+| `MAILGUN_DOMAIN` | O | | Mailgun sending domain. Default `pornmode.com` — the ROOT domain, so DKIM (`mx._domainkey`) aligns strictly with the `noreply@pornmode.com` From. |
+| `MAILGUN_URL` | O | | Mailgun region base. Default `https://api.mailgun.net`; an **EU** account needs `https://api.eu.mailgun.net` or every send 401s. |
+| `MAILGUN_LIST_ADDRESS` | O | | Marketing list that CONFIRMED accounts join. Default `newsletter@pornmode.com`. A virtual list address — do NOT create a Workspace mailbox with the same name. |
+| `EMAIL_FROM` / `EMAIL_REPLY_TO` | O | | Sender of confirmation/reset mail. Default `noreply@pornmode.com`, the same domain Mailgun signs — DKIM aligns strictly under `_dmarc.pornmode.com`. |
+| `SUPPORT_EMAIL` | O | | Replyable address: **Reply-To on every transactional email** and the contact in the "someone tried to sign up" notice. Default `info@pornmode.com` (a Google Workspace mailbox). Never `EMAIL_FROM`, which is a no-reply address. `EMAIL_REPLY_TO` overrides it if the two ever need to differ. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | O | 🔒 | Google sign-in via stock users-permissions. **Set ⇒ seeded into the plugin store on every boot. Unset ⇒ the store is left alone, so the provider can be enabled in Settings → Users & Permissions plugin → Providers instead** (and survives restarts). Either way the site follows the CMS — no frontend variable. |
 | `DATABASE_URL`, `DATABASE_SCHEMA`, `DATABASE_POOL_MIN/MAX`, `DATABASE_CONNECTION_TIMEOUT`, `DATABASE_SSL_*`, `DATABASE_FILENAME` | O | | Advanced DB knobs — leave unset for the standard Postgres setup |
 | `FLAG_NPS`, `FLAG_PROMOTE_EE` | O | | Strapi feature flags — unused here |
 
@@ -62,6 +70,8 @@ the `DATABASE_*` values.
 | `NEXT_PUBLIC_IMLIVE_SPONSOR_ID` | O | 🏗️ ImLive partner sponsor id for its player (`10207425`). Public — inlined into the client bundle, so it must be a **build arg**; a runtime value alone does nothing. |
 | `NEXT_PUBLIC_IMLIVE_ORIGIN` | O | 🏗️ ImLive origin id for its player (`53175`). Same build-time rule. Player attribution only — the /out/ redirect is the money path. |
 | **`CAM_SYNC_SECRET`** | **R** | 🔒 **Same value as the backend.** Unset frontend-side ⇒ the registry sync is disabled (one warning log), registry never fills. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | O | 🏗️ **Build arg.** Cloudflare Turnstile site key for the signup/reset captcha. Must be set together with `TURNSTILE_SECRET_KEY` — one alone makes the captcha-protected routes refuse to serve. |
+| `TURNSTILE_SECRET_KEY` | O | 🔒 Turnstile secret; the BFF verifies tokens with it. Both unset ⇒ captcha skipped. |
 | `NODE_ENV` / `PORT` / `HOSTNAME` | R | `production` / `3002` / `0.0.0.0`. |
 
 ---
@@ -78,11 +88,19 @@ credentials.
 
 **Secrets:** `SSH_PRIVATE_KEY`, `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`,
 `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY`, `DATABASE_PASSWORD`, `CAM_SYNC_SECRET`,
-`REVALIDATE_SECRET`, `GA_API_SECRET`, `HEALTHCHECKS_PING_KEY` (set in `staging`; the
+`REVALIDATE_SECRET`, `GA_API_SECRET`, `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, **`MAILGUN_API_KEY`** (set in both `staging`
+and `production`; the ONLY mail configuration — there is no SMTP, so no `EMAIL_SMTP_*`), `HEALTHCHECKS_PING_KEY` (set in `staging`; the
 `production` environment needs it at promote time together with the compose/workflow wiring —
 see the promote checklist in docs/monitoring.md).
-**Variables:** `DEPLOY_USER`, `DATABASE_NAME`, `DATABASE_USERNAME`, plus `DEPLOY_HOST` (staging)
-/ `DEPLOY_HOST_PROD` (production).
+**Variables:** `DEPLOY_USER`, `DATABASE_NAME`, `DATABASE_USERNAME`, `MAILGUN_DOMAIN`,
+`MAILGUN_URL`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `SUPPORT_EMAIL`, `TURNSTILE_SITE_KEY`,
+plus `DEPLOY_HOST` (staging) / `DEPLOY_HOST_PROD` (production).
+
+`TURNSTILE_SITE_KEY` is read at BUILD time (it is passed as a `NEXT_PUBLIC_*` build arg), so
+changing it needs a new image rather than a restart. Google sign-in needs no frontend variable
+at all: the site asks the CMS whether the provider is enabled, so `GOOGLE_CLIENT_ID` on the
+backend — or the admin panel — is the only switch.
 
 > ⚠️ If you add a NEW env var the cam feature (or anything) needs, it must be added in **three
 > places per environment**: the compose file (`docker-compose.prod.yml` / `docker-compose.production.yml`),

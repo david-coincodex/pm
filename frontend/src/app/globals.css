@@ -65,6 +65,15 @@
     to   { transform: translateX(300%); }
   }
 
+  /* Success check mark (SuccessCheck): the ring sweeps in, then the tick strokes on. Both use
+     pathLength=1 so the dash maths is resolution-independent. */
+  --animate-check-circle: check-draw 0.4s ease-out both;
+  --animate-check-mark: check-draw 0.3s 0.32s ease-out both;
+  @keyframes check-draw {
+    from { stroke-dasharray: 1; stroke-dashoffset: 1; }
+    to { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  }
+
   /* Attention pulse for primary CTAs (animate-attention): a gentle periodic grow that makes
      the button read as "press me". Pair with motion-safe: so reduced-motion visitors get a
      static button. */

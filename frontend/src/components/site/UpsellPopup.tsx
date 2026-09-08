@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
@@ -33,11 +33,14 @@ export default function UpsellPopup({ offer, featured, open, onClose }: UpsellPo
   const [phase, setPhase] = useState<Phase>('feedback');
   const [crossSell, setCrossSell] = useState<CrossSellSite | null>(null);
 
-  // Reset to the feedback phase whenever a (new) offer opens the popup — keyed on
-  // `offer` (not just `open`) so switching offers while it's open also resets.
-  useEffect(() => {
+  // Reset to the feedback phase whenever a (new) offer opens the popup — keyed on `offer`
+  // (not just `open`) so switching offers while it's open also resets. A render-phase
+  // adjustment rather than an effect: no second commit, and the old phase is never visible.
+  const [prevOffer, setPrevOffer] = useState(offer);
+  if (offer !== prevOffer) {
+    setPrevOffer(offer);
     if (offer) setPhase('feedback');
-  }, [offer]);
+  }
 
   function handleClose() {
     setPhase('feedback');

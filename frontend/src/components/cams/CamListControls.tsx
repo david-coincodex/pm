@@ -5,6 +5,7 @@ import { siteSettings } from '@/lib/siteSettings';
 import type { CamSort } from '@/lib/cams/query';
 import type { ReactNode } from 'react';
 import CamColsPicker from './CamColsPicker';
+import CamFavoritesViewPill from './CamFavoritesViewPill';
 import CamFilterSheet from './CamFilterSheet';
 
 interface Props {
@@ -42,15 +43,21 @@ const VIEW_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
+/** No facets at all: what the favorites view selects with (empty = "everything"). */
+const CLEARED_FILTER: CamFilterState = { providers: [], genders: [], tags: [], languages: [] };
+
 export default function CamListControls({ state, categories, sort = 'viewers', favoritesActive = false, filters }: Props) {
   const t = useTranslations('liveSex');
 
   const views = [
     { key: 'viewers', label: t('sortViewers'), href: camFilterUrl(state, categories), active: !favoritesActive && sort === 'viewers' },
     { key: 'new', label: t('sortNew'), href: camFilterUrl(state, categories, { sort: 'new' }), active: !favoritesActive && sort === 'new' },
-    // The per-user view needs the account system (docs/enable-accounts.md).
+    // The per-user view needs the account system (docs/enable-accounts.md). Its href drops the
+    // current facets on purpose — see the note on the favorites view in the filter page: a
+    // visitor's own list is small, so intersecting it with "female + German + milf" mostly
+    // produces an empty page and looks broken.
     ...(siteSettings.features.accounts
-      ? [{ key: 'favorites', label: t('favoritesOnly'), href: camFilterUrl(state, categories, { favorites: true }), active: favoritesActive }]
+      ? [{ key: 'favorites', label: t('favoritesOnly'), href: camFilterUrl(CLEARED_FILTER, categories, { favorites: true }), active: favoritesActive }]
       : []),
   ];
 
@@ -60,21 +67,28 @@ export default function CamListControls({ state, categories, sort = 'viewers', f
     <span className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:px-0">
       {/* One connected segmented control — the joined pills read as "pick exactly one view". */}
       <span className="inline-flex shrink-0 items-center overflow-hidden rounded-full border border-slate-300 dark:border-slate-600">
-        {views.map((v) => (
-          <Link
-            key={v.key}
-            href={v.href}
-            aria-current={v.active ? 'true' : undefined}
-            className={`flex items-center gap-1.5 border-l border-slate-300 px-3 py-1.5 text-xs font-semibold transition first:border-l-0 dark:border-slate-600 ${
-              v.active
-                ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-emerald-400'
-            }`}
-          >
-            {VIEW_ICONS[v.key]}
-            {v.label}
-          </Link>
-        ))}
+        {views.map((v) => {
+          const className = `flex items-center gap-1.5 border-l border-slate-300 px-3 py-1.5 text-xs font-semibold transition first:border-l-0 dark:border-slate-600 ${
+            v.active
+              ? 'bg-emerald-600 text-white dark:bg-emerald-500'
+              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-emerald-400'
+          }`;
+          const inner = (
+            <>
+              {VIEW_ICONS[v.key]}
+              {v.label}
+            </>
+          );
+          // Favorites is the one view whose behaviour depends on the session, so it is a client
+          // island: signed out it opens the sign-up popup instead of navigating.
+          return v.key === 'favorites' ? (
+            <CamFavoritesViewPill key={v.key} href={v.href} label={v.label} active={v.active} className={className} />
+          ) : (
+            <Link key={v.key} href={v.href} aria-current={v.active ? 'true' : undefined} className={className}>
+              {inner}
+            </Link>
+          );
+        })}
       </span>
       <CamColsPicker />
       {filters && <CamFilterSheet>{filters}</CamFilterSheet>}

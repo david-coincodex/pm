@@ -17,6 +17,29 @@ services:
       - ./backend/public/uploads:/app/public/uploads
     env_file:
       - ./backend/.env
+    environment:
+      # Transactional email: dev sends REAL mail through Mailgun — the API is the only mail
+      # path (no SMTP anywhere, by decision). The key lives in backend/.env (git-ignored), NOT
+      # here: compose `environment` entries override env_file, so even an empty interpolation
+      # would clobber it. No key ⇒ no mailer ⇒ signups fall back to immediate sign-in.
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN:-pornmode.com}
+      # Set to "yes" (in .env) to have Mailgun accept + log every message WITHOUT delivering —
+      # the switch the auth E2E tests flip so throwaway addresses never hard-bounce the domain.
+      # Loudly announced in the boot log. Never set in a deployed environment: it looks exactly
+      # like working email while delivering nothing.
+      MAILGUN_TESTMODE: ${MAILGUN_TESTMODE:-}
+      # Marketing list that CONFIRMED accounts are added to (consent is the confirmation click).
+      MAILGUN_LIST_ADDRESS: ${MAILGUN_LIST_ADDRESS:-newsletter@pornmode.com}
+      # Real, DKIM-aligned sender — this mail actually leaves the machine now.
+      EMAIL_FROM: noreply@pornmode.com
+      # Reply-to on every transactional email + the contact in the signup-attempt notice.
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-info@pornmode.com}
+      # Public origin of THIS cms — Strapi builds the Google OAuth redirect_uri from it.
+      STRAPI_PUBLIC_URL: http://localhost:1339
+      # Where the browser is sent after Google, and the host used in confirmation/reset links.
+      FRONTEND_URL: http://localhost:3002
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:1339/_health"]
@@ -63,6 +86,12 @@ services:
       # Shared secret for the cam feed roster sync -> Strapi POST /api/cam-models/sync.
       # Must match CAM_SYNC_SECRET in backend/.env.
       CAM_SYNC_SECRET: ${CAM_SYNC_SECRET:-local-dev-cam-sync-secret}
+      # Cloudflare Turnstile. Both unset (the default) ⇒ no captcha locally, which is what
+      # makes the signup flow testable without a Cloudflare account; set BOTH to exercise it.
+      # NEXT_PUBLIC_* is inlined at build time in production images, but `next dev` reads it at
+      # runtime, so it belongs here rather than in build args for the dev target.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
     depends_on:
       backend:
         condition: service_healthy
