@@ -52,6 +52,28 @@ const MAX_STALE_MS = 5 * 60_000;
 const RETRY_BACKOFF_MS = 15_000;
 /** Poller cadence — how often the background tick checks whether the TTL has lapsed. */
 const POLL_MS = 45_000;
+/**
+ * Hard ceiling on ONE refresh attempt, after which the single-flight lock is released whether
+ * or not that attempt ever settles.
+ *
+ * The fix for the 2026-09-08 outage (#90). `refresh()` de-duplicates through `box.inFlight`,
+ * which used to be cleared only in that promise's own `finally` — so an attempt that never
+ * settled held the lock forever, every reader past MAX_STALE_MS blocked behind it, and every
+ * model page without a cached copy became a 524. ~122k URLs, crawlers included, for 3 hours.
+ *
+ * Deliberately ABOVE the slowest healthy refresh: the feeds run in parallel and the slowest
+ * bound is StripChat's 30s fetch timeout, so a legitimate refresh can never trip this. It
+ * fires only when something is genuinely stuck.
+ */
+const REFRESH_TIMEOUT_MS = 40_000;
+/**
+ * How long a READER waits on a refresh before giving up and serving the stale snapshot.
+ *
+ * Availability beats freshness on this path: a stale model page still renders and still
+ * indexes, while a blocked render is a 524 for the visitor AND for Googlebot. Short enough to
+ * stay a defensible TTFB, and only reachable once the snapshot is already past MAX_STALE_MS.
+ */
+const READER_WAIT_MS = 6_000;
 
 export type OnlineSnapshot = {
   /**
@@ -181,9 +203,23 @@ function build(
   };
 }
 
+/**
+ * Monotonic tag per refresh attempt, so a late-settling attempt cannot release a lock that a
+ * newer attempt now owns. Module-scoped rather than on `box`: each bundle copy only ever
+ * compares its own tags against its own locks, and sharing it on globalThis would let one
+ * copy's abandoned attempt clear another's.
+ */
+let refreshGeneration = 0;
+
 /** One refresh at a time, whoever asks for it. Never rejects — failures keep the old snapshot. */
 function refresh(): Promise<OnlineSnapshot> {
-  box.inFlight ??= (async () => {
+  if (box.inFlight) return box.inFlight;
+  const generation = ++refreshGeneration;
+
+  // No `finally` clearing box.inFlight in here any more: the watchdog below owns the lock's
+  // lifetime. A promise that never settles never runs its own finally, which is exactly how
+  // the lock leaked.
+  const attempt = (async () => {
     try {
       const results = await Promise.allSettled(adapters.map((a) => a.fetchOnline()));
       const models: CamModel[] = [];
@@ -228,7 +264,23 @@ function refresh(): Promise<OnlineSnapshot> {
       const sustainedFailures = failedProviders.filter(
         (id) => now - (failingSince.get(id) ?? now) >= SUSTAINED_FAILURE_MS,
       );
-      box.current = build(models, degradedProviders, failedProviders, sustainedFailures);
+      const built = build(models, degradedProviders, failedProviders, sustainedFailures);
+      /**
+       * An attempt the watchdog already abandoned must NOT publish.
+       *
+       * Its models were fetched before the hang, but `build()` stamps `fetchedAtMs = Date.now()`
+       * — so publishing here would re-brand data as old as the hang as brand new, and overwrite
+       * whatever fresher snapshot the recovering attempt just installed. That is precisely the
+       * "silently served hours-old data" failure this file warns about, arriving through the
+       * back door of its own fix.
+       */
+      if (refreshGeneration !== generation) {
+        console.warn(
+          `[cams] discarding refresh #${generation}: abandoned by the watchdog, ${models.length} models dropped`,
+        );
+        return box.current ?? built;
+      }
+      box.current = built;
       // One line per refresh so freshness is VISIBLE in logs — this system silently served
       // hours-old data once; never again without a trace.
       console.log(
@@ -256,11 +308,41 @@ function refresh(): Promise<OnlineSnapshot> {
       box.lastFailureMs = Date.now();
       console.error('[cams] snapshot refresh failed:', err instanceof Error ? err.message : err);
       return box.current ?? EMPTY;
-    } finally {
-      box.inFlight = null;
     }
   })();
-  return box.inFlight;
+
+  /**
+   * The watchdog. Whichever settles first releases the lock, so a stuck attempt costs one
+   * refresh cycle instead of every subsequent read. The stuck promise is abandoned rather than
+   * cancelled (nothing here can cancel it), and stamping `lastFailureMs` puts the retry backoff
+   * in front of the next attempt so a permanently-stuck feed cannot spin.
+   */
+  const guarded = (async (): Promise<OnlineSnapshot> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        attempt,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`refresh exceeded ${REFRESH_TIMEOUT_MS}ms`)),
+            REFRESH_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } catch (err) {
+      box.lastFailureMs = Date.now();
+      console.error('[cams] snapshot refresh abandoned:', err instanceof Error ? err.message : err);
+      return box.current ?? EMPTY;
+    } finally {
+      clearTimeout(timer);
+      // ONLY if we still own it: an attempt that settles minutes late must not clear the lock
+      // a newer, healthy attempt is holding.
+      if (refreshGeneration === generation) box.inFlight = null;
+    }
+  })();
+
+  box.inFlight = guarded;
+  return guarded;
 }
 
 /**
@@ -273,13 +355,34 @@ export async function getOnlineModels(): Promise<OnlineSnapshot> {
   if (box.current) {
     const age = now - box.current.fetchedAtMs;
     const backingOff = now - box.lastFailureMs < RETRY_BACKOFF_MS;
-    // Beyond the hard bound the snapshot is not fit to serve — wait for live data. refresh()
-    // still resolves to the old snapshot if every provider is down, so this degrades, never 500s.
-    if (age > MAX_STALE_MS && !backingOff) return refresh();
+    /**
+     * Past the hard bound the snapshot is no longer fit to serve, so we do wait for live data —
+     * but only for READER_WAIT_MS. Waiting unboundedly is what turned one wedged refresh into
+     * a 524 on every uncached model page (#90). Falling back to the stale snapshot keeps the
+     * page rendering and indexable, and the refresh we started still lands for the next reader.
+     */
+    if (age > MAX_STALE_MS && !backingOff) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const fresh = await Promise.race([
+          refresh(),
+          new Promise<null>((resolve) => {
+            timer = setTimeout(resolve, READER_WAIT_MS, null);
+          }),
+        ]);
+        return fresh ?? box.current;
+      } finally {
+        // The loser of the race must not leave a live timer behind: under load this path runs
+        // per request, and an uncleared one keeps a task queued for the full budget.
+        clearTimeout(timer);
+      }
+    }
     if (age > TTL_MS && !backingOff && !box.inFlight) void refresh();
     return box.current; // fresh or slightly stale — the reader never waits inside the TTL band
   }
   if (now - box.lastFailureMs < RETRY_BACKOFF_MS) return EMPTY;
+  // Cold boot: nothing stale to fall back on, so this one genuinely must wait — but the
+  // watchdog bounds it at REFRESH_TIMEOUT_MS instead of forever.
   return refresh();
 }
 
