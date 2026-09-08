@@ -133,6 +133,23 @@ type SnapshotBox = {
   /** Fingerprint of the last refresh's content + how many refreshes it has survived unchanged. */
   lastContentKey: string;
   identicalRefreshes: number;
+  /**
+   * Monotonic tag of the newest refresh attempt. ON THE BOX, not in module scope, and that is
+   * load-bearing: every route entry gets its own copy of this module (the reason the box lives
+   * on globalThis at all), so a per-copy counter only guards against attempts from the SAME
+   * copy. Deployed that way, copy A's watchdog-abandoned attempt compared against copy A's
+   * counter — which never advances if copy B does the following refreshes — so when A's wedged
+   * attempt finally settled it passed its own guard and overwrote B's fresh snapshot with
+   * hang-old data stamped `fetchedAtMs: now`. Reproduced in simulation before this fix.
+   */
+  refreshGeneration: number;
+  /**
+   * provider → when its current unbroken run of feed failures started; cleared on any success.
+   * Shared for the same reason: per-copy clocks each start at that copy's FIRST sighting of the
+   * failure, so the 10-minute sustained-failure page (the /fail heartbeat signal) drifts by
+   * however long a copy went without serving a refresh.
+   */
+  failingSince: Map<CamProvider, number>;
 };
 
 /**
@@ -149,7 +166,13 @@ const box: SnapshotBox = (g.__pmCamSnapshot ??= {
   pollTimer: null,
   lastContentKey: '',
   identicalRefreshes: 0,
+  refreshGeneration: 0,
+  failingSince: new Map(),
 });
+// An older bundle copy may have seeded the box before this shape existed (the object survives
+// on globalThis across dev recompiles). Patch the new fields in rather than crash on undefined.
+box.refreshGeneration ??= 0;
+box.failingSince ??= new Map();
 
 /**
  * Keep the snapshot fresh whether or not anyone is visiting. Without this, refreshes only ran
@@ -178,9 +201,6 @@ function startPolling(): void {
  */
 const SUSTAINED_FAILURE_MS = 10 * 60 * 1000;
 
-/** provider → when its current unbroken run of failures started. Cleared on any success. */
-const failingSince = new Map<CamProvider, number>();
-
 function build(
   models: CamModel[],
   degradedProviders: CamProvider[],
@@ -203,18 +223,10 @@ function build(
   };
 }
 
-/**
- * Monotonic tag per refresh attempt, so a late-settling attempt cannot release a lock that a
- * newer attempt now owns. Module-scoped rather than on `box`: each bundle copy only ever
- * compares its own tags against its own locks, and sharing it on globalThis would let one
- * copy's abandoned attempt clear another's.
- */
-let refreshGeneration = 0;
-
 /** One refresh at a time, whoever asks for it. Never rejects — failures keep the old snapshot. */
 function refresh(): Promise<OnlineSnapshot> {
   if (box.inFlight) return box.inFlight;
-  const generation = ++refreshGeneration;
+  const generation = ++box.refreshGeneration;
 
   // No `finally` clearing box.inFlight in here any more: the watchdog below owns the lock's
   // lifetime. A promise that never settles never runs its own finally, which is exactly how
@@ -222,6 +234,18 @@ function refresh(): Promise<OnlineSnapshot> {
   const attempt = (async () => {
     try {
       const results = await Promise.allSettled(adapters.map((a) => a.fetchOnline()));
+      /**
+       * Abandoned by the watchdog while we were fetching? Then this attempt no longer speaks
+       * for the system, and it must not touch ANY shared state — checked here, before the
+       * loop below, because that loop already writes: it resets per-provider failure clocks
+       * and (further down) clears the retry backoff the watchdog just stamped. The models are
+       * real but stale by definition — publishing them would stamp hang-old data
+       * `fetchedAtMs: now` over whatever a newer attempt has since installed.
+       */
+      if (box.refreshGeneration !== generation) {
+        console.warn(`[cams] discarding refresh #${generation}: abandoned by the watchdog before it settled`);
+        return box.current ?? EMPTY;
+      }
       const models: CamModel[] = [];
       const degradedProviders: CamProvider[] = [];
       // Diagnostics: every provider whose fetch rejected this cycle, retained or not.
@@ -232,7 +256,7 @@ function refresh(): Promise<OnlineSnapshot> {
           models.push(...r.value);
           // Recovery resets the clock, so an intermittent feed never accumulates its way to a
           // page: only an UNBROKEN run of failures counts.
-          failingSince.delete(id);
+          box.failingSince.delete(id);
           return;
         }
         // This provider's feed failed this cycle. Rather than drop all its models — which
@@ -244,7 +268,7 @@ function refresh(): Promise<OnlineSnapshot> {
         const retained = box.current?.byViewers.filter((m) => m.provider === id) ?? [];
         models.push(...retained);
         failedProviders.push(id);
-        if (!failingSince.has(id)) failingSince.set(id, Date.now());
+        if (!box.failingSince.has(id)) box.failingSince.set(id, Date.now());
         if (retained.length === 0) degradedProviders.push(id);
         console.error(
           `[cams] ${id} feed failed${retained.length ? ` (serving ${retained.length} last-known)` : ''}:`,
@@ -262,25 +286,12 @@ function refresh(): Promise<OnlineSnapshot> {
       box.lastFailureMs = 0;
       const now = Date.now();
       const sustainedFailures = failedProviders.filter(
-        (id) => now - (failingSince.get(id) ?? now) >= SUSTAINED_FAILURE_MS,
+        (id) => now - (box.failingSince.get(id) ?? now) >= SUSTAINED_FAILURE_MS,
       );
-      const built = build(models, degradedProviders, failedProviders, sustainedFailures);
-      /**
-       * An attempt the watchdog already abandoned must NOT publish.
-       *
-       * Its models were fetched before the hang, but `build()` stamps `fetchedAtMs = Date.now()`
-       * — so publishing here would re-brand data as old as the hang as brand new, and overwrite
-       * whatever fresher snapshot the recovering attempt just installed. That is precisely the
-       * "silently served hours-old data" failure this file warns about, arriving through the
-       * back door of its own fix.
-       */
-      if (refreshGeneration !== generation) {
-        console.warn(
-          `[cams] discarding refresh #${generation}: abandoned by the watchdog, ${models.length} models dropped`,
-        );
-        return box.current ?? built;
-      }
-      box.current = built;
+      // The abandoned-attempt gate ran before any of the state above was written; from here on
+      // this attempt is the newest one and publishing is safe. (allSettled is this function's
+      // only await, so the generation cannot have moved since that check.)
+      box.current = build(models, degradedProviders, failedProviders, sustainedFailures);
       // One line per refresh so freshness is VISIBLE in logs — this system silently served
       // hours-old data once; never again without a trace.
       console.log(
@@ -337,7 +348,7 @@ function refresh(): Promise<OnlineSnapshot> {
       clearTimeout(timer);
       // ONLY if we still own it: an attempt that settles minutes late must not clear the lock
       // a newer, healthy attempt is holding.
-      if (refreshGeneration === generation) box.inFlight = null;
+      if (box.refreshGeneration === generation) box.inFlight = null;
     }
   })();
 
