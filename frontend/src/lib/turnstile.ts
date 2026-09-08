@@ -15,7 +15,20 @@ import 'server-only';
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 const SECRET_KEY = process.env.TURNSTILE_SECRET_KEY ?? '';
 
-if (Boolean(SITE_KEY) !== Boolean(SECRET_KEY)) {
+/**
+ * The half-configured guard runs at RUNTIME only.
+ *
+ * The site key is a BUILD ARG (it must be inlined into the browser bundle), while the secret is
+ * a RUNTIME value that is deliberately never baked into the image. So during `next build` the
+ * site key is present and the secret is not — which is correct, not a misconfiguration, and
+ * throwing there breaks the image build (it did: the deploy failed collecting page data for the
+ * auth routes). At runtime both are present together or the deploy genuinely forgot the secret,
+ * and THAT is the silent-captcha-disable this guard exists to turn into a loud boot failure.
+ */
+if (
+  process.env.NEXT_PHASE !== 'phase-production-build' &&
+  Boolean(SITE_KEY) !== Boolean(SECRET_KEY)
+) {
   throw new Error(
     'Turnstile is half-configured: NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set, or both be empty. ' +
       'Remember the site key is a BUILD ARG — a runtime-only value never reaches the browser bundle.',
