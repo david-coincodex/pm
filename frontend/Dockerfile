@@ -32,6 +32,10 @@ ARG NEXT_PUBLIC_IMLIVE_SPONSOR_ID=
 ENV NEXT_PUBLIC_IMLIVE_SPONSOR_ID=$NEXT_PUBLIC_IMLIVE_SPONSOR_ID
 ARG NEXT_PUBLIC_IMLIVE_ORIGIN=
 ENV NEXT_PUBLIC_IMLIVE_ORIGIN=$NEXT_PUBLIC_IMLIVE_ORIGIN
+# Cloudflare Turnstile site key for the signup/reset captcha. Public half of the pair; the
+# secret half is a RUNTIME env var. Empty ⇒ no widget renders and the BFF skips verification.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 RUN npm run build
 
 # ── production (Next.js standalone output) ────────────────────────────────────

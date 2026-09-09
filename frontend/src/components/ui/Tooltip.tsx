@@ -37,15 +37,35 @@ export default function Tooltip({
   children,
   className = '',
   align = 'center',
+  desktopOnly = false,
 }: {
   content: ReactNode;
   children: ReactNode;
   className?: string;
-  /** 'center' under the trigger, or 'start' when the trigger sits near a container edge. */
-  align?: 'center' | 'start';
+  /**
+   * Where the bubble sits under the trigger: 'center', or 'start'/'end' when the trigger is
+   * near a container edge that centring would overflow.
+   */
+  align?: 'center' | 'start' | 'end';
+  /**
+   * Suppress the tooltip on touch devices, for a trigger whose tap must do its own job
+   * instead. A hint that only labels an already-labelled control is desktop affordance; on a
+   * phone it steals the tap, or pops up over the thing just tapped.
+   *
+   * Detected by POINTER CAPABILITY, not by screen width — a tablet is wide and still touch,
+   * a small laptop window is narrow and still has a mouse. Checked when opening rather than
+   * at mount, so the server and the first client render agree (the tooltip starts closed
+   * either way) and there is no hydration mismatch.
+   */
+  desktopOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+
+  const show = () => {
+    if (desktopOnly && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -60,16 +80,24 @@ export default function Tooltip({
     <span
       ref={ref}
       className={`relative inline-flex ${className}`}
-      onMouseEnter={() => setOpen(true)}
+      onMouseEnter={show}
       onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
+      onFocus={show}
       onBlur={() => setOpen(false)}
-      onClick={() => setOpen(true)}
+      // Tap-to-open is what makes a tooltip reachable on touch — except in desktopOnly mode,
+      // where the tap belongs to the trigger.
+      onClick={desktopOnly ? undefined : () => setOpen(true)}
     >
       {children}
       {open && (
         <TooltipBubble
-          className={`absolute top-full mt-1.5 ${align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'}`}
+          className={`absolute top-full mt-1.5 ${
+            align === 'center'
+              ? 'left-1/2 -translate-x-1/2'
+              : align === 'end'
+                ? 'right-0'
+                : 'left-0'
+          }`}
         >
           {content}
         </TooltipBubble>

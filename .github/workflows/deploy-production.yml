@@ -68,6 +68,7 @@ jobs:
             NEXT_PUBLIC_MEDIA_BASE=https://cms.pornmode.com
             NEXT_PUBLIC_IMLIVE_SPONSOR_ID=10207425
             NEXT_PUBLIC_IMLIVE_ORIGIN=53175
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.TURNSTILE_SITE_KEY }}
           tags: |
             ghcr.io/david-coincodex/pm-frontend:prod
             ghcr.io/david-coincodex/pm-frontend:prod-${{ github.sha }}
@@ -123,6 +124,16 @@ jobs:
           HEALTHCHECKS_PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
           IMLIVE_API_KEY: ${{ secrets.IMLIVE_API_KEY }}
           STRIPCASH_API_KEY: ${{ secrets.STRIPCASH_API_KEY }}
+          # Accounts: transactional email (Mailgun HTTP API), Google sign-in, Turnstile captcha.
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN }}
+          MAILGUN_URL: ${{ vars.MAILGUN_URL }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_REPLY_TO: ${{ vars.EMAIL_REPLY_TO }}
+          SUPPORT_EMAIL: ${{ vars.SUPPORT_EMAIL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
         run: |
           {
             echo "APP_KEYS=$APP_KEYS"
@@ -146,6 +157,19 @@ jobs:
             # cam-category hides itself). ImLive and StripChat both gate on their key this way.
             echo "IMLIVE_API_KEY=$IMLIVE_API_KEY"
             echo "STRIPCASH_API_KEY=$STRIPCASH_API_KEY"
+            # Accounts. MAILGUN_API_KEY empty ⇒ no mailer ⇒ signup degrades to immediate sign-in.
+            # GOOGLE_* empty ⇒ Google left to the admin panel. TURNSTILE_SECRET_KEY must be set
+            # together with the TURNSTILE_SITE_KEY build arg (both-or-neither, or the app refuses
+            # the captcha-gated routes). NO MAILGUN_TESTMODE — production delivers real mail.
+            echo "MAILGUN_API_KEY=$MAILGUN_API_KEY"
+            echo "MAILGUN_DOMAIN=$MAILGUN_DOMAIN"
+            echo "MAILGUN_URL=$MAILGUN_URL"
+            echo "EMAIL_FROM=$EMAIL_FROM"
+            echo "EMAIL_REPLY_TO=$EMAIL_REPLY_TO"
+            echo "SUPPORT_EMAIL=$SUPPORT_EMAIL"
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET"
+            echo "TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY"
             # Pins compose to this exact build. To roll back, edit this line on the host
             # to an earlier prod-<sha> and re-run `docker compose up -d`.
             echo "IMAGE_TAG=prod-${{ github.sha }}"

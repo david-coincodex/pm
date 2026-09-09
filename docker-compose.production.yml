@@ -33,6 +33,10 @@ services:
       # Shared secret for the cam feed roster sync -> Strapi POST /api/cam-models/sync
       # (server-only; MUST match the backend's value, or the registry never fills).
       CAM_SYNC_SECRET: ${CAM_SYNC_SECRET}
+      # Cloudflare Turnstile secret — the BFF verifies signup/reset captcha tokens with it.
+      # Its public half (NEXT_PUBLIC_TURNSTILE_SITE_KEY) is a BUILD arg in the workflow, not a
+      # runtime value: both empty ⇒ captcha off, only one set ⇒ the app refuses those routes.
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
     # No ports here — Traefik routes external traffic via labels below
     labels:
       - traefik.enable=true
@@ -69,6 +73,28 @@ services:
       DATABASE_SSL: "false"
       # CORS origin for the public frontend (config/middlewares.ts reads FRONTEND_URL)
       FRONTEND_URL: https://pornmode.com
+      # Public origin of THIS CMS. Strapi builds the Google OAuth redirect_uri from it, so it
+      # must match the URI registered in the Google console exactly.
+      STRAPI_PUBLIC_URL: https://cms.pornmode.com
+      # Transactional email (confirmation, password reset, signup-attempt notice) via the
+      # MAILGUN HTTP API — the ONLY mail path (no SMTP). Key empty ⇒ no mailer ⇒ registration
+      # degrades to immediate sign-in. NO MAILGUN_TESTMODE here: production delivers for real.
+      MAILGUN_API_KEY: ${MAILGUN_API_KEY:-}
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN:-pornmode.com}
+      # Marketing list that CONFIRMED accounts are added to (consent is the confirmation click).
+      MAILGUN_LIST_ADDRESS: ${MAILGUN_LIST_ADDRESS:-newsletter@pornmode.com}
+      # EU Mailgun accounts must use https://api.eu.mailgun.net — ours is US.
+      MAILGUN_URL: ${MAILGUN_URL:-https://api.mailgun.net}
+      # Same domain Mailgun signs, so DKIM aligns strictly under _dmarc.pornmode.com.
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@pornmode.com}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
+      # Replyable address on the "someone tried to sign up with your email" notice
+      # (EMAIL_FROM is a no-reply mailbox, so it must not be used for that).
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-info@pornmode.com}
+      # Google sign-in via the stock users-permissions provider. Set ⇒ seeded into the plugin
+      # store every boot. Empty ⇒ the store is left alone (enable it in the admin panel instead).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # Shared secret guarding POST /api/cam-models/sync (the frontend posts the feed roster)
       CAM_SYNC_SECRET: ${CAM_SYNC_SECRET}
       # Healthchecks.io heartbeats (docs/monitoring.md). Empty => pings skipped, crons still run.

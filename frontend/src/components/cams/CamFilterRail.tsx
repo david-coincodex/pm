@@ -114,6 +114,18 @@ export default function CamFilterRail({ categories, state, sort = 'viewers', fav
           </Link>
         )}
       </div>
+
+      {/* Favorites view ignores every facet (see the filter page), so the controls below are
+          shown DISABLED rather than removed — a rail that vanished would read as broken, and
+          the greyed-out boxes explain why nothing happens when you reach for them. The header
+          above stays live so "Reset" is the way back out. */}
+      {favoritesActive && (
+        <p className="px-1 text-xs text-slate-400 dark:text-slate-500">{t('filtersOffInFavorites')}</p>
+      )}
+      <div
+        className={favoritesActive ? 'pointer-events-none select-none space-y-3 opacity-50' : 'space-y-3'}
+        aria-disabled={favoritesActive || undefined}
+      >
       {dropdown(
         t('camSites'),
         currentSite,
@@ -189,6 +201,7 @@ export default function CamFilterRail({ categories, state, sort = 'viewers', fav
           )}
         </ul>
       </section>
+      </div>
 
     </nav>
   );

@@ -13,9 +13,14 @@ export default function SaleCountdown({ endsAt, themeColor }: SaleCountdownProps
   const [timeLeft, setTimeLeft] = useState<ReturnType<typeof calcTimeLeft> | undefined>(undefined);
 
   useEffect(() => {
-    setTimeLeft(calcTimeLeft(endsAt));
-    const interval = setInterval(() => setTimeLeft(calcTimeLeft(endsAt)), 1000);
-    return () => clearInterval(interval);
+    const update = () => setTimeLeft(calcTimeLeft(endsAt));
+    // First tick in a rAF callback (async, so not a sync set inside the effect body); it still
+    // lands before the next paint, so the skeleton is exactly as brief as it was. The initial
+    // state must stay undefined regardless — the server cannot know the client's clock, and
+    // rendering a computed value would be a hydration mismatch.
+    const raf = requestAnimationFrame(update);
+    const interval = setInterval(update, 1000);
+    return () => { cancelAnimationFrame(raf); clearInterval(interval); };
   }, [endsAt]);
 
   if (timeLeft === null) {

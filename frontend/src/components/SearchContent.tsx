@@ -116,35 +116,49 @@ interface SearchContentProps {
 }
 
 export default function SearchContent({ query, onNavigate, activeIndex = -1, visible }: SearchContentProps) {
+  const debouncedQuery = useDebounce(query, 400);
+  const shortQuery = debouncedQuery.trim().length < 2;
+
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [fetching, setFetching] = useState(false);
+  const [fetching, setFetching] = useState(() => !shortQuery);
   const [fetchedQuery, setFetchedQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [recommended, setRecommended] = useState<CrossSellSite[] | null>(null);
-  const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  // Lazy init covers the mount-while-visible case; readRecentFromStorage try/catches, so the
+  // server render (no localStorage) just gets []. After that, re-read on each open below.
+  const [recentItems, setRecentItems] = useState<RecentItem[]>(() => (visible ? readRecentFromStorage() : []));
   const t = useTranslations('search');
-  const debouncedQuery = useDebounce(query, 400);
 
-  // Re-read recently viewed every time content becomes visible
-  useEffect(() => {
-    if (visible) {
-      setRecentItems(readRecentFromStorage());
-    } else {
-      setShowAll(false);
-    }
-  }, [visible]);
+  /**
+   * State derived from changing props, adjusted DURING render (React's documented pattern —
+   * same as NavMenu's drawer) rather than in effects: no second commit, no flash of the
+   * previous list, and no setState-in-effect. The one effect left below does only the async
+   * work: the fetch itself.
+   */
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (visible) setRecentItems(readRecentFromStorage()); // re-read on every open
+    else setShowAll(false);
+  }
 
-  // Fetch search results
-  useEffect(() => {
-    if (debouncedQuery.trim().length < 2) {
+  const [prevQuery, setPrevQuery] = useState(debouncedQuery);
+  if (debouncedQuery !== prevQuery) {
+    setPrevQuery(debouncedQuery);
+    setShowAll(false);
+    if (shortQuery) {
       setResults([]);
       setFetching(false);
       setFetchedQuery(debouncedQuery);
-      return;
+    } else {
+      setFetching(true);
     }
+  }
+
+  // Fetch search results — the effect is purely async now.
+  useEffect(() => {
+    if (debouncedQuery.trim().length < 2) return;
     let cancelled = false;
-    setFetching(true);
-    setShowAll(false);
     fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`)
       .then((r) => r.json())
       .then((data: SearchResult[]) => { if (!cancelled) setResults(data); })
