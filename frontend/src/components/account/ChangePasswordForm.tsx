@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { MIN_PASSWORD_LENGTH } from '@/lib/accountPolicy';
-import { ErrorText, Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
+import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
  * Change an existing password. The current one is required — that is the whole difference from
@@ -46,6 +46,7 @@ export default function ChangePasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {error && <Notice tone="error">{error}</Notice>}
       {done && <Notice>{t('passwordChanged')}</Notice>}
       <Field label={t('currentPassword')}>
         <input name="currentPassword" type="password" required autoComplete="current-password" className={inputClasses} />
@@ -70,7 +71,6 @@ export default function ChangePasswordForm() {
           className={inputClasses}
         />
       </Field>
-      {error && <ErrorText>{error}</ErrorText>}
       <SubmitButton busy={busy}>{t('changePassword')}</SubmitButton>
     </form>
   );

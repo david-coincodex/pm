@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { getPathname } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 import { MIN_PASSWORD_LENGTH } from '@/lib/accountPolicy';
-import { ErrorText, Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
+import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
  * "Choose a password" — the last step of signup, and the way a Google account adds one.
@@ -69,6 +69,7 @@ export default function SetPasswordForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="info">{notice}</Notice>}
       {hint && <p className="text-sm text-slate-500 dark:text-slate-400">{hint}</p>}
       <Field label={t('newPassword')}>
@@ -91,7 +92,6 @@ export default function SetPasswordForm({
           className={inputClasses}
         />
       </Field>
-      {error && <ErrorText>{error}</ErrorText>}
       <SubmitButton busy={busy}>{submitLabel ?? t('savePassword')}</SubmitButton>
     </form>
   );

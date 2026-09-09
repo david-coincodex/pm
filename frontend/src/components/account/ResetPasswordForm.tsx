@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { getPathname } from '@/i18n/navigation';
 import { routes } from '@/lib/routes';
 import { MIN_PASSWORD_LENGTH } from '@/lib/accountPolicy';
-import { ErrorText, Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
+import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
  * Set a new password from the emailed code, then land signed in — the visitor just proved they
@@ -77,6 +77,7 @@ export default function ResetPasswordForm({ code = null }: { code?: string | nul
    */
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {error && <Notice tone="error">{error}</Notice>}
       <Notice tone="info">{t('resetConversionNotice')}</Notice>
       <Field label={t('newPassword')}>
         <input
@@ -98,7 +99,6 @@ export default function ResetPasswordForm({ code = null }: { code?: string | nul
           className={inputClasses}
         />
       </Field>
-      {error && <ErrorText>{error}</ErrorText>}
       <SubmitButton busy={busy}>{t('savePassword')}</SubmitButton>
     </form>
   );

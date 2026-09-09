@@ -47,12 +47,20 @@ export function ErrorText({ children }: { children: ReactNode }) {
   );
 }
 
-export function Notice({ children, tone = 'success' }: { children: ReactNode; tone?: 'success' | 'info' }) {
+export function Notice({ children, tone = 'success' }: { children: ReactNode; tone?: 'success' | 'info' | 'error' }) {
   const styles =
     tone === 'success'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
-      : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300';
-  return <div className={`rounded-xl border p-4 text-sm ${styles}`}>{children}</div>;
+      : tone === 'error'
+        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300'
+        : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300';
+  // The error tone is a live region so a screen reader announces it, the same job the old
+  // inline ErrorText's role="alert" did.
+  return (
+    <div role={tone === 'error' ? 'alert' : undefined} className={`rounded-xl border p-4 text-sm ${styles}`}>
+      {children}
+    </div>
+  );
 }
 
 /**
