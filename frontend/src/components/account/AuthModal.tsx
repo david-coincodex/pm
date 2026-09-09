@@ -120,7 +120,9 @@ export default function AuthModal({
           <p className="text-sm text-slate-600 dark:text-slate-300">{t('confirmDone')}</p>
         </div>
       ) : mode === 'forgot' ? (
-        <ForgotPasswordForm onBack={() => switchMode('login')} />
+        // onSent lifts the success up so the heading becomes "Check your inbox", exactly as the
+        // register step does — the check_email branch of the title logic above.
+        <ForgotPasswordForm onBack={() => switchMode('login')} onSent={() => setStep('check_email')} />
       ) : (
         // Keyed on the mode so switching starts from a clean form: the two modes share almost
         // no fields, and a half-finished sign-up step must not bleed into sign-in.

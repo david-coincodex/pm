@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TurnstileWidget, { CAPTCHA_CONFIGURED } from './TurnstileWidget';
+import SuccessCheck from './SuccessCheck';
 import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
@@ -13,7 +14,15 @@ import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
  * Rendered both as a step inside the account popup (with `onBack`, so the visitor can return to
  * sign-in without losing the card) and as the standalone /account/forgot-password/ page.
  */
-export default function ForgotPasswordForm({ onBack }: { onBack?: () => void } = {}) {
+export default function ForgotPasswordForm({
+  onBack,
+  onSent,
+}: {
+  onBack?: () => void;
+  /** Fired once the link is on its way, so the popup can retitle to "Check your inbox" — the
+   *  same success step registration uses. Absent on the standalone page, which has its own title. */
+  onSent?: () => void;
+} = {}) {
   const t = useTranslations('account');
   const errorText = useAuthError();
   const [sent, setSent] = useState(false);
@@ -38,6 +47,7 @@ export default function ForgotPasswordForm({ onBack }: { onBack?: () => void } =
       const data = (await res.json().catch(() => ({}))) as { code?: string };
       if (!res.ok) throw new Error(errorText(data.code));
       setSent(true);
+      onSent?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('accountError'));
       setCaptchaToken(null);
@@ -48,14 +58,17 @@ export default function ForgotPasswordForm({ onBack }: { onBack?: () => void } =
   }
 
   if (sent) {
+    // Same shape as registration's "check your inbox": the drawn tick, then the message — so the
+    // two success states in this popup read as one design.
     return (
-      <div className="space-y-4">
-        <Notice>{t('forgotSent')}</Notice>
+      <div className="flex flex-col items-center gap-4 py-2 text-center">
+        <SuccessCheck />
+        <p className="text-sm text-slate-600 dark:text-slate-300">{t('forgotSent')}</p>
         {onBack && (
           <button
             type="button"
             onClick={onBack}
-            className="w-full text-center text-sm font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
+            className="text-sm font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
           >
             {t('backToSignIn')}
           </button>
