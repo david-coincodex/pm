@@ -22,6 +22,10 @@ export type AuthUser = {
   email: string;
   confirmed: boolean;
   blocked: boolean;
+  /** 'local' = email + password; 'google' = created by Google sign-in and has no usable password. */
+  provider: string | null;
+  /** Whether the holder ever chose their own password — decides set-password vs change-password. */
+  passwordSet: boolean;
 };
 
 /** The JWT from the request cookie, or null. */

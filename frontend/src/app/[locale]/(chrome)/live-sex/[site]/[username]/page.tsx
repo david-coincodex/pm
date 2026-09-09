@@ -263,11 +263,9 @@ export default async function CamModelPage({ params }: Props) {
                 </svg>
                 {online ? t('chatWith', { name: displayName }) : t('visitProfile', { name: displayName, provider: adapter.name })}
               </CamCtaLink>
-              {/* Our sound button only drives OUR <video> (BongaCams). Chaturbate plays in its
-                  own iframe, which owns its audio — a button here couldn't reach it. */}
-              {/* Only when OUR surface owns the audio: a provider iframe or SDK player has
-                  its own sound control that our store cannot reach. */}
-              {online && !meta.video.ownsControls && <CamSoundButton />}
+              {/* Favoriting sits right beside the primary action: it is the one thing here the
+                  visitor does for THEMSELVES, and it earns the prominence more than a mute
+                  toggle does. */}
               <CamFavoriteButton
                 provider={provider}
                 username={username}
@@ -276,6 +274,11 @@ export default async function CamModelPage({ params }: Props) {
                 gender={gender ?? undefined}
                 variant="page"
               />
+              {/* Our sound button only drives OUR <video> (BongaCams). Chaturbate plays in its
+                  own iframe, which owns its audio — a button here couldn't reach it.
+                  Only when OUR surface owns the audio: a provider iframe or SDK player has
+                  its own sound control that our store cannot reach. */}
+              {online && !meta.video.ownsControls && <CamSoundButton />}
               {nextModel && (
                 <>
                   {/* Divider: everything left of it acts on THIS model; this one leaves. */}

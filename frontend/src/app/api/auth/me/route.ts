@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/auth';
-import { siteSettings } from '@/lib/siteSettings';
+import { accountsDisabled } from '@/lib/authApi';
 
 /** Current user for client components (the cookie is httpOnly — this is their only window). */
 export async function GET() {
-  if (!siteSettings.features.accounts) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const disabled = accountsDisabled();
+  if (disabled) return disabled;
   const user = await getUser();
   return NextResponse.json({ user });
 }

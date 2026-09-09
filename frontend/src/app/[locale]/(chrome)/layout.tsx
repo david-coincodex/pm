@@ -3,6 +3,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import OfferPopupProvider from '@/components/offer/OfferPopupProvider';
 import { FavoritesProvider } from '@/hooks/useFavorites';
+import { AuthModalProvider } from '@/components/account/AuthModalProvider';
 
 /**
  * No data fetching here on purpose. A layout's `children` cannot start rendering until the
@@ -30,11 +31,15 @@ export default async function ChromeLayout({
     <OfferPopupProvider>
       {/* Client provider with server children — costs nothing on the server render path. */}
       <FavoritesProvider>
-        <div className="flex min-h-screen flex-col">
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+        {/* Owns the sign-in popup — the only door to an account, so it wraps the whole chrome
+            rather than living in the header: cam cards' hearts and listing hints open it too. */}
+        <AuthModalProvider>
+          <div className="flex min-h-screen flex-col">
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+        </AuthModalProvider>
       </FavoritesProvider>
     </OfferPopupProvider>
   );

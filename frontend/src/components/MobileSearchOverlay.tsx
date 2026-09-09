@@ -15,12 +15,18 @@ export default function MobileSearchOverlay({ open, onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const t = useTranslations('search');
 
+  // Reset the query on CLOSE during render (React's pattern for state derived from a changing
+  // prop) — no setState inside the effect; the effect keeps only the async focus call.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open) setQuery('');
+  }
+
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      setQuery('');
-    }
+    if (!open) return;
+    const id = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(id);
   }, [open]);
 
   // Lock body scroll

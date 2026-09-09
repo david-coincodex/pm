@@ -83,12 +83,30 @@ export const routes = {
   /** Where nav/footer "Live Sex" points: the hub when the feature is on, the deals category until then */
   liveSexNav: () => (siteSettings.features.liveSex ? routes.liveSex() : routes.category('live-sex')),
 
-  /** Account: login */
-  login: () => '/account/login/' as const,
+  /**
+   * Account: sign in / sign up.
+   *
+   * There is no standalone page for either — the popup (AuthModalProvider) is the only door,
+   * and `?auth=` is how a link or a server-side redirect reaches it. Kept as route helpers so
+   * every call site stays a single source of truth, and so a future dedicated page would be a
+   * one-line change here.
+   */
+  login: () => '/?auth=login' as const,
 
-  /** Account: register */
-  register: () => '/account/register/' as const,
+  register: () => '/?auth=register' as const,
 
   /** Account: favorites */
   favorites: () => '/account/favorites/' as const,
+
+  /** Account: where the confirmation email lands (the CMS email template embeds this path) */
+  confirm: () => '/account/confirm/' as const,
+
+  /** Account: request a reset link */
+  forgotPassword: () => '/account/forgot-password/' as const,
+
+  /** Account: where the reset email lands (seeded as the CMS's email_reset_password) */
+  resetPassword: () => '/account/reset-password/' as const,
+
+  /** Account: email + password settings */
+  accountSettings: () => '/account/settings/' as const,
 };

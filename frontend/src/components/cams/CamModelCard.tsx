@@ -67,6 +67,19 @@ export default function CamModelCard({
               ranking metadata) — one reports guests in a free room (0-7, usually 0), and
               printing that as a viewer count next to a "1.2K" card would misinform rather than
               inform. The flag still shows. */}
+          {/* Offline (a favorited model that isn't in the live snapshot): keep the last-known
+              cover but dim it and swap the viewer-count badge for an OFFLINE tag, so the card
+              reads as inactive at a glance instead of looking like a live room with 0 viewers.
+              The dim sits above the image but below the heart/link. */}
+          {!live && (
+            <>
+              <span className="absolute inset-0 bg-slate-950/45" aria-hidden="true" />
+              <span className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-slate-900/75 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                {t('offline')}
+              </span>
+            </>
+          )}
           {live && (
             <span className="absolute left-2 top-2 flex items-center gap-1.5">
               {showViewerCount && (

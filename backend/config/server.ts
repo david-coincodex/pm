@@ -38,6 +38,27 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server =>
   app: {
     keys: env.array('APP_KEYS'),
   },
+  /**
+   * PUBLIC origin of this CMS. Strapi derives `server.absoluteUrl` from it, and the Google
+   * provider builds its OAuth redirect_uri as `<absoluteUrl>/api/connect/google/callback` —
+   * without this it would use the container's host:port, which Google can never reach and
+   * which would not match the URI registered in the Google console.
+   */
+  url: env('STRAPI_PUBLIC_URL', 'http://localhost:1339'),
+  /**
+   * Trust X-Forwarded-* — REQUIRED for auth rate limiting to work at all. The
+   * users-permissions rate limiter keys its buckets on path + `ctx.request.ip`, and every
+   * auth request reaches Strapi from the frontend container (the BFF), so without this the
+   * whole site shares ONE 5-per-5-minutes bucket: five failed logins lock out every visitor,
+   * and an attacker can trigger that deliberately. With `proxy` on, koa reads the client IP
+   * from the X-Forwarded-For the BFF forwards, giving per-visitor buckets. Safe here because
+   * the CMS is not directly reachable — Traefik fronts it in every deployed environment.
+   *
+   * NOTE the shape: Strapi 5 reads this as `server.proxy.koa`
+   * (@strapi/core/dist/services/server/index.js) — a bare `proxy: true` is silently ignored,
+   * and the sibling `proxy.http/https/global` keys are about OUTBOUND requests, not this.
+   */
+  proxy: { koa: true },
   cron: {
     enabled: true,
     tasks,

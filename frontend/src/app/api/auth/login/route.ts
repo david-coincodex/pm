@@ -1,32 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_STRAPI_URL, setAuthCookie } from '@/lib/auth';
-import { siteSettings } from '@/lib/siteSettings';
+import { NextResponse, type NextRequest } from 'next/server';
+import { setAuthCookie } from '@/lib/auth';
+import { looksLikeEmail, normalizeEmail } from '@/lib/accountPolicy';
+import { accountsDisabled, clientIp, fail, mapStrapiError, readJson, strapiAuth } from '@/lib/authApi';
 
-/** BFF login: Strapi /api/auth/local (identifier = email or username). */
+/**
+ * BFF login over stock `POST /api/auth/local`.
+ *
+ * No captcha here — the CMS rate-limits this route per IP (which only works because we
+ * forward the client IP; see `clientIp`), and a challenge on every sign-in taxes the people
+ * who are not attacking us. Add one if the buckets turn out not to be enough.
+ */
 export async function POST(req: NextRequest) {
-  if (!siteSettings.features.accounts) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  let body: { identifier?: string; password?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  }
-  if (!body.identifier || !body.password) {
-    return NextResponse.json({ error: 'identifier and password are required' }, { status: 400 });
-  }
+  const disabled = accountsDisabled();
+  if (disabled) return disabled;
 
-  const res = await fetch(`${AUTH_STRAPI_URL}/api/auth/local`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: body.identifier, password: body.password }),
-    cache: 'no-store',
+  const body = await readJson<{ identifier?: unknown; password?: unknown }>(req);
+  if (!body || typeof body.identifier !== 'string' || typeof body.password !== 'string') {
+    return fail('bad_request', 400);
+  }
+  if (!body.identifier || !body.password) return fail('bad_request', 400);
+
+  // Accounts are stored under the normalized address, so `you+tag@gmail.com` and
+  // `y.ou@gmail.com` sign in to the one account they created. Anything that isn't shaped like
+  // an email is passed through untouched — Strapi also accepts a username as the identifier.
+  const identifier = looksLikeEmail(body.identifier.trim().toLowerCase())
+    ? normalizeEmail(body.identifier)
+    : body.identifier;
+
+  const result = await strapiAuth('/api/auth/local', {
+    body: { identifier, password: body.password },
+    ip: clientIp(req),
   });
-  const data = await res.json();
-  if (!res.ok || !data.jwt) {
-    return NextResponse.json({ error: data?.error?.message ?? 'Login failed' }, { status: res.ok ? 500 : res.status });
+  if (!result.ok || !result.data.jwt) {
+    // `unconfirmed` is the one the UI acts on: it offers to re-send the confirmation email.
+    return fail(result.ok ? 'upstream' : mapStrapiError(result), result.ok ? 502 : result.status);
   }
 
-  const response = NextResponse.json({ user: data.user });
-  setAuthCookie(response, data.jwt);
+  const response = NextResponse.json({ ok: true });
+  setAuthCookie(response, result.data.jwt);
   return response;
 }
