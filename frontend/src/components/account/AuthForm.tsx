@@ -7,7 +7,7 @@ import type { AuthMode } from './authModalContext';
 import SetPasswordForm from './SetPasswordForm';
 import SuccessCheck from './SuccessCheck';
 import { GoogleButton, OrDivider } from './GoogleSignInButton';
-import { ErrorText, Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
+import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
  * Sign-in and sign-up, in the popup and on the static /account/login|register pages alike.
@@ -190,6 +190,10 @@ export default function AuthForm({
 
   return (
     <div className="space-y-4">
+      {/* Failures show as a red banner at the TOP of the card, matching the info notice — a
+          submit error used to sit in small red text down by the button, easy to miss. */}
+      {error && <Notice tone="error">{error}</Notice>}
+      {captchaBlocked && <Notice tone="error">{t('captchaBlocked')}</Notice>}
       {infoMessage && <Notice tone="info">{infoMessage}</Notice>}
       <GoogleButton />
       <OrDivider />
@@ -230,8 +234,6 @@ export default function AuthForm({
           </>
         )}
 
-        {captchaBlocked && <ErrorText>{t('captchaBlocked')}</ErrorText>}
-        {error && <ErrorText>{error}</ErrorText>}
         {offerResend && (
           <>
             {/* The sign-in form carries no challenge of its own, so the re-send gets one here. */}

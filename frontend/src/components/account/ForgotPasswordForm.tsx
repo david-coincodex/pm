@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import TurnstileWidget, { CAPTCHA_CONFIGURED } from './TurnstileWidget';
-import { ErrorText, Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
+import { Field, Notice, SubmitButton, inputClasses, useAuthError } from './ui';
 
 /**
  * Request a reset link. Always reports success, whatever the answer upstream — the BFF
@@ -66,6 +66,8 @@ export default function ForgotPasswordForm({ onBack }: { onBack?: () => void } =
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {error && <Notice tone="error">{error}</Notice>}
+      {captchaBlocked && <Notice tone="error">{t('captchaBlocked')}</Notice>}
       <p className="text-sm text-slate-500 dark:text-slate-400">{t('forgotSubtitle')}</p>
       <Field label={t('email')}>
         <input name="email" type="email" required autoComplete="email" className={inputClasses} />
@@ -75,8 +77,6 @@ export default function ForgotPasswordForm({ onBack }: { onBack?: () => void } =
         onToken={setCaptchaToken}
         onUnavailable={() => setCaptchaBlocked(true)}
       />
-      {captchaBlocked && <ErrorText>{t('captchaBlocked')}</ErrorText>}
-      {error && <ErrorText>{error}</ErrorText>}
       <SubmitButton busy={busy || (CAPTCHA_CONFIGURED && !captchaToken)}>{t('sendResetLink')}</SubmitButton>
       {onBack && (
         <button

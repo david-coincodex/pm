@@ -8,7 +8,6 @@ import ForgotPasswordForm from './ForgotPasswordForm';
 import SetPasswordForm from './SetPasswordForm';
 import ResetPasswordForm from './ResetPasswordForm';
 import SuccessCheck from './SuccessCheck';
-import { Notice } from './ui';
 import type { AuthMode } from './authModalContext';
 
 /**
