@@ -106,6 +106,21 @@ body {
   font-family: var(--font-sans-stack);
 }
 
+/* iOS Safari zooms the whole viewport when a focused form control has a font-size below 16px —
+   the ONLY trigger, and the reason tapping the email field on an iPhone jumps the page. Pin
+   form fields to 16px on TOUCH devices only, so desktop keeps its smaller `text-sm` inputs (a
+   narrow desktop window never zooms). `!important` is needed to beat the `text-sm` utility on
+   the element itself. Deliberately NOT via `maximum-scale=1` on the viewport: disabling
+   pinch-zoom breaks accessibility, and current iOS ignores it anyway. Checkboxes/radios are
+   excluded — they carry no text and forcing a font-size can nudge their box size. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Rich-text content (pros/cons block, CTA buttons, etc.) is styled entirely with Tailwind
    utilities inside the React components in src/components/rich-text/ and RichText.tsx —
    intentionally no bespoke rich-text CSS here, so nothing leaks via descendant selectors. */
