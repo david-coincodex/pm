@@ -75,5 +75,16 @@ export default {
         middlewares: ['plugin::users-permissions.rateLimit'],
       },
     },
+    {
+      // Stamps the signup country on the CURRENT account (once) and re-tags its newsletter
+      // member. For Google sign-in, whose stock user creation cannot carry the country the way
+      // email register does — the BFF calls this right after the token exchange.
+      method: 'POST',
+      path: '/account/set-signup-country',
+      handler: 'account.setSignupCountry',
+      config: {
+        middlewares: ['plugin::users-permissions.rateLimit'],
+      },
+    },
   ],
 };

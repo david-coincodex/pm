@@ -16,7 +16,11 @@
 
 const LIST = process.env.MAILGUN_LIST_ADDRESS ?? 'newsletter@pornmode.com';
 
-export async function subscribeToNewsletter(email: string, strapi: { log: { info: (m: string) => void; warn: (m: string) => void } }): Promise<void> {
+export async function subscribeToNewsletter(
+  email: string,
+  country: string | null | undefined,
+  strapi: { log: { info: (m: string) => void; warn: (m: string) => void } },
+): Promise<void> {
   const key = process.env.MAILGUN_API_KEY;
   if (!key) return; // no mailer configured (dev without secrets, or a fresh checkout)
 
@@ -24,9 +28,19 @@ export async function subscribeToNewsletter(email: string, strapi: { log: { info
   const body = new URLSearchParams({
     address: email,
     subscribed: 'yes',
-    // `upsert` makes re-confirmation idempotent instead of a 400 for an existing member.
+    // `upsert` makes re-confirmation idempotent instead of a 400 for an existing member. It
+    // also lets a later call UPDATE the member — which is how a Google account gets its country
+    // added after the lifecycle already subscribed it without one.
     upsert: 'yes',
   });
+  // Member variables travel with the list, so segmenting a broadcast by country ("email UK
+  // sign-ups") is a filter in Mailgun rather than a job here. The country is Cloudflare's
+  // CF-IPCountry (an ISO-3166-1 alpha-2 code) captured at signup; absent when Cloudflare did
+  // not resolve one (localhost, an anonymising proxy) — then the var is simply omitted.
+  const normalized = typeof country === 'string' ? country.trim().toUpperCase() : '';
+  if (/^[A-Z]{2}$/.test(normalized)) {
+    body.set('vars', JSON.stringify({ country: normalized }));
+  }
 
   try {
     const res = await fetch(`${base}/v3/lists/${encodeURIComponent(LIST)}/members`, {
