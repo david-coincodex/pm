@@ -74,6 +74,17 @@
       "maxLength": 2,
       "private": true,
       "configurable": false
+    },
+    "dripStep": {
+      "type": "integer",
+      "default": 0,
+      "private": true,
+      "configurable": false
+    },
+    "lastDripSentAt": {
+      "type": "datetime",
+      "private": true,
+      "configurable": false
     }
   }
 }
