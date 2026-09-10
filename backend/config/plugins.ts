@@ -50,11 +50,13 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     config: {
       jwtSecret: env('JWT_SECRET'),
       jwt: { expiresIn: '30d' },
-      // Whitelist of extra registration fields: empty = username/email/password only,
-      // blocking mass-assignment of arbitrary user columns through /auth/local/register.
-      // NOTE: this is why `passwordSet` (see the user content-type extension) can never be
-      // forged by a registration payload — it is server-controlled only.
-      register: { allowedFields: [] },
+      // Whitelist of extra registration fields beyond username/email/password — the
+      // mass-assignment guard on /auth/local/register. `signupCountry` is the ONE addition: the
+      // BFF sets it from Cloudflare's CF-IPCountry to tag the newsletter member. It is allowed
+      // here because a forged value only mislabels the sender's OWN marketing record (no
+      // security surface), whereas everything omitted — `passwordSet`, `confirmed`, `role`,
+      // `provider` — stays server-controlled and can never be forged by a registration payload.
+      register: { allowedFields: ['signupCountry'] },
     },
   },
 
