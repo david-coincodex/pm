@@ -75,6 +75,21 @@ export function clientIp(req: NextRequest): string | null {
   return first || null;
 }
 
+/**
+ * The visitor's country as Cloudflare resolved it (`CF-IPCountry`, ISO-3166-1 alpha-2), for
+ * tagging the newsletter member so a broadcast can be segmented by geography.
+ *
+ * Cloudflare sets this on the edge from the connecting IP and it cannot be spoofed by the
+ * client. It is absent in local dev (no Cloudflare in front), and Cloudflare itself returns
+ * `XX` when it cannot resolve one and `T1` for Tor — both dropped here so only a real code is
+ * ever forwarded. Purely a marketing attribute: nothing in auth depends on it.
+ */
+export function clientCountry(req: NextRequest): string | null {
+  const cc = req.headers.get('cf-ipcountry')?.trim().toUpperCase();
+  if (!cc || cc === 'XX' || cc === 'T1' || !/^[A-Z]{2}$/.test(cc)) return null;
+  return cc;
+}
+
 export type StrapiAuthResult<T = Record<string, unknown>> = {
   ok: boolean;
   status: number;

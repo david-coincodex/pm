@@ -1,4 +1,5 @@
 import type { Core } from '@strapi/strapi';
+import { subscribeToNewsletter } from '../../../utils/newsletter';
 
 /**
  * The endpoints stock users-permissions does not provide. Each delegates to plugin services —
@@ -314,6 +315,43 @@ export default ({ strapi }: { strapi: Core.Strapi }): Core.Controller => ({
       passwordSet: true,
     });
     strapi.log.info(`[account] password set for user ${user.id} (was provider "${user.provider}")`);
+
+    return ctx.send({ ok: true });
+  },
+
+  /**
+   * Stamp the signup country on the caller's account and tag its newsletter member.
+   *
+   * The country (Cloudflare's CF-IPCountry) reaches email signups through the register call and
+   * is on the row by confirmation time. Google sign-in has no such hook — stock creates the
+   * user, and the subscribe lifecycle has already fired without a country — so the BFF's Google
+   * token route calls this straight after the exchange.
+   *
+   * Idempotent and write-once: it only stores the country the FIRST time (so a later login from
+   * another country never rewrites where they signed up), and only then re-subscribes — which
+   * upserts the existing Mailgun member to add the `country` var. Always 200, even with nothing
+   * to do: this is a fire-and-forget enrichment the caller must not have to handle.
+   */
+  async setSignupCountry(ctx) {
+    const authUser = ctx.state.user as { id: number } | undefined;
+    if (!authUser) return ctx.unauthorized();
+
+    const { country } = (ctx.request.body ?? {}) as { country?: unknown };
+    const cc = typeof country === 'string' ? country.trim().toUpperCase() : '';
+    if (!/^[A-Z]{2}$/.test(cc)) return ctx.send({ ok: true }); // no usable country — nothing to do
+
+    const user: UserRow & { signupCountry?: string | null; confirmed?: boolean | null } = await strapi.db
+      .query('plugin::users-permissions.user')
+      .findOne({ where: { id: authUser.id }, select: ['id', 'email', 'signupCountry', 'confirmed', 'blocked'] });
+    if (!user || user.blocked) return ctx.send({ ok: true });
+
+    // Write-once: an existing value wins, so this is safe to call on every Google login.
+    if (!user.signupCountry) {
+      await strapi.db.query('plugin::users-permissions.user').update({ where: { id: user.id }, data: { signupCountry: cc } });
+      // Only now — first stamp — re-tag the member the lifecycle already added country-less.
+      if (user.confirmed && user.email) void subscribeToNewsletter(user.email, cc, strapi);
+      strapi.log.info(`[account] signup country ${cc} stored for user ${user.id}`);
+    }
 
     return ctx.send({ ok: true });
   },
