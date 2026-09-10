@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { setAuthCookie } from '@/lib/auth';
-import { accountsDisabled, clientIp, fail, mapStrapiError, readJson, strapiAuth } from '@/lib/authApi';
+import { accountsDisabled, clientCountry, clientIp, fail, mapStrapiError, readJson, strapiAuth } from '@/lib/authApi';
 
 /**
  * Exchange a Google access token from the POPUP flow for a session.
@@ -38,6 +38,16 @@ export async function POST(req: NextRequest) {
     const code = result.ok ? 'upstream' : mapStrapiError(result);
     console.warn('[auth] google token exchange failed:', result.status, code);
     return fail(code, result.ok ? 502 : result.status);
+  }
+
+  // Tag the newsletter member with Cloudflare's country. Google's stock user creation can't
+  // carry it the way email register does, so it is stamped here, once, with the session we just
+  // got. Best-effort and non-blocking: a failure must not cost the visitor their login.
+  const country = clientCountry(req);
+  if (country) {
+    void strapiAuth('/api/account/set-signup-country', { body: { country }, jwt: result.data.jwt, ip: clientIp(req) }).catch(
+      () => {},
+    );
   }
 
   const response = NextResponse.json({ ok: true });

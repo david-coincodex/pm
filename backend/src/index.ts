@@ -52,14 +52,17 @@ export default {
       models: ['plugin::users-permissions.user'],
 
       afterCreate({ result }: any) {
-        // Google (and any provider) creates users already confirmed.
-        if (result?.confirmed && result?.email) void subscribeToNewsletter(result.email, strapi);
+        // Google (and any provider) creates users already confirmed. `signupCountry` is null
+        // for a fresh Google account (stock creation can't carry it) — the token route adds it
+        // right after (see /account/set-signup-country), which upserts the same member.
+        if (result?.confirmed && result?.email) void subscribeToNewsletter(result.email, result.signupCountry, strapi);
       },
 
       async afterUpdate({ result, params }: any) {
         // Only the transition INTO confirmed, so ordinary profile writes are not re-posted.
         if (params?.data?.confirmed !== true) return;
-        if (result?.email) void subscribeToNewsletter(result.email, strapi);
+        // Email signups carry the country from registration, so it is on the row by now.
+        if (result?.email) void subscribeToNewsletter(result.email, result.signupCountry, strapi);
       },
 
       async beforeDelete({ params }: any) {
@@ -207,6 +210,8 @@ export default {
           'api::account.account.setPassword',
           // Deleting one's OWN account (the controller can reach no other user).
           'api::account.account.deleteAccount',
+          // Stamping the signup country on one's OWN account (Google flow; write-once).
+          'api::account.account.setSignupCountry',
         ];
         for (const action of authActions) {
           if (!existing.has(action)) {

@@ -3,7 +3,7 @@ import { setAuthCookie } from '@/lib/auth';
 import { looksLikeEmail, normalizeEmail } from '@/lib/accountPolicy';
 import { checkEmail } from '@/lib/emailPolicy';
 import { verifyCaptcha } from '@/lib/turnstile';
-import { accountsDisabled, clientIp, fail, mapStrapiError, placeholderPassword, readJson, strapiAuth } from '@/lib/authApi';
+import { accountsDisabled, clientCountry, clientIp, fail, mapStrapiError, placeholderPassword, readJson, strapiAuth } from '@/lib/authApi';
 
 /**
  * Step 1 of signup: an email address, nothing else.
@@ -38,8 +38,11 @@ export async function POST(req: NextRequest) {
   if (rejection === 'disposable') return fail('email_disposable', 400);
   if (rejection === 'no_mx') return fail('email_unreachable', 400);
 
+  // Cloudflare's country tags the newsletter member (see the CMS bootstrap's allowed_fields):
+  // stored on the account now, read by the subscribe lifecycle when the address is confirmed.
+  const country = clientCountry(req);
   const result = await strapiAuth('/api/auth/local/register', {
-    body: { username: email, email, password: placeholderPassword() },
+    body: { username: email, email, password: placeholderPassword(), ...(country ? { signupCountry: country } : {}) },
     ip,
   });
 

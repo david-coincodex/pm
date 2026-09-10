@@ -68,6 +68,12 @@
       "type": "boolean",
       "default": false,
       "configurable": false
+    },
+    "signupCountry": {
+      "type": "string",
+      "maxLength": 2,
+      "private": true,
+      "configurable": false
     }
   }
 }
