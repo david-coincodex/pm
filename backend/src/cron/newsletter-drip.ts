@@ -20,26 +20,35 @@ import { CRON_STEPS, DRIP_STEP_GAP_MS, fetchDripRunData, mailerConfigured, sendD
 
 const USER_UID = 'plugin::users-permissions.user';
 
-/** Bounds one run; at hourly cadence the backlog drains fast, and a run stays short. */
+/** Bounds one run PER STEP; at hourly cadence the backlog drains fast, and a run stays short. */
 const BATCH_LIMIT = 100;
 
 export async function runNewsletterDrip({ strapi }: { strapi: Core.Strapi }): Promise<TaskResult> {
   if (!mailerConfigured()) return; // dev without secrets: nothing to send, ping success
 
   const cutoff = new Date(Date.now() - DRIP_STEP_GAP_MS).toISOString();
-  const due: Array<{ id: number; email: string; dripStep: number }> = await strapi.db.query(USER_UID).findMany({
-    where: {
-      confirmed: true,
-      blocked: { $ne: true },
-      // NULL dripStep (accounts predating the drip) is excluded by $in on purpose: existing
-      // users are not back-enrolled into an onboarding sequence they never started.
-      dripStep: { $in: [...CRON_STEPS] },
-      lastDripSentAt: { $lt: cutoff },
-    },
-    orderBy: { lastDripSentAt: 'asc' },
-    limit: BATCH_LIMIT,
-    select: ['id', 'email', 'dripStep'],
-  });
+  // ONE query and ONE limit per step, not a single ordered batch: `no-data` users never claim,
+  // so with a shared batch a deals outage would park >LIMIT step-1 users at the head of every
+  // run (oldest lastDripSentAt) and starve step-2 users whose content IS available.
+  const dueByStep = await Promise.all(
+    CRON_STEPS.map(
+      (step) =>
+        strapi.db.query(USER_UID).findMany({
+          where: {
+            confirmed: true,
+            blocked: { $ne: true },
+            // NULL dripStep (accounts predating the drip) never matches on purpose: existing
+            // users are not back-enrolled into an onboarding sequence they never started.
+            dripStep: step,
+            lastDripSentAt: { $lt: cutoff },
+          },
+          orderBy: { lastDripSentAt: 'asc' },
+          limit: BATCH_LIMIT,
+          select: ['id', 'email', 'dripStep'],
+        }) as Promise<Array<{ id: number; email: string; dripStep: number }>>,
+    ),
+  );
+  const due = dueByStep.flat();
   if (!due.length) return;
 
   // Live content is fetched ONCE per run, not per recipient — every user in the batch gets
