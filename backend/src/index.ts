@@ -2,6 +2,7 @@
 
 import { normalizeMediaUrls } from './utils/relative-media-urls';
 import { subscribeToNewsletter, unsubscribeFromNewsletter } from './utils/newsletter';
+import { sendWelcomeOnce } from './utils/drip';
 
 export default {
   /**
@@ -55,14 +56,25 @@ export default {
         // Google (and any provider) creates users already confirmed. `signupCountry` is null
         // for a fresh Google account (stock creation can't carry it) — the token route adds it
         // right after (see /account/set-signup-country), which upserts the same member.
-        if (result?.confirmed && result?.email) void subscribeToNewsletter(result.email, result.signupCountry, strapi);
+        if (result?.confirmed && result?.email) {
+          void subscribeToNewsletter(result.email, result.signupCountry, strapi);
+          // Drip step 1. Fire-and-forget for the same reason as the subscribe: marketing mail
+          // must never slow or break the sign-in that triggered it. Its dripStep CAS makes it
+          // exactly-once even though these hooks can fire more than once per account.
+          void sendWelcomeOnce(result, strapi);
+        }
       },
 
       async afterUpdate({ result, params }: any) {
         // Only the transition INTO confirmed, so ordinary profile writes are not re-posted.
+        // (An admin saving the user form re-posts confirmed:true — both callees are guarded:
+        // the subscribe is an idempotent upsert, the welcome a dripStep CAS.)
         if (params?.data?.confirmed !== true) return;
         // Email signups carry the country from registration, so it is on the row by now.
-        if (result?.email) void subscribeToNewsletter(result.email, result.signupCountry, strapi);
+        if (result?.email) {
+          void subscribeToNewsletter(result.email, result.signupCountry, strapi);
+          void sendWelcomeOnce(result, strapi);
+        }
       },
 
       async beforeDelete({ params }: any) {
