@@ -9,10 +9,10 @@
  * two fields on the user: `dripStep` (highest step DELIVERED, 0–3) and `lastDripSentAt` (the
  * 48h gate). Progress is claimed with a COMPARE-AND-SWAP update (`where` includes the step we
  * think the user is on) BEFORE the send, so every email is at-most-once: the welcome hooks can
- * fire multiple times for one account (Google afterCreate + set-signup-country afterUpdate +
- * an admin saving the user form re-posts `confirmed: true`), and a raced claim simply loses
- * the update and skips. For marketing, a rare missed email — which the cron heartbeat reports
- * — beats any chance of a duplicate.
+ * fire multiple times for one account (Google afterCreate, then any later update whose payload
+ * carries `confirmed: true` — an admin saving the user form does), and a raced claim simply
+ * loses the update and skips. For marketing, a rare missed email — which the cron heartbeat
+ * reports — beats any chance of a duplicate.
  *
  * The CONTENT is never pre-generated: the templates live at Mailgun (scripts/lib/
  * email-templates.mjs) and every dynamic fact — deals, prices, the Chaturbate online count —
@@ -185,16 +185,18 @@ async function sendDripEmail(
  * findOne-then-update-by-id (two statements — a check-then-act race, and it re-runs the
  * per-entity lifecycles this claim is called FROM), while `updateMany` executes ONE
  * `UPDATE … WHERE` and reports the affected-row count. The where only matches while the user
- * is still ON `fromStep`, so of N concurrent claimers exactly one sees count 1. `fromStep: 0`
- * also matches NULL (rows that predate the column) — though those users never re-enter the
- * welcome hooks anyway.
+ * is still ON `fromStep`, so of N concurrent claimers exactly one sees count 1.
+ *
+ * NULL `dripStep` deliberately matches NOTHING. Rows that predate the column stay NULL (the
+ * migration adds it without a DB default; the attribute default `0` is applied only on
+ * create), and an admin saving such a user re-posts `confirmed: true` — which reaches this
+ * claim via the afterUpdate hook. Matching NULL here would greet a years-old account with
+ * "your account is ready" and pull it into the whole drip; excluding it makes NULL mean
+ * "existing user, never enroll", symmetric with the cron's `$in [1, 2]`.
  */
 async function claimStep(strapi: Core.Strapi, userId: number, fromStep: number): Promise<boolean> {
   const { count } = await strapi.db.query(USER_UID).updateMany({
-    where: {
-      id: userId,
-      ...(fromStep === 0 ? { $or: [{ dripStep: null }, { dripStep: 0 }] } : { dripStep: fromStep }),
-    },
+    where: { id: userId, dripStep: fromStep },
     data: { dripStep: fromStep + 1, lastDripSentAt: new Date().toISOString() },
   });
   return count === 1;
