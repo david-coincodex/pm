@@ -8,9 +8,13 @@
  *  - INLINE styles on every element. Gmail strips <style> in some contexts, and any client
  *    showing a "view entire message" clip can drop the head.
  *  - 600px max width — the safe reading column in every desktop client.
- *  - NO images, including the logo: the wordmark is live text. Most clients block remote
- *    images by default for an unknown sender, and a first-contact confirmation email whose
- *    branding is a grey box is worse than one with none. Text also survives dark mode.
+ *  - NO images in the TRANSACTIONAL templates, including the logo: the wordmark is live text.
+ *    Most clients block remote images by default for an unknown sender, and a first-contact
+ *    confirmation email whose branding is a grey box is worse than one with none. Text also
+ *    survives dark mode. The marketing drip's deal cards are the deliberate exception: they
+ *    carry the sites' cover images (requested — the cards should look like the website's),
+ *    sent only to confirmed subscribers, with alt text and a neutral background so a blocked
+ *    image degrades to a labelled box rather than a hole.
  *  - A "bulletproof" button: a table cell with a background colour and a padded <a>, which
  *    renders in Outlook where a styled <a> alone collapses.
  *  - Explicit colours everywhere (never relying on a default) so forced dark modes in Apple
@@ -167,24 +171,58 @@ const consent = () =>
   );
 
 /**
- * One deal card for the drip emails. All variables are FLAT and handlebars-guarded (the same
- * pattern pm-signup-notice proved out): the backend passes deal{n}_name/price/fullprice/
- * discount/url only for the deals it actually has, so a run with 2 deals renders 2 cards and
- * no empty shells. Prices/discounts arrive PRE-FORMATTED strings ("$9.95", "67%") — the
- * template does no arithmetic.
+ * One deal card for the drip emails, mirroring the website's SiteCard (frontend/src/
+ * components/site/SiteCard.tsx): cover image on top, name with an emerald discount pill,
+ * two-line description, "From" price row with the struck full price, and the same two
+ * buttons — outline "View Deal" (the site's /discounts/ page) beside the emerald CTA (the
+ * tracked /offer/ redirect).
+ *
+ * All variables are FLAT and handlebars-guarded (the pattern pm-signup-notice proved out):
+ * the backend passes deal{n}_name/img/desc/price/fullprice/discount/url/site_url only for
+ * the deals it actually has, so a run with 2 deals renders 2 cards and no empty shells.
+ * Prices/discounts arrive PRE-FORMATTED strings ("$9.95", "67%") — the template does no
+ * arithmetic. The image sits on the card's slate placeholder colour with alt text, so a
+ * client that blocks remote images shows a labelled box, like the site's imageless card.
  */
-const dealCard = (prefix) => `
+const dealCard = (prefix, { cta = 'Buy Now' } = {}) => `
 {{#if ${prefix}_name}}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;border:1px solid ${C.border};border-radius:12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border:1px solid ${C.border};border-radius:16px;">
+    {{#if ${prefix}_img}}
     <tr>
-      <td style="padding:16px 20px;">
-        <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:17px;line-height:1.4;color:${C.text};"><strong>{{${prefix}_name}}</strong></p>
-        <p style="margin:0 0 10px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.4;color:${C.text};">
-          <strong style="color:${C.button};font-size:18px;">{{${prefix}_price}}</strong>
-          {{#if ${prefix}_fullprice}}&nbsp;&nbsp;<s style="color:${C.muted};">{{${prefix}_fullprice}}</s>{{/if}}
-          {{#if ${prefix}_discount}}&nbsp;&nbsp;<strong style="color:${C.button};">{{${prefix}_discount}} OFF</strong>{{/if}}
+      <td bgcolor="${C.pageBg}" style="border-radius:16px 16px 0 0;">
+        <a href="{{${prefix}_url}}"><img src="{{${prefix}_img}}" alt="{{${prefix}_name}}" width="534" border="0" style="display:block;width:100%;height:auto;border-radius:16px 16px 0 0;"></a>
+      </td>
+    </tr>
+    {{/if}}
+    <tr>
+      <td style="padding:16px 20px 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:17px;line-height:1.4;color:${C.text};"><strong>{{${prefix}_name}}</strong></td>
+            {{#if ${prefix}_discount}}
+            <td align="right" style="vertical-align:top;"><span style="display:inline-block;background-color:${C.button};color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:bold;padding:3px 10px;border-radius:999px;">{{${prefix}_discount}} OFF</span></td>
+            {{/if}}
+          </tr>
+        </table>
+        {{#if ${prefix}_desc}}
+        <p style="margin:6px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:${C.muted};">{{${prefix}_desc}}</p>
+        {{/if}}
+        <p style="margin:10px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;color:${C.muted};">
+          From
+          {{#if ${prefix}_fullprice}}&nbsp;<s>{{${prefix}_fullprice}}</s>{{/if}}
+          &nbsp;<strong style="color:${C.button};font-size:19px;">{{${prefix}_price}}</strong>
         </p>
-        <a href="{{${prefix}_url}}" style="font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:${C.button};text-decoration:underline;">Get this deal &rarr;</a>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">
+          <tr>
+            <td width="49%" align="center" style="border:1px solid ${C.border};border-radius:10px;">
+              <a href="{{${prefix}_site_url}}" style="display:inline-block;width:100%;padding:10px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:500;color:${C.text};text-decoration:none;">View Deal</a>
+            </td>
+            <td width="2%">&nbsp;</td>
+            <td width="49%" align="center" bgcolor="${C.button}" style="border-radius:10px;">
+              <a href="{{${prefix}_url}}" style="display:inline-block;width:100%;padding:11px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">${cta}</a>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
   </table>
@@ -300,7 +338,7 @@ export const TEMPLATES = {
         '{{#if cb_online_count}}',
         paragraph(`<strong style="color:${C.button};">{{cb_online_count}} models are live right now</strong> — browse them on PornMode with previews and filters, and heart the ones worth coming back to.`),
         '{{/if}}',
-        dealCard('cb_deal'),
+        dealCard('cb_deal', { cta: 'Get Credits' }),
         button('{{cams_url}}', 'Watch Chaturbate cams'),
         paragraph('This is the last of our getting-started emails. From here on you will only hear from us about genuinely good deals and news.', { muted: true, small: true }),
       ].join('\n'),
