@@ -8,9 +8,13 @@
  *  - INLINE styles on every element. Gmail strips <style> in some contexts, and any client
  *    showing a "view entire message" clip can drop the head.
  *  - 600px max width — the safe reading column in every desktop client.
- *  - NO images, including the logo: the wordmark is live text. Most clients block remote
- *    images by default for an unknown sender, and a first-contact confirmation email whose
- *    branding is a grey box is worse than one with none. Text also survives dark mode.
+ *  - NO images in the TRANSACTIONAL templates, including the logo: the wordmark is live text.
+ *    Most clients block remote images by default for an unknown sender, and a first-contact
+ *    confirmation email whose branding is a grey box is worse than one with none. Text also
+ *    survives dark mode. The marketing drip's deal cards are the deliberate exception: they
+ *    carry the sites' cover images (requested — the cards should look like the website's),
+ *    sent only to confirmed subscribers, with alt text and a neutral background so a blocked
+ *    image degrades to a labelled box rather than a hole.
  *  - A "bulletproof" button: a table cell with a background colour and a padded <a>, which
  *    renders in Outlook where a styled <a> alone collapses.
  *  - Explicit colours everywhere (never relying on a default) so forced dark modes in Apple
@@ -88,8 +92,17 @@ const button = (href, label) => `
 const paragraph = (html, { muted = false, small = false } = {}) =>
   `<p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:${small ? '13px' : '16px'};line-height:1.6;color:${muted ? C.muted : C.text};">${html}</p>`;
 
-/** Same link on every email: the legal pages plus a human to reply to. */
-const footer = () => `
+/**
+ * Same link on every email: the legal pages plus a human to reply to.
+ *
+ * `marketing: true` adds the unsubscribe line — REQUIRED on every drip/marketing template
+ * (CAN-SPAM/GDPR), and deliberately `%tag_unsubscribe_url%`, NOT `%unsubscribe_url%`: the plain
+ * variable unsubscribes DOMAIN-WIDE, which would also suppress password resets and confirmation
+ * emails for that address. The tag URL only suppresses mail carrying the same `o:tag` the send
+ * sets (backend/src/utils/drip.ts) — transactional templates stay untagged and unaffected.
+ * `%…%` is Mailgun recipient-variable syntax, substituted at delivery, after handlebars.
+ */
+const footer = ({ marketing = false } = {}) => `
   <tr>
     <td style="padding:24px 32px 32px;border-top:1px solid ${C.border};">
       <p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:${C.footerText};">
@@ -98,14 +111,21 @@ const footer = () => `
         <a href="${legal('cookies')}" style="color:${C.footerText};text-decoration:underline;">Cookie Policy</a>
       </p>
       <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:${C.footerText};">
-        You received this because someone used this address on ${SITE.replace('https://', '')}.
+        ${marketing ? `You are receiving this because you created an account on ${SITE.replace('https://', '')}.` : `You received this because someone used this address on ${SITE.replace('https://', '')}.`}
         Questions? Reply to this email or write to {{support_email}}.
-      </p>
+      </p>${
+        marketing
+          ? `
+      <p style="margin:8px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:${C.footerText};">
+        Don't want these emails? <a href="%tag_unsubscribe_url%" style="color:${C.footerText};text-decoration:underline;">Unsubscribe</a> — it never affects your account.
+      </p>`
+          : ''
+      }
     </td>
   </tr>`;
 
 /** The shell every template shares. */
-const layout = ({ preview, body }) => `<!doctype html>
+const layout = ({ preview, body, marketing = false }) => `<!doctype html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">
 <head>
 <meta charset="utf-8">
@@ -128,7 +148,7 @@ ${preheader(preview)}
 ${body}
           </td>
         </tr>
-        ${footer()}
+        ${footer({ marketing })}
       </table>
       <!--[if mso]></td></tr></table><![endif]-->
     </td>
@@ -149,6 +169,64 @@ const consent = () =>
     `By confirming you agree to our <a href="${legal('terms')}" style="color:${C.button};text-decoration:underline;">Terms of Service</a> and <a href="${legal('privacy')}" style="color:${C.button};text-decoration:underline;">Privacy Policy</a>, and you agree that we may email you offers, deals and new cam-site news. You can unsubscribe from marketing at any time using the link in those emails — it never affects your account.`,
     { muted: true, small: true },
   );
+
+/**
+ * One deal card for the drip emails, mirroring the website's SiteCard (frontend/src/
+ * components/site/SiteCard.tsx): cover image on top, name with an emerald discount pill,
+ * two-line description, "From" price row with the struck full price, and the same two
+ * buttons — outline "View Deal" (the site's /discounts/ page) beside the emerald CTA (the
+ * tracked /offer/ redirect).
+ *
+ * All variables are FLAT and handlebars-guarded (the pattern pm-signup-notice proved out):
+ * the backend passes deal{n}_name/img/desc/price/fullprice/discount/url/site_url only for
+ * the deals it actually has, so a run with 2 deals renders 2 cards and no empty shells.
+ * Prices/discounts arrive PRE-FORMATTED strings ("$9.95", "67%") — the template does no
+ * arithmetic. The image sits on the card's slate placeholder colour with alt text, so a
+ * client that blocks remote images shows a labelled box, like the site's imageless card.
+ */
+const dealCard = (prefix, { cta = 'Buy Now' } = {}) => `
+{{#if ${prefix}_name}}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border:1px solid ${C.border};border-radius:16px;">
+    {{#if ${prefix}_img}}
+    <tr>
+      <td bgcolor="${C.pageBg}" style="border-radius:16px 16px 0 0;">
+        <a href="{{${prefix}_url}}"><img src="{{${prefix}_img}}" alt="{{${prefix}_name}}" width="534" border="0" style="display:block;width:100%;height:auto;border-radius:16px 16px 0 0;"></a>
+      </td>
+    </tr>
+    {{/if}}
+    <tr>
+      <td style="padding:16px 20px 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:17px;line-height:1.4;color:${C.text};"><strong>{{${prefix}_name}}</strong></td>
+            {{#if ${prefix}_discount}}
+            <td align="right" style="vertical-align:top;"><span style="display:inline-block;background-color:${C.button};color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:bold;padding:3px 10px;border-radius:999px;">{{${prefix}_discount}} OFF</span></td>
+            {{/if}}
+          </tr>
+        </table>
+        {{#if ${prefix}_desc}}
+        <p style="margin:6px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:${C.muted};">{{${prefix}_desc}}</p>
+        {{/if}}
+        <p style="margin:10px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;color:${C.muted};">
+          From
+          {{#if ${prefix}_fullprice}}&nbsp;<s>{{${prefix}_fullprice}}</s>{{/if}}
+          &nbsp;<strong style="color:${C.button};font-size:19px;">{{${prefix}_price}}</strong>
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">
+          <tr>
+            <td width="49%" align="center" style="border:1px solid ${C.border};border-radius:10px;">
+              <a href="{{${prefix}_site_url}}" style="display:inline-block;width:100%;padding:10px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:500;color:${C.text};text-decoration:none;">View Deal</a>
+            </td>
+            <td width="2%">&nbsp;</td>
+            <td width="49%" align="center" bgcolor="${C.button}" style="border-radius:10px;">
+              <a href="{{${prefix}_url}}" style="display:inline-block;width:100%;padding:11px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">${cta}</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+{{/if}}`;
 
 /** name → { subject, html }. The name is what the backend passes to Mailgun. */
 export const TEMPLATES = {
@@ -201,6 +279,68 @@ export const TEMPLATES = {
         paragraph(`Forgotten your password? <a href="{{reset_url}}" style="color:${C.button};text-decoration:underline;">Set a new one</a>.`, { muted: true, small: true }),
         '{{/if}}',
         paragraph('If it was not you, there is nothing to do — trying to sign up with an address grants no access to the account that owns it. If these keep arriving, tell us at {{support_email}}.', { muted: true, small: true }),
+      ].join('\n'),
+    }),
+  },
+
+  /**
+   * The onboarding drip (backend/src/utils/drip.ts + src/cron/newsletter-drip.ts):
+   * pm-welcome on confirmation, pm-drip-deals ~2 days later, pm-drip-chaturbate ~2 days after
+   * that. All three are MARKETING (`marketing: true` → tag-scoped unsubscribe in the footer)
+   * and all dynamic content arrives as variables fetched at send time — nothing is baked in
+   * here that can go stale.
+   */
+  'pm-welcome': {
+    subject: 'Welcome to PornMode — here is how it works',
+    description: 'Drip 1/3: welcome + site overview, sent right after the account is confirmed',
+    html: layout({
+      marketing: true,
+      preview: 'Live cams, verified porn deals and your own favorites list — a quick tour.',
+      body: [
+        paragraph('<strong style="font-size:20px;">Welcome to PornMode</strong>'),
+        paragraph('Your account is ready. Here is what you can do with it, in 30 seconds:'),
+        paragraph(`<strong>&#10084;&#65039; Save your favorite models.</strong> Tap the heart on any cam model and she is saved to <a href="{{favorites_url}}" style="color:${C.button};text-decoration:underline;">your favorites</a> — one click to see who is online whenever you come back.`),
+        paragraph('<strong>&#128250; Live cams from the four biggest sites.</strong> Chaturbate, BongaCams, Stripchat and ImLive in one place — thousands of models live at any moment, filterable by category, with previews before you enter a room.'),
+        paragraph(`<strong>&#128176; Verified porn deals.</strong> We track prices on the top paysites and list the real discounts on <a href="${SITE}" style="color:${C.button};text-decoration:underline;">the homepage</a> — no fake "limited offers".`),
+        button('{{browse_url}}', 'Browse live cams'),
+        paragraph('Over the next few days we will send you a couple of short emails with the best current deals and what is happening on cams. That is the whole tour — enjoy.', { muted: true, small: true }),
+      ].join('\n'),
+    }),
+  },
+
+  'pm-drip-deals': {
+    subject: "Today's best porn deals, checked and current",
+    description: 'Drip 2/3: top featured deals, variables fetched live at send time',
+    html: layout({
+      marketing: true,
+      preview: 'The top verified discounts right now — prices checked today.',
+      body: [
+        paragraph('<strong style="font-size:20px;">The best deals right now</strong>'),
+        paragraph('These are the top offers on PornMode today — prices verified when this email was sent, not last month:'),
+        dealCard('deal1'),
+        dealCard('deal2'),
+        dealCard('deal3'),
+        button('{{deals_url}}', 'See all deals'),
+        paragraph('Deals rotate as prices change, so the full list on the site is always worth a look.', { muted: true, small: true }),
+      ].join('\n'),
+    }),
+  },
+
+  'pm-drip-chaturbate': {
+    subject: 'Chaturbate: free cams, and a deal to go with them',
+    description: 'Drip 3/3: Chaturbate deal + live online-model count, fetched at send time',
+    html: layout({
+      marketing: true,
+      preview: 'The biggest free cam site — see who is live right now.',
+      body: [
+        paragraph('<strong style="font-size:20px;">Have you tried Chaturbate yet?</strong>'),
+        paragraph('It is the biggest free cam site in the world — no subscription, you watch for free and tip when someone earns it.'),
+        '{{#if cb_online_count}}',
+        paragraph(`<strong style="color:${C.button};">{{cb_online_count}} models are live right now</strong> — browse them on PornMode with previews and filters, and heart the ones worth coming back to.`),
+        '{{/if}}',
+        dealCard('cb_deal', { cta: 'Get Credits' }),
+        button('{{cams_url}}', 'Watch Chaturbate cams'),
+        paragraph('This is the last of our getting-started emails. From here on you will only hear from us about genuinely good deals and news.', { muted: true, small: true }),
       ].join('\n'),
     }),
   },

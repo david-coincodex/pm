@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
 import { cleanupExpired, ingestProfilePhotos, captureSnapshots, backfillActivity } from '../src/cron/cam-model-tasks';
+import { runNewsletterDrip } from '../src/cron/newsletter-drip';
 import { withHeartbeat, type TaskResult } from '../src/cron/heartbeat';
 import checks from '../src/cron/checks.json';
 
@@ -22,6 +23,8 @@ const TASKS: Record<keyof typeof checks.crons, (ctx: { strapi: Core.Strapi }) =>
   'cam-model-snapshots': captureSnapshots,
   // One-shot heatmap-history import from lemoncams; marks itself done in the core store.
   'cam-model-activity-backfill': backfillActivity,
+  // Advance newsletter subscribers through onboarding-drip steps 2-3 (48h apart).
+  'newsletter-drip': runNewsletterDrip,
 };
 
 const tasks = Object.fromEntries(

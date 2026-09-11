@@ -20,6 +20,11 @@
       "schedule": "*/10 * * * *",
       "grace": 1800,
       "desc": "One-shot lemoncams history import; done-state ticks still ping. Delete this check when the cron is retired (#65)."
+    },
+    "newsletter-drip": {
+      "schedule": "7 * * * *",
+      "grace": 7200,
+      "desc": "Hourly onboarding-drip advancer (newsletter-drip.ts): sends drip steps 2-3 to users 48h past their previous step. /fail = send failures or missing content (no featured deals / no CB offer while due users wait); silence = the cron stopped."
     }
   },
   "pings": {
