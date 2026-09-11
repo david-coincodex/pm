@@ -50,15 +50,18 @@ const supportEmail = () => process.env.SUPPORT_EMAIL ?? 'info@pornmode.com';
  */
 const mediaBase = () => (process.env.STRAPI_PUBLIC_URL ?? 'http://localhost:1339').replace(/\/+$/, '');
 
-type MediaRow = { url?: string; formats?: Record<string, { url?: string }> } | null | undefined;
+type MediaRow = { url?: string; mime?: string; formats?: Record<string, { url?: string }> } | null | undefined;
 
 /**
  * Absolute URL for a cover image, preferring the ~500px `small` format — the card column is
- * 534px, so `small` is sharp enough at a fraction of the original's weight. Stored paths are
- * root-relative `/uploads/...` by house rule (see relative-media-urls.ts).
+ * 534px, so `small` is sharp enough at a fraction of the original's weight. The original is
+ * only used for raster images: Strapi generates no formats for an SVG (a logo could be one)
+ * and Gmail's image proxy will not serve SVG — better no image row than a permanently broken
+ * one. Stored paths are root-relative `/uploads/...` by house rule (relative-media-urls.ts).
  */
 const coverUrl = (image: MediaRow): string | null => {
-  const path = image?.formats?.small?.url ?? image?.url;
+  const raster = image?.mime?.startsWith('image/') && image.mime !== 'image/svg+xml';
+  const path = image?.formats?.small?.url ?? (raster ? image?.url : undefined);
   if (!path) return null;
   return path.startsWith('/') ? `${mediaBase()}${path}` : path;
 };
@@ -67,7 +70,11 @@ const coverUrl = (image: MediaRow): string | null => {
 const shortDesc = (text: unknown): string | null => {
   if (typeof text !== 'string' || !text.trim()) return null;
   const t = text.trim();
-  return t.length <= 140 ? t : `${t.slice(0, 137).trimEnd()}…`;
+  if (t.length <= 140) return t;
+  // Don't cut through a surrogate pair: a lone high surrogate reaches the email as U+FFFD.
+  let cut = t.slice(0, 137);
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
+  return `${cut.trimEnd()}…`;
 };
 
 /** No key ⇒ no mailer is registered (config/plugins.ts) ⇒ the whole drip is a no-op. */
