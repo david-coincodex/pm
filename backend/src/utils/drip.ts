@@ -41,6 +41,35 @@ export const CRON_STEPS = [1, 2] as const;
 const frontendUrl = () => (process.env.FRONTEND_URL ?? 'http://localhost:3002').replace(/\/+$/, '');
 const supportEmail = () => process.env.SUPPORT_EMAIL ?? 'info@pornmode.com';
 
+/**
+ * Public base for media in email `src` attributes. The CMS origin, NOT the frontend: uploads
+ * are served by Strapi's own /uploads route, and in production that host (cms.pornmode.com)
+ * is publicly reachable — which is what an email client's image proxy needs. (Staging's CMS
+ * sits behind Cloudflare Access, so staging-sent emails show the alt-text fallback; known and
+ * accepted — staging mail only ever reaches testers.)
+ */
+const mediaBase = () => (process.env.STRAPI_PUBLIC_URL ?? 'http://localhost:1339').replace(/\/+$/, '');
+
+type MediaRow = { url?: string; formats?: Record<string, { url?: string }> } | null | undefined;
+
+/**
+ * Absolute URL for a cover image, preferring the ~500px `small` format — the card column is
+ * 534px, so `small` is sharp enough at a fraction of the original's weight. Stored paths are
+ * root-relative `/uploads/...` by house rule (see relative-media-urls.ts).
+ */
+const coverUrl = (image: MediaRow): string | null => {
+  const path = image?.formats?.small?.url ?? image?.url;
+  if (!path) return null;
+  return path.startsWith('/') ? `${mediaBase()}${path}` : path;
+};
+
+/** Two-line teaser, like the site card's clamped short_description. */
+const shortDesc = (text: unknown): string | null => {
+  if (typeof text !== 'string' || !text.trim()) return null;
+  const t = text.trim();
+  return t.length <= 140 ? t : `${t.slice(0, 137).trimEnd()}…`;
+};
+
 /** No key ⇒ no mailer is registered (config/plugins.ts) ⇒ the whole drip is a no-op. */
 export const mailerConfigured = () => Boolean(process.env.MAILGUN_API_KEY);
 
@@ -81,13 +110,18 @@ const bestOffer = (offers: OfferRow[] | undefined): OfferRow | null => {
 export type DealVars = Record<string, string>;
 
 /** Flat handlebars variables for one deal card (see dealCard in email-templates.mjs). */
-const dealToVars = (prefix: string, siteName: string, offer: OfferRow): DealVars => {
+const dealToVars = (prefix: string, deal: Deal): DealVars => {
+  const { offer } = deal;
   const vars: DealVars = {
-    [`${prefix}_name`]: siteName,
+    [`${prefix}_name`]: deal.name,
     [`${prefix}_price`]: fmtPrice(offer.price) ?? '',
     // The tracked /offer/<id>/ redirect, not the raw affiliate link — clicks stay measurable.
     [`${prefix}_url`]: `${frontendUrl()}/offer/${offer.id}/`,
+    // The same two destinations as the site card's buttons: /discounts/<slug>/ + the offer.
+    [`${prefix}_site_url`]: `${frontendUrl()}/discounts/${deal.slug}/`,
   };
+  if (deal.image) vars[`${prefix}_img`] = deal.image;
+  if (deal.description) vars[`${prefix}_desc`] = deal.description;
   const full = fmtPrice(offer.full_price);
   const discount = discountPercent(offer);
   if (full && discount !== null) {
@@ -97,7 +131,22 @@ const dealToVars = (prefix: string, siteName: string, offer: OfferRow): DealVars
   return vars;
 };
 
-export type Deal = { name: string; offer: OfferRow };
+export type Deal = {
+  name: string;
+  slug: string;
+  image: string | null;
+  description: string | null;
+  offer: OfferRow;
+};
+
+/** Card-shaped Deal from a populated site row, like the site's SiteCard (cover ?? logo). */
+const siteToDeal = (site: any, offer: OfferRow): Deal => ({
+  name: site.name,
+  slug: site.slug,
+  image: coverUrl(site.cover_image ?? site.logo),
+  description: shortDesc(site.short_description),
+  offer,
+});
 
 /**
  * Top featured deals, LIVE: mirrors the frontend's getFeaturedDeals (frontend/src/lib/
@@ -117,7 +166,7 @@ export async function fetchFeaturedDeals(strapi: Core.Strapi, limit = 3): Promis
     },
     orderBy: { priority: 'desc' },
     limit: 10,
-    populate: { site: { populate: { offers: true } } },
+    populate: { site: { populate: { offers: true, cover_image: true, logo: true } } },
   });
 
   const deals: Deal[] = [];
@@ -128,7 +177,7 @@ export async function fetchFeaturedDeals(strapi: Core.Strapi, limit = 3): Promis
     const offer = bestOffer(site.offers);
     if (!offer) continue;
     seen.add(site.id);
-    deals.push({ name: site.name, offer });
+    deals.push(siteToDeal(site, offer));
     if (deals.length >= limit) break;
   }
   return deals;
@@ -138,10 +187,10 @@ export async function fetchFeaturedDeals(strapi: Core.Strapi, limit = 3): Promis
 export async function fetchChaturbateDeal(strapi: Core.Strapi): Promise<Deal | null> {
   const site: any = await strapi.db.query('api::site.site').findOne({
     where: { slug: 'chaturbate', isActive: true },
-    populate: { offers: true },
+    populate: { offers: true, cover_image: true, logo: true },
   });
   const offer = site ? bestOffer(site.offers) : null;
-  return offer ? { name: site.name ?? 'Chaturbate', offer } : null;
+  return offer ? siteToDeal(site, offer) : null;
 }
 
 /**
@@ -272,7 +321,7 @@ export async function sendDripStep(
     // claiming and let a later run retry once content exists again.
     if (!data.deals.length) return 'no-data';
     const variables: Record<string, unknown> = { deals_url: `${site}/` };
-    data.deals.forEach((deal, i) => Object.assign(variables, dealToVars(`deal${i + 1}`, deal.name, deal.offer)));
+    data.deals.forEach((deal, i) => Object.assign(variables, dealToVars(`deal${i + 1}`, deal)));
     payload = {
       subject: "Today's best porn deals, checked and current",
       template: 'pm-drip-deals',
@@ -292,7 +341,7 @@ export async function sendDripStep(
     if (!data.cbDeal && data.cbOnline === null) return 'no-data';
     const variables: Record<string, unknown> = { cams_url: `${site}/live-sex/chaturbate/` };
     if (data.cbOnline !== null) variables.cb_online_count = data.cbOnline.toLocaleString('en-US');
-    if (data.cbDeal) Object.assign(variables, dealToVars('cb_deal', data.cbDeal.name, data.cbDeal.offer));
+    if (data.cbDeal) Object.assign(variables, dealToVars('cb_deal', data.cbDeal));
     payload = {
       subject: 'Chaturbate: free cams, and a deal to go with them',
       template: 'pm-drip-chaturbate',
